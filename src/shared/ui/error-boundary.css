@@ -1,0 +1,73 @@
+.app-error-boundary {
+  display: grid;
+  place-items: center;
+  min-height: 70vh;
+  min-width: 0;
+  padding: 40px 24px;
+  background: #f7f9f4;
+  color: #263f32;
+}
+.app-error-content {
+  width: 100%;
+  max-width: 530px;
+  padding: 36px;
+  border: 1px solid #e0e8db;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 6px 30px #1f382108;
+}
+.app-error-symbol {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 23px;
+  border: 1px solid #eadfc2;
+  border-radius: 14px;
+  background: #fcf7e9;
+  color: #a88537;
+}
+.app-error-eyebrow {
+  margin-bottom: 10px;
+  font-size: 10px;
+  letter-spacing: 1.7px;
+  font-weight: 650;
+  color: #819071;
+}
+.app-error-content h1 {
+  font-family: Manrope, sans-serif;
+  font-size: 27px;
+  line-height: 1.35;
+  font-weight: 700;
+  letter-spacing: -0.6px;
+}
+.app-error-content h1 + p {
+  margin-top: 14px;
+  font-size: 13px;
+  line-height: 1.85;
+  color: #71806b;
+}
+.app-error-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 27px;
+}
+.app-error-actions a {
+  text-decoration: none;
+}
+@media (max-width: 480px) {
+  .app-error-boundary {
+    padding: 24px 16px;
+  }
+  .app-error-content {
+    padding: 26px 22px;
+  }
+  .app-error-content h1 {
+    font-size: 23px;
+  }
+  .app-error-actions .button {
+    width: 100%;
+    min-height: 43px;
+  }
+}

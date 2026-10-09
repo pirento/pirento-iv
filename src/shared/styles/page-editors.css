@@ -1,0 +1,191 @@
+.editor-page,
+.organization-page {
+  width: 100%;
+  min-width: 0;
+  padding-bottom: 32px;
+}
+.editor-page {
+  max-width: 1060px;
+  margin-inline: auto;
+}
+.organization-page {
+  max-width: 1200px;
+  margin-inline: auto;
+}
+.editor-page-navigation {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.editor-page-navigation .button {
+  min-height: 40px;
+}
+.editor-page-panel {
+  min-width: 0;
+  background: #fff;
+  border: 1px solid #e0e7df;
+  border-radius: 12px;
+  box-shadow: 0 3px 12px #243f1505;
+  overflow: hidden;
+}
+.editor-page-heading {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 28px 32px;
+  border-bottom: 1px solid #e9eee3;
+  background: #fcfdf9;
+}
+.editor-page-heading h1 {
+  font-family: Manrope, sans-serif;
+  font-size: 25px;
+  font-weight: 650;
+  letter-spacing: -0.6px;
+  line-height: 1.35;
+  color: #283e31;
+}
+.editor-page-heading p {
+  font-size: 12px;
+  color: #7e8c78;
+  line-height: 1.7;
+  margin-top: 7px;
+}
+.editor-page-title-icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 45px;
+  height: 45px;
+  border: 1px solid #e1e9d6;
+  border-radius: 11px;
+  background: #f0f5e7;
+  color: #708d57;
+}
+.editor-page-body {
+  padding: 28px 32px;
+}
+.editor-page-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 22px 32px;
+  border-top: 1px solid #e9eee3;
+  background: #fbfcf8;
+}
+.editor-page-footer > span:first-child {
+  font-size: 11px;
+  color: #849178;
+  margin-right: auto;
+}
+.customer-page .form-grid {
+  gap: 23px 24px;
+}
+.customer-page .form-grid .field-hint {
+  font-weight: 400;
+  color: #85957e;
+  line-height: 1.6;
+}
+.customer-page .contact-section-heading h3 {
+  font-size: 15px;
+}
+.customer-page .contact-fieldset {
+  overflow: visible;
+}
+.customer-page .contact-role-picker {
+  margin-bottom: 25px;
+}
+.customer-page .gst-box {
+  margin-bottom: 27px;
+}
+.workspace-settings-page .editor-page-body {
+  display: grid;
+  gap: 20px;
+  max-width: 780px;
+}
+.workspace-settings-page .org-field {
+  margin-bottom: 0;
+}
+.workspace-settings-page .editor-page-footer .button {
+  white-space: normal;
+}
+@media (max-width: 760px) {
+  .editor-page-navigation {
+    margin-bottom: 16px;
+  }
+  .editor-page-heading {
+    padding: 23px;
+    gap: 12px;
+  }
+  .editor-page-heading h1 {
+    font-size: 23px;
+  }
+  .editor-page-body {
+    padding: 24px;
+  }
+  .editor-page-footer {
+    padding: 20px 24px;
+  }
+  .customer-page .form-grid {
+    gap: 20px 16px;
+  }
+}
+@media (max-width: 560px) {
+  .editor-page-panel {
+    border-radius: 9px;
+  }
+  .editor-page-heading {
+    padding: 22px 18px;
+    align-items: flex-start;
+  }
+  .editor-page-heading h1 {
+    font-size: 21px;
+  }
+  .editor-page-heading p {
+    font-size: 11px;
+  }
+  .editor-page-title-icon {
+    width: 38px;
+    height: 38px;
+  }
+  .editor-page-body {
+    padding: 22px 18px;
+  }
+  .editor-page-footer {
+    padding: 18px;
+    gap: 9px;
+  }
+  .editor-page-footer > span:first-child {
+    flex-basis: 100%;
+    margin-bottom: 3px;
+  }
+  .editor-page-footer .button {
+    flex: 1;
+    min-height: 42px;
+  }
+  .customer-page .form-grid {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+  .customer-page .form-grid .span-two {
+    grid-column: auto;
+  }
+  .customer-page .contact-section-heading {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .customer-page .input-action {
+    flex-wrap: wrap;
+  }
+  .customer-page .input-action input {
+    flex-basis: 100%;
+  }
+  .customer-page .form-grid input,
+  .customer-page .form-grid select,
+  .customer-page .form-grid textarea,
+  .customer-page .gst-box input {
+    font-size: 16px;
+  }
+}
