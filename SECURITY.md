@@ -6,7 +6,7 @@ This document describes implemented controls and operational requirements. Passi
 
 - Public signup creates a pending request. An administrator must approve the person and assign organizations before staff can access business records. The first public signup is never promoted automatically.
 - Passwords use individually salted asynchronous scrypt. Sessions are random tokens whose hashes are stored in SQLite; cookies use HttpOnly, SameSite and Secure in production, with a 12-hour session lifetime.
-- Production startup requires the exact HTTPS application origin. JSON mutation requests are checked against that origin and cross-site request metadata. Account endpoints have bounded request-rate buckets. Proxy forwarding headers are not trusted to change the apparent client identity.
+- Production startup requires the exact HTTPS application origin. JSON mutation requests are checked against that origin and cross-site request metadata. Account endpoints have bounded request-rate buckets. Forwarded headers affect the client identity only through explicitly configured trusted ingress ranges.
 - The backend checks staff permissions against both submitted organization IDs and the stored resource's organization. Admin-only changes remain server-enforced; editing a page URL or calling an API directly cannot grant an assignment.
 - Disabling a user or changing access revokes sessions. Password-reset links expire after 30 minutes, are single-use and reset sessions. Tokens stay out of ordinary delivery history. Reset tokens belong in the URL fragment, not query strings sent to the web server.
 - Account login is the active access system. The unused shared preview-password implementation has been removed.
@@ -21,6 +21,8 @@ Gateway webhook routes are intentionally public. They verify a signature over th
 
 Active or unresolved payment links block competing financial edits and offline receipts. Fully paid invoices retain their number and lock editing. Verified gateway receipts cannot be manually voided. Refunds, chargebacks and accounting filing require separate reconciliation; the application does not represent them as local receipt corrections.
 
+Manual receipt dates are checked against the server's current India calendar day before any financial/outbox mutation. Future dates from verified provider responses require review before crediting the ledger; an existing verified receipt remains idempotent when retried. Document pages are bounded and independently scoped; dashboard aggregates cover the organization without downloading every document. CSV exports use bounded batches, response backpressure and disconnect checks, with spreadsheet formula prefixes escaped.
+
 Email queues retain the issuing organization, saved recipient and support identity. Sender, attachment, request body and credential fingerprint are fixed for retries; keys are not stored in the payload. A different credential profile or an ambiguous attempt outside the safe provider retry window requires review before another send. Support/Reply-To addresses are not automatically verified outgoing senders.
 
 ## Requests, images and external services
@@ -31,7 +33,7 @@ GST portal lookups require a human-entered CAPTCHA. Challenges expire and are si
 
 ## Persistence and deployment
 
-Use one Node.js 24.5+ service behind HTTPS with a persistent SQLite location. Keep the internal HTTP listener private. A stateless host or separate SQLite copies across replicas can lose or split records. A reverse proxy may share an account rate-limit bucket because the app uses the trusted socket peer; tune the hosting design deliberately before a large rollout.
+Use one Node.js 24.5+ service behind HTTPS with a persistent SQLite location. Keep the internal HTTP listener private. A stateless host or separate SQLite copies across replicas can lose or split records. `TRUSTED_PROXY` accepts an explicit ingress IP/CIDR allowlist (or Express named local ranges) and otherwise ignores forwarded headers. Invalid, blanket or hop-count trust fails startup. Only use ranges that belong to the host's actual proxies; the ingress must replace client-supplied forwarded headers. Authentication resolves the client IP through this trust boundary and normalizes IPv6/IPv4-mapped forms. Login limits reserve in-flight attempts before password hashing, retain failures and release successful attempts: 20 per email+IP and 200 per IP in 15 minutes. Expiring process-local maps are bounded. Changing proxy configuration does not establish that the ingress is secure; verify it on the host.
 
 The database contains customer records, business payment details, account hashes and documents. Protect the disk and backups with hosting access controls and appropriate storage encryption. The application does not implement its own encryption at rest or automatic offsite backups. Verified local snapshots use SQLite's online backup API, private folders/files, checksums, integrity and foreign-key checks. A checksum does not authenticate a backup against someone able to replace both its database and manifest. All backup APIs, including downloads, require administrator access and return no-store responses; they contain the whole workspace, not only the current organization. Unknown or unsafe snapshots are not deleted by retention.
 

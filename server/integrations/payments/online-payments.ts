@@ -2,6 +2,7 @@ import { createHash, createHmac, randomUUID, timingSafeEqual } from 'node:crypto
 import type { DatabaseSync } from 'node:sqlite';
 import { Router, type RequestHandler } from 'express';
 import { balanceDue, paidAmount, type BusinessDocument, type PaymentRecord } from '../../../shared/types.ts';
+import { businessDateInIndia } from '../../../shared/business-date.ts';
 import type {
   OnlinePaymentConfiguration,
   OnlinePaymentDetails,
@@ -374,17 +375,25 @@ export function createOnlinePayments(options: OnlinePaymentOptions) {
       );
       throw new OnlinePaymentError(row.review_reason, 409);
     }
+    const receivedAt = now();
     const paidAt =
       Number.isFinite(payment.created_at) && payment.created_at! > 0
         ? new Date(payment.created_at! * 1000)
-        : now();
+        : receivedAt;
+    const paidOn = businessDateInIndia(Number.isNaN(paidAt.getTime()) ? receivedAt : paidAt);
+    if (paidOn > businessDateInIndia(receivedAt)) {
+      update(
+        row,
+        'needs_review',
+        'Razorpay returned a future payment date. Review the captured payment with the provider before recording it.',
+      );
+      throw new OnlinePaymentError(row.review_reason, 409);
+    }
     atomic(() => {
       const recorded = recordVerifiedPayment({
         documentId: document.id,
         amount: payment.amount / 100,
-        paidOn: Number.isNaN(paidAt.getTime())
-          ? now().toISOString().slice(0, 10)
-          : paidAt.toISOString().slice(0, 10),
+        paidOn,
         reference: payment.id,
         requestId: `razorpay:${payment.id}`,
         notes: `Verified captured Razorpay payment for ${row.provider_id}.`,

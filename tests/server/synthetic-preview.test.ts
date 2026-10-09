@@ -100,6 +100,49 @@ async function runningPreview(t: TestContext) {
   return { ...files, prepared, app, call, login };
 }
 
+test('explicit preview proxy ranges reach the outer wrapper and sanitized inner application', (t) => {
+  const files = fixtureRoot(t);
+  const prepared = prepareSyntheticPreview({
+    root: files.root,
+    environment: previewSettings({ TRUSTED_PROXY: 'loopback' }),
+  });
+  assert.equal(prepared.environment.TRUSTED_PROXY, 'loopback');
+  const app = createSyntheticPreviewApp({ root: files.root, environment: prepared.environment });
+  files.cleanup(() => app.locals.services.db.close());
+  assert.deepEqual(app.get('trust proxy'), ['loopback']);
+});
+
+test('unsafe proxy configuration fails before creating a preview or business database', (t) => {
+  const files = fixtureRoot(t);
+  const prepared = prepareSyntheticPreview({
+    root: files.root,
+    environment: previewSettings({ TRUSTED_PROXY: 'true' }),
+  });
+  assert.throws(
+    () => createSyntheticPreviewApp({ root: files.root, environment: prepared.environment }),
+    /TRUSTED_PROXY/,
+  );
+  assert.equal(existsSync(prepared.databasePath), false);
+  const businessPath = join(files.root, 'never-created.sqlite');
+  assert.throws(
+    () => createApp({ environment: { TRUSTED_PROXY: '1', DATABASE_PATH: businessPath } }),
+    /TRUSTED_PROXY/,
+  );
+  assert.equal(existsSync(businessPath), false);
+});
+
+test('ordinary application defaults to untrusted forwarded headers and accepts only configured ranges', () => {
+  for (const TRUSTED_PROXY of [undefined, 'loopback,192.0.2.4']) {
+    const db = initDb(':memory:');
+    try {
+      const app = createApp({ db, auth: false, environment: { TRUSTED_PROXY } });
+      assert.deepEqual(app.get('trust proxy'), TRUSTED_PROXY ? ['loopback', '192.0.2.4'] : false);
+    } finally {
+      db.close();
+    }
+  }
+});
+
 test('each disposable start creates independent empty private storage without touching an existing workspace', (t) => {
   const files = fixtureRoot(t);
   mkdirSync(join(files.root, '.data'));

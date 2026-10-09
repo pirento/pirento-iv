@@ -1,4 +1,5 @@
 import { createHash, randomBytes, randomUUID, scrypt, timingSafeEqual } from 'node:crypto';
+import { isIP } from 'node:net';
 import type { DatabaseSync } from 'node:sqlite';
 import express, { type Request, type RequestHandler } from 'express';
 import { z } from 'zod';
@@ -7,6 +8,10 @@ import type { AuthUser, AuthSessionResponse } from '../../shared/auth-types.ts';
 const COOKIE = 'venturecore_session';
 const SESSION_MS = 12 * 60 * 60 * 1000;
 const RESET_MS = 30 * 60 * 1000;
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const LOGIN_ACCOUNT_MAXIMUM = 20;
+const LOGIN_IP_MAXIMUM = 200;
+const MAX_RATE_LIMIT_BUCKETS = 4096;
 const GENERIC_SIGNUP =
   'Your request has been received. New accounts require administrator approval before signing in.';
 const GENERIC_RESET =
@@ -30,6 +35,23 @@ const access = z
   })
   .strict();
 const tokenHash = (value: string) => createHash('sha256').update(value).digest('hex');
+
+function clientAddress(req: Request): string {
+  // Express resolves req.ip using the application's explicitly trusted proxy ranges.
+  // Invalid forwarded addresses fall back to the connection; they cannot create new buckets.
+  const address = isIP(req.ip ?? '') ? req.ip! : (req.socket.remoteAddress ?? 'unknown');
+  if (isIP(address) !== 6) return address;
+  try {
+    const normalized = new URL(`http://[${address}]`).hostname.slice(1, -1);
+    const mapped = /^::ffff:([a-f0-9]{1,4}):([a-f0-9]{1,4})$/.exec(normalized);
+    if (!mapped) return normalized;
+    const first = Number.parseInt(mapped[1], 16);
+    const last = Number.parseInt(mapped[2], 16);
+    return `${first >>> 8}.${first & 255}.${last >>> 8}.${last & 255}`;
+  } catch {
+    return req.socket.remoteAddress ?? 'unknown';
+  }
+}
 
 function derive(password: string, salt: Buffer): Promise<Buffer> {
   // 32 MiB per hash with three passes; async crypto keeps requests off the event loop.
@@ -177,27 +199,70 @@ export function createAuth(db: DatabaseSync, options: AuthOptions = {}) {
     next();
   };
 
-  // The socket address is intentionally used: callers cannot bypass limits with a forged proxy header.
   const attempts = new Map<string, { count: number; until: number }>();
   const rateLimit =
     (scope: string, maximum: number, windowMs: number): RequestHandler =>
     (req, res, next) => {
       const time = now();
       for (const [key, attempt] of attempts) if (attempt.until <= time) attempts.delete(key);
-      const key = `${scope}:${req.socket.remoteAddress ?? 'unknown'}`;
+      const key = `${scope}:${clientAddress(req)}`;
       const attempt = attempts.get(key);
       if (attempt && attempt.count >= maximum) {
         res.set('Retry-After', String(Math.max(1, Math.ceil((attempt.until - time) / 1000))));
         res.status(429).json({ error: 'Too many account requests. Please wait and try again.' });
         return;
       }
-      if (!attempt && attempts.size >= 4096) {
+      if (!attempt && attempts.size >= MAX_RATE_LIMIT_BUCKETS) {
+        res.set('Retry-After', '60');
         res.status(429).json({ error: 'Account service is busy. Please try again shortly.' });
         return;
       }
       attempts.set(key, { count: (attempt?.count ?? 0) + 1, until: attempt?.until ?? time + windowMs });
       next();
     };
+  const loginAttempts = new Map<string, { failures: number; inFlight: number; until: number }>();
+  function reserveLoginAttempt(
+    key: string,
+    maximum: number,
+    res: express.Response,
+    clearFailuresOnSuccess = false,
+  ) {
+    const time = now();
+    for (const [storedKey, attempt] of loginAttempts)
+      if (attempt.until <= time && attempt.inFlight === 0) loginAttempts.delete(storedKey);
+    let attempt = loginAttempts.get(key);
+    if (attempt && attempt.until <= time) {
+      attempt.failures = 0;
+      attempt.until = time + LOGIN_WINDOW_MS;
+    }
+    if (attempt && attempt.failures + attempt.inFlight >= maximum) {
+      res.set('Retry-After', String(Math.max(1, Math.ceil((attempt.until - time) / 1000))));
+      res.status(429).json({ error: 'Too many account requests. Please wait and try again.' });
+      return null;
+    }
+    if (!attempt && loginAttempts.size >= MAX_RATE_LIMIT_BUCKETS) {
+      res.set('Retry-After', '60');
+      res.status(429).json({ error: 'Account service is busy. Please try again shortly.' });
+      return null;
+    }
+    if (!attempt) {
+      attempt = { failures: 0, inFlight: 0, until: time + LOGIN_WINDOW_MS };
+      loginAttempts.set(key, attempt);
+    }
+    const reserved = attempt;
+    reserved.inFlight += 1;
+    let finished = false;
+    return {
+      finish(success: boolean) {
+        if (finished) return;
+        finished = true;
+        reserved.inFlight -= 1;
+        if (!success) reserved.failures += 1;
+        else if (clearFailuresOnSuccess) reserved.failures = 0;
+        if (reserved.inFlight === 0 && reserved.failures === 0) loginAttempts.delete(key);
+      },
+    };
+  }
   const mutationGuard: RequestHandler = (req, res, next) => {
     res.set('Cache-Control', 'no-store');
     if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
@@ -305,43 +370,62 @@ export function createAuth(db: DatabaseSync, options: AuthOptions = {}) {
     }
     res.status(202).json({ message: GENERIC_SIGNUP });
   });
-  router.post('/login', rateLimit('login', 20, 15 * 60 * 1000), async (req, res) => {
-    const input = login.safeParse(req.body);
-    if (!input.success) {
-      res.status(400).json({ error: 'Enter a valid email and password.' });
-      return;
+  router.post('/login', async (req, res) => {
+    const address = clientAddress(req);
+    // Reserve before awaiting scrypt so simultaneous requests cannot bypass either limit.
+    const ipAttempt = reserveLoginAttempt(`ip:${address}`, LOGIN_IP_MAXIMUM, res);
+    if (!ipAttempt) return;
+    let accountAttempt: ReturnType<typeof reserveLoginAttempt> = null;
+    let success = false;
+    try {
+      const input = login.safeParse(req.body);
+      if (!input.success) {
+        res.status(400).json({ error: 'Enter a valid email and password.' });
+        return;
+      }
+      accountAttempt = reserveLoginAttempt(
+        `account:${address}:${tokenHash(input.data.email)}`,
+        LOGIN_ACCOUNT_MAXIMUM,
+        res,
+        true,
+      );
+      if (!accountAttempt) return;
+      const row = userByEmail(input.data.email);
+      // Fixed dummy salt performs the same scrypt cost when no account exists.
+      const matches = row
+        ? await verifyPassword(input.data.password, row.password_hash)
+        : (await derive(input.data.password, Buffer.alloc(16)), false);
+      // Re-read after awaiting the hash so a concurrent access/password change wins.
+      const latest = row && userById(row.id);
+      if (!matches || !latest || latest.status !== 'active' || latest.password_hash !== row?.password_hash) {
+        res.status(401).json({
+          error:
+            'Sign-in unsuccessful. Check your credentials and ask an administrator if your account is awaiting approval.',
+        });
+        return;
+      }
+      const oldToken = sessionToken(req);
+      if (oldToken) db.prepare('DELETE FROM auth_sessions WHERE token_hash = ?').run(tokenHash(oldToken));
+      const token = randomBytes(32).toString('hex');
+      db.prepare('DELETE FROM auth_sessions WHERE expires_at <= ?').run(now());
+      db.prepare('INSERT INTO auth_sessions VALUES (?, ?, ?, ?)').run(
+        tokenHash(token),
+        row!.id,
+        now() + SESSION_MS,
+        now(),
+      );
+      db.prepare('UPDATE auth_users SET last_login_at = ? WHERE id = ?').run(
+        new Date(now()).toISOString(),
+        row!.id,
+      );
+      audit('login', row!.id, row!.id);
+      res.cookie(COOKIE, token, cookieOptions);
+      res.json({ user: safeUser(userById(row!.id)!) });
+      success = true;
+    } finally {
+      ipAttempt.finish(success);
+      accountAttempt?.finish(success);
     }
-    const row = userByEmail(input.data.email);
-    // Fixed dummy salt performs the same scrypt cost when no account exists.
-    const matches = row
-      ? await verifyPassword(input.data.password, row.password_hash)
-      : (await derive(input.data.password, Buffer.alloc(16)), false);
-    // Re-read after awaiting the hash so a concurrent access/password change wins.
-    const latest = row && userById(row.id);
-    if (!matches || !latest || latest.status !== 'active' || latest.password_hash !== row?.password_hash) {
-      res.status(401).json({
-        error:
-          'Sign-in unsuccessful. Check your credentials and ask an administrator if your account is awaiting approval.',
-      });
-      return;
-    }
-    const oldToken = sessionToken(req);
-    if (oldToken) db.prepare('DELETE FROM auth_sessions WHERE token_hash = ?').run(tokenHash(oldToken));
-    const token = randomBytes(32).toString('hex');
-    db.prepare('DELETE FROM auth_sessions WHERE expires_at <= ?').run(now());
-    db.prepare('INSERT INTO auth_sessions VALUES (?, ?, ?, ?)').run(
-      tokenHash(token),
-      row!.id,
-      now() + SESSION_MS,
-      now(),
-    );
-    db.prepare('UPDATE auth_users SET last_login_at = ? WHERE id = ?').run(
-      new Date(now()).toISOString(),
-      row!.id,
-    );
-    audit('login', row!.id, row!.id);
-    res.cookie(COOKIE, token, cookieOptions);
-    res.json({ user: safeUser(userById(row!.id)!) });
   });
   router.post('/logout', (req, res) => {
     const token = sessionToken(req);

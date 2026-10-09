@@ -1,6 +1,7 @@
 import { createHash, createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { Router, type RequestHandler } from 'express';
 import { balanceDue, paidAmount, type BusinessDocument } from '../../../shared/types.ts';
+import { businessDateInIndia } from '../../../shared/business-date.ts';
 import type {
   OnlinePaymentConfiguration,
   OnlinePaymentDetails,
@@ -403,12 +404,21 @@ export function createCashfreePayments(options: CashfreePaymentOptions) {
             row,
             'Invoice balance changed or Cashfree payment exceeds the balance. Review the payment before recording or refunding it.',
           );
-        const date = new Date(payment.payment_completion_time ?? payment.payment_time ?? now().toISOString());
+        const receivedAt = now();
+        const date = new Date(
+          payment.payment_completion_time ?? payment.payment_time ?? receivedAt.toISOString(),
+        );
+        const paidOn = businessDateInIndia(Number.isNaN(date.getTime()) ? receivedAt : date);
+        if (paidOn > businessDateInIndia(receivedAt))
+          review(
+            row,
+            'Cashfree returned a future payment date. Review the captured payment with the provider before recording it.',
+          );
         atomic(() => {
           const recorded = recordVerifiedPayment({
             documentId: document.id,
             amount: amount / 100,
-            paidOn: (Number.isNaN(date.getTime()) ? now() : date).toISOString().slice(0, 10),
+            paidOn,
             reference: id,
             requestId: `cashfree:${id}`,
             notes: `Verified Cashfree payment for ${row.reference_id}.`,

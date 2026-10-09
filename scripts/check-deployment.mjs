@@ -13,6 +13,7 @@ import { isIP } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 import { assertHostedNodeVersion } from './hosted-startup-config.mjs';
+import { parseTrustedProxy } from '../server/http/trusted-proxy.ts';
 
 const defaultRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const present = (value) => typeof value === 'string' && value.trim().length > 0;
@@ -64,6 +65,18 @@ export async function checkDeployment(options = {}) {
     /* The startup flag --use-env-proxy requires at least Node 24.5. */
   }
   add('node', nodeReady ? 'pass' : 'blocker', 'Node.js 24.5 or newer is required.');
+  try {
+    const trustedProxy = parseTrustedProxy(environment.TRUSTED_PROXY);
+    add(
+      'trusted-proxy',
+      trustedProxy ? 'pass' : 'warning',
+      trustedProxy
+        ? 'Explicit proxy ranges are configured. Verify they match the actual hosting ingress and that it replaces incoming forwarded headers.'
+        : 'Forwarded IP headers are ignored by default. For reverse-proxied hosting, configure only the actual ingress proxy IPs/CIDRs.',
+    );
+  } catch {
+    add('trusted-proxy', 'blocker', 'TRUSTED_PROXY contains an invalid or unsafe proxy trust setting.');
+  }
   add(
     'production',
     environment.NODE_ENV === 'production' ? 'pass' : 'blocker',

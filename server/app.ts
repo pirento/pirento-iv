@@ -1,8 +1,10 @@
 import express, { type ErrorRequestHandler } from 'express';
 import { createHash, randomUUID } from 'node:crypto';
+import { businessDateInIndia } from '../shared/business-date.ts';
 import { createAuth, type AuthOptions } from './auth/auth.ts';
 import { createAccessGuard } from './auth/access.ts';
 import { securityHeaders, validateResourceQueries } from './http/http-security.ts';
+import { parseTrustedProxy } from './http/trusted-proxy.ts';
 import type { AuthUser } from '../shared/auth-types.ts';
 import { normalizeContact, isInvoiceRecipient } from './validation/contacts.ts';
 import { createMailer, EmailQueueError } from './integrations/email/mailer.ts';
@@ -65,6 +67,12 @@ import {
 } from './operations/database-backup.ts';
 import { createBackupManager } from './operations/backup-scheduler.ts';
 import { assertDatabaseRecoveryReviewed } from './operations/recovery.ts';
+import {
+  documentExportRows,
+  getDocumentPage,
+  getDocumentSummary,
+  parseDocumentFilters,
+} from './documents/document-list.ts';
 
 export class HttpError extends Error {
   constructor(
@@ -110,10 +118,12 @@ function configuredLookupUrl(template: string | undefined) {
 
 export function createApp(options: AppOptions = {}) {
   const environment = options.environment ?? process.env;
+  const trustedProxy = parseTrustedProxy(environment.TRUSTED_PROXY);
   const db = options.db ?? initDb(environment.DATABASE_PATH);
   assertDatabaseRecoveryReviewed(db);
   const app = express();
   app.disable('x-powered-by');
+  app.set('trust proxy', trustedProxy);
   app.use(securityHeaders(environment.NODE_ENV === 'production'));
   app.post(
     '/api/webhooks/razorpay',
@@ -1005,18 +1015,105 @@ export function createApp(options: AppOptions = {}) {
 
   app.get('/api/documents', (req, res) => {
     const organization = scopedOrganization(req.query.organizationId);
-    const kind =
-      req.query.kind === undefined
-        ? undefined
-        : z.enum(['invoice', 'quotation', 'proforma', 'delivery_note']).parse(req.query.kind);
-    const rows = kind
-      ? db
-          .prepare('SELECT data FROM documents WHERE organization_id = ? AND kind = ? ORDER BY rowid DESC')
-          .all(organization.id, kind)
-      : db
-          .prepare('SELECT data FROM documents WHERE organization_id = ? ORDER BY rowid DESC')
-          .all(organization.id);
-    res.json((rows as Row[]).map((row) => decode<BusinessDocument>(row)));
+    const result = getDocumentPage(db, organization.id, businessDateInIndia(now()), {
+      ...req.query,
+      pageSize: req.query.pageSize ?? '100',
+    });
+    res.set({
+      'X-Total-Count': String(result.total),
+      'X-Page': String(result.page),
+      'X-Page-Size': String(result.pageSize),
+    });
+    res.json(result.items);
+  });
+  app.get('/api/documents/page', (req, res) => {
+    const organization = scopedOrganization(req.query.organizationId);
+    res.json(getDocumentPage(db, organization.id, businessDateInIndia(now()), req.query));
+  });
+  app.get('/api/documents/summary', (req, res) => {
+    const organization = scopedOrganization(req.query.organizationId);
+    res.json(getDocumentSummary(db, organization.id, businessDateInIndia(now())));
+  });
+  app.get('/api/documents/export.csv', async (req, res) => {
+    const organization = scopedOrganization(req.query.organizationId);
+    const filters = parseDocumentFilters(req.query);
+    const asOf = businessDateInIndia(now());
+    res.type('text/csv; charset=utf-8');
+    res.attachment(`documents-${filters.kind ?? 'all'}-${asOf}.csv`);
+    const csvRow = (values: unknown[]) =>
+      values
+        .map((value) => {
+          let text = String(value ?? '');
+          if (/^\s*[=+@-]/.test(text)) text = "'" + text;
+          return '"' + text.replaceAll('"', '""') + '"';
+        })
+        .join(',') + '\r\n';
+    res.write(
+      '\uFEFF' +
+        csvRow([
+          'Number',
+          'Type',
+          'Business product',
+          'Customer',
+          'Date',
+          'Due date',
+          'Status',
+          'Taxable (INR)',
+          'GST (INR)',
+          'Total (INR)',
+          'Received (INR)',
+          'Balance (INR)',
+          'Finalized',
+        ]),
+    );
+    for (const { document: item, status } of documentExportRows(db, organization.id, asOf, filters)) {
+      if (res.destroyed || res.writableEnded) return;
+      const paid =
+        item.amountPaid ?? (item.kind === 'invoice' && item.status === 'paid' ? item.totals.total : 0);
+      const balance =
+        item.kind === 'invoice'
+          ? (item.balanceDue ?? Math.max(0, Math.round((item.totals.total - paid) * 100) / 100))
+          : 0;
+      if (
+        !res.write(
+          csvRow([
+            item.number,
+            item.kind,
+            item.businessProductSnapshot?.name ?? '',
+            item.customerSnapshot.name,
+            item.issueDate,
+            item.dueDate,
+            status,
+            item.totals.taxable,
+            item.totals.cgst + item.totals.sgst + item.totals.igst,
+            item.kind === 'delivery_note' ? '' : item.totals.total,
+            paid,
+            balance,
+            item.finalizedAt ?? '',
+          ]),
+        )
+      ) {
+        await new Promise<void>((resolve) => {
+          const finished = () => {
+            res.off('drain', finished);
+            res.off('close', finished);
+            resolve();
+          };
+          res.once('drain', finished);
+          res.once('close', finished);
+        });
+      }
+    }
+    res.end();
+  });
+  app.get('/api/documents/:id', (req, res) => {
+    const document = getDocument(req.params.id);
+    if (
+      req.query.organizationId !== undefined &&
+      scopedOrganization(req.query.organizationId).id !== document.organizationId
+    )
+      throw new HttpError(404, 'Document not found in the selected organization.');
+    res.json(document);
   });
   app.post('/api/documents', async (req, res) => {
     const input = documentSchema.parse(req.body);
@@ -1353,6 +1450,8 @@ export function createApp(options: AppOptions = {}) {
   }
   app.post('/api/documents/:id/payments', (req, res) => {
     const input = paymentSchema.parse(req.body);
+    const today = businessDateInIndia(now());
+    if (input.paidOn > today) throw new HttpError(400, 'Payment date cannot be in the future.');
     if (/^(razorpay|cashfree):/.test(input.requestId))
       throw new HttpError(400, 'This receipt identifier is reserved for verified gateway payments.');
     const result = transaction(db, () => {
@@ -1502,6 +1601,11 @@ export function createApp(options: AppOptions = {}) {
     app.get('/{*path}', (_req, res) => res.sendFile(resolve(dist, 'index.html')));
   }
   const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
+    if (res.headersSent) {
+      // Close interrupted downloads without serializing errors into a started response.
+      res.destroy();
+      return;
+    }
     if (error instanceof z.ZodError) {
       res.status(400).json({
         error: error.issues.map((issue) => `${issue.path.join('.') || 'Input'}: ${issue.message}`).join(' '),

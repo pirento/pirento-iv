@@ -8,6 +8,7 @@ import {
   verifyCashfreeSignature,
 } from '../../server/integrations/payments/cashfree-payments.ts';
 import type { BusinessDocument, PaymentRecord } from '../../shared/types.ts';
+import { OnlinePaymentError } from '../../server/integrations/payments/online-payments.ts';
 
 const environment = {
   CASHFREE_CLIENT_ID: 'synthetic-client',
@@ -28,7 +29,7 @@ test('oversized Cashfree creation response keeps one recoverable merchant refere
   assert.equal(synced.links[0].state, 'created');
   assert.equal(f.calls.filter((call) => call.method === 'POST').length, 1);
 });
-function fixture(t: TestContext, config: { env?: NodeJS.ProcessEnv } = {}) {
+function fixture(t: TestContext, config: { env?: NodeJS.ProcessEnv; now?: () => Date } = {}) {
   const db = new DatabaseSync(':memory:');
   db.exec(`PRAGMA foreign_keys=ON;
     CREATE TABLE documents (id TEXT PRIMARY KEY,data TEXT NOT NULL);
@@ -125,7 +126,7 @@ function fixture(t: TestContext, config: { env?: NodeJS.ProcessEnv } = {}) {
     getDocument,
     env: config.env ?? environment,
     fetch: provider,
-    now: () => new Date(timestamp),
+    now: config.now ?? (() => new Date(timestamp)),
     recordVerifiedPayment(
       input: Parameters<Parameters<typeof createCashfreePayments>[0]['recordVerifiedPayment']>[0],
     ) {
@@ -578,5 +579,71 @@ test('Cashfree recovery rejects a provider URL that could send customers to an u
     await assert.rejects(f.syncDocument('invoice-1'), /payment URL/);
     assert.equal(f.getDocumentPayments('invoice-1').links[0].url, '');
     assert.equal(f.getDocumentPayments('invoice-1').hasBlockingPaymentLink, true);
+  }
+});
+
+for (const { now, paidAt } of [
+  { now: timestamp, paidAt: '2199-01-01T00:00:00.000Z' },
+  { now: '2026-10-08T18:29:59.000Z', paidAt: '2026-10-08T18:30:00.000Z' },
+]) {
+  test(`Cashfree future capture ${paidAt} enters review without credit or notification`, async (t) => {
+    const f = fixture(t, { now: () => new Date(now) });
+    await f.createPaymentLink('invoice-1');
+    const { order, payment } = f.addPayment('futuredate', 100);
+    payment.payment_completion_time = paidAt;
+    await assert.rejects(
+      f.webhook('PAYMENT_LINK_EVENT', 'event_future'),
+      (error: unknown) =>
+        error instanceof OnlinePaymentError &&
+        error.status === 409 &&
+        /future payment date/.test(error.message),
+    );
+    assert.ok(f.calls.some((call) => call.path === `/pg/orders/${order.order_id}/payments`));
+    assert.deepEqual(f.getDocument(), f.original);
+    assert.equal(f.count('receipts'), 0);
+    assert.equal(f.count('notifications'), 0);
+    assert.equal(f.count('cashfree_verified_payments'), 0);
+    assert.equal(f.getDocumentPayments('invoice-1').links[0].state, 'needs_review');
+    assert.equal(f.getDocumentPayments('invoice-1').hasBlockingPaymentLink, true);
+  });
+}
+
+test('Cashfree records the India date when the capture and receipt occur after India midnight', async (t) => {
+  const f = fixture(t, { now: () => new Date('2026-10-08T18:45:00.000Z') });
+  await f.createPaymentLink('invoice-1');
+  const { payment } = f.addPayment('indiadate', 100);
+  payment.payment_completion_time = '2026-10-08T18:35:00.000Z';
+  await f.webhook('PAYMENT_LINK_EVENT', 'event_india');
+  const saved = f.db.prepare('SELECT data FROM receipts').get() as { data: string };
+  assert.equal((JSON.parse(saved.data) as PaymentRecord).paidOn, '2026-10-09');
+  assert.equal(f.getDocument()!.status, 'paid');
+  assert.equal(f.count('notifications'), 1);
+});
+
+test('Cashfree never changes an already recorded receipt when a repeated provider timestamp becomes future', async (t) => {
+  const f = fixture(t);
+  await f.createPaymentLink('invoice-1');
+  const { payment } = f.addPayment('repeatdate', 100);
+  await f.webhook('PAYMENT_LINK_EVENT', 'event_original_date');
+  const document = f.getDocument();
+  const receipts = f.db.prepare('SELECT * FROM receipts').all();
+  payment.payment_completion_time = '2199-01-01T00:00:00.000Z';
+  await f.webhook('PAYMENT_LINK_EVENT', 'event_repeated_date');
+  assert.deepEqual(f.getDocument(), document);
+  assert.deepEqual(f.db.prepare('SELECT * FROM receipts').all(), receipts);
+  assert.equal(f.count('notifications'), 1);
+  assert.equal(f.getDocumentPayments('invoice-1').links[0].state, 'paid');
+});
+
+test('Cashfree missing and invalid capture timestamps retain the current India date fallback', async (t) => {
+  for (const completedAt of [undefined, 'not-a-timestamp']) {
+    const f = fixture(t, { now: () => new Date('2026-10-08T18:45:00.000Z') });
+    await f.createPaymentLink('invoice-1');
+    const { payment } = f.addPayment('fallbackdate', 100);
+    payment.payment_completion_time = completedAt;
+    await f.webhook('PAYMENT_LINK_EVENT', 'event_fallback');
+    const saved = f.db.prepare('SELECT data FROM receipts').get() as { data: string };
+    assert.equal((JSON.parse(saved.data) as PaymentRecord).paidOn, '2026-10-09');
+    assert.equal(f.getDocument()!.status, 'paid');
   }
 });

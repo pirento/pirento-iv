@@ -355,9 +355,9 @@ test('cross-site and non-JSON account mutations are rejected; production require
   assert.match(good.cookie!, /Secure/);
 });
 
-test('socket-based rate limits cannot be evaded by spoofing forwarded client addresses', async (t) => {
+test('the login IP abuse guard cannot be evaded by spoofing untrusted forwarded client addresses', async (t) => {
   const f = await fixture(t);
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < 200; i++) {
     const result = await f.call('/api/auth/login', 'POST', { email: 'invalid' }, undefined, {
       'X-Forwarded-For': `203.0.113.${i}`,
     });

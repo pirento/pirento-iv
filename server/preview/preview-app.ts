@@ -4,6 +4,7 @@ import { dirname, isAbsolute, join, parse, relative, resolve, sep } from 'node:p
 import { createApp } from '../app.ts';
 import { initDb, transaction } from '../db/db.ts';
 import { securityHeaders } from '../http/http-security.ts';
+import { parseTrustedProxy } from '../http/trusted-proxy.ts';
 import type { Organization } from '../../shared/types.ts';
 
 export const PREVIEW_DISABLED =
@@ -36,6 +37,7 @@ const previewEnvironmentKeys = new Set([
   'PUBLIC_APP_URL',
   'HOST',
   'PORT',
+  'TRUSTED_PROXY',
   'DATABASE_PATH',
   'DATABASE_BACKUP_DIR',
   'BACKUP_ENABLED',
@@ -72,6 +74,7 @@ export function createSyntheticPreviewApp(options: { root: string; environment: 
     )
   )
     throw new Error('Only sanitized preview settings with external workers disabled are permitted.');
+  const trustedProxy = parseTrustedProxy(environment.TRUSTED_PROXY);
   requireRealDirectories(root);
   if (readdirSync(root).some((name) => name.startsWith('.env') && name !== '.env.example'))
     throw new Error('Private environment files are forbidden in a disposable preview.');
@@ -142,6 +145,7 @@ export function createSyntheticPreviewApp(options: { root: string; environment: 
     if (!auth) throw new Error('Preview authentication is required.');
     const app = express();
     app.disable('x-powered-by');
+    app.set('trust proxy', trustedProxy);
     app.use(securityHeaders(true));
     app.use((_req, res, next) => {
       const setHeader = res.setHeader.bind(res);

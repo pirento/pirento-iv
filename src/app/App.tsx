@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ArrowLeft,
   ArrowDownLeft,
@@ -76,10 +76,12 @@ import DatabaseBackups from '../features/backups/DatabaseBackups';
 import { isInvoiceRecipient } from '../../shared/contact-types';
 import { isIndependentBusiness, organizationSupportEmail } from '../../shared/business-identity';
 import type { AuthUser } from '../../shared/auth-types';
+import type { DocumentPage, DocumentSummary } from '../../shared/document-list';
 import { useWorkspaceRoute } from './use-workspace-route';
 import { workspaceUrl, type WorkspaceRoute, type WorkspaceView } from './workspace-route';
 import type { ManagerPage } from './manager-page';
 import './workspace-pages.css';
+import '../features/documents/document-list.css';
 
 type View = WorkspaceView | 'not_found';
 type DocumentEditorState = {
@@ -163,7 +165,13 @@ export default function App({ user, onLogout }: { user: AuthUser; onLogout: () =
   );
   const organizationId = route?.organizationId || fallbackOrganization;
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [documents, setDocuments] = useState<BusinessDocument[]>([]);
+  const [documentPage, setDocumentPage] = useState<DocumentPage>();
+  const [documentSummary, setDocumentSummary] = useState<DocumentSummary>();
+  const [documentRevision, setDocumentRevision] = useState(0);
+  const [detail, setDetail] = useState<{ key: string; document?: BusinessDocument; loaded: boolean }>({
+    key: '',
+    loaded: false,
+  });
   const [catalog, setCatalog] = useState<CatalogItem[]>([]);
   const [formats, setFormats] = useState<InvoiceFormat[]>([]);
   const [pendingDocument, setPendingDocument] = useState<DocumentEditorState | null>(null);
@@ -171,7 +179,21 @@ export default function App({ user, onLogout }: { user: AuthUser; onLogout: () =
   currentOrganization.current = organizationId;
   const view: View = route?.view || 'overview';
   const [search, setSearch] = useState('');
+  const [querySearch, setQuerySearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [pagination, setPagination] = useState({ key: '', page: 1 });
+  const [loadingDocuments, setLoadingDocuments] = useState(false);
+  const documentKind = documentViews[view];
+  const listQuery = new URLSearchParams({ organizationId, ...(documentKind ? { kind: documentKind } : {}) });
+  if (querySearch) listQuery.set('search', querySearch);
+  if (statusFilter !== 'all') listQuery.set('status', statusFilter);
+  if (productFilter !== 'all') listQuery.set('businessProductId', productFilter);
+  const listKey = listQuery.toString();
+  const pageNumber = pagination.key === listKey ? pagination.page : 1;
+  const detailKey =
+    documentKind && route?.id && route.action !== 'new'
+      ? `${organizationId}:${documentKind}:${route.id}`
+      : '';
   const [loading, setLoading] = useState(true);
   const [loadingData, setLoadingData] = useState(false);
   const [loadedOrganization, setLoadedOrganization] = useState('');
@@ -199,16 +221,17 @@ export default function App({ user, onLogout }: { user: AuthUser; onLogout: () =
   }, []);
   const loadData = useCallback(async (id: string) => {
     const query = `?organizationId=${encodeURIComponent(id)}`;
-    const [nextCustomers, nextDocuments, nextCatalog, nextFormats, nextProducts] = await Promise.all([
+    const [nextCustomers, nextSummary, nextCatalog, nextFormats, nextProducts] = await Promise.all([
       api<Customer[]>(`/customers${query}`),
-      api<BusinessDocument[]>(`/documents${query}`),
+      api<DocumentSummary>(`/documents/summary${query}`),
       api<CatalogItem[]>(`/catalog${query}`),
       api<InvoiceFormat[]>(`/formats${query}`),
       api<BusinessProduct[]>(`/business-products${query}`),
     ]);
     if (currentOrganization.current !== id) return;
     setCustomers(nextCustomers);
-    setDocuments(nextDocuments);
+    setDocumentSummary(nextSummary);
+    setDocumentRevision((value) => value + 1);
     setCatalog(nextCatalog);
     setFormats(nextFormats);
     setBusinessProducts(nextProducts);
@@ -225,7 +248,8 @@ export default function App({ user, onLogout }: { user: AuthUser; onLogout: () =
     let cancelled = false;
     setLoadingData(true);
     setCustomers([]);
-    setDocuments([]);
+    setDocumentPage(undefined);
+    setDocumentSummary(undefined);
     setCatalog([]);
     setFormats([]);
     setBusinessProducts([]);
@@ -233,7 +257,7 @@ export default function App({ user, onLogout }: { user: AuthUser; onLogout: () =
     const query = `?organizationId=${encodeURIComponent(organizationId)}`;
     Promise.all([
       api<Customer[]>(`/customers${query}`),
-      api<BusinessDocument[]>(`/documents${query}`),
+      api<DocumentSummary>(`/documents/summary${query}`),
       api<CatalogItem[]>(`/catalog${query}`),
       api<InvoiceFormat[]>(`/formats${query}`),
       api<BusinessProduct[]>(`/business-products${query}`),
@@ -241,7 +265,7 @@ export default function App({ user, onLogout }: { user: AuthUser; onLogout: () =
       .then(([c, d, items, savedFormats, products]) => {
         if (!cancelled) {
           setCustomers(c);
-          setDocuments(d);
+          setDocumentSummary(d);
           setCatalog(items);
           setFormats(savedFormats);
           setBusinessProducts(products);
@@ -259,6 +283,80 @@ export default function App({ user, onLogout }: { user: AuthUser; onLogout: () =
     };
   }, [organizationId, loading, Boolean(organization)]);
   useEffect(() => {
+    const timer = setTimeout(() => setQuerySearch(search.trim()), 250);
+    return () => clearTimeout(timer);
+  }, [search]);
+  useEffect(() => {
+    if (!documentKind || route?.action || loadedOrganization !== organizationId || loadingData) return;
+    let cancelled = false;
+    setLoadingDocuments(true);
+    setDocumentPage(undefined);
+    api<DocumentPage>(`/documents/page?${listKey}&page=${pageNumber}&pageSize=25`)
+      .then((page) => {
+        if (!cancelled) {
+          setDocumentPage(page);
+          if (page.page !== pageNumber) setPagination({ key: listKey, page: page.page });
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err.message);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingDocuments(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    documentKind,
+    route?.action,
+    loadedOrganization,
+    organizationId,
+    loadingData,
+    listKey,
+    pageNumber,
+    documentRevision,
+  ]);
+  useEffect(() => {
+    if (!detailKey || loadedOrganization !== organizationId || loadingData) return;
+    let cancelled = false;
+    setDetail({ key: detailKey, loaded: false });
+    api<BusinessDocument>(
+      `/documents/${encodeURIComponent(route!.id!)}?organizationId=${encodeURIComponent(organizationId)}`,
+    )
+      .then((item) => {
+        if (!cancelled)
+          setDetail({
+            key: detailKey,
+            document: item.kind === documentKind ? item : undefined,
+            loaded: true,
+          });
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setDetail({ key: detailKey, loaded: true });
+          setError(err.message);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [detailKey, loadedOrganization, organizationId, loadingData]);
+  useEffect(() => {
+    if (!documentRevision || loadedOrganization !== organizationId || loadingData) return;
+    let cancelled = false;
+    api<DocumentSummary>(`/documents/summary?organizationId=${encodeURIComponent(organizationId)}`)
+      .then((summary) => {
+        if (!cancelled) setDocumentSummary(summary);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err.message);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [organizationId, loadedOrganization, loadingData, documentRevision]);
+  useEffect(() => {
     if (toast) {
       const timer = setTimeout(() => setToast(''), 4500);
       return () => clearTimeout(timer);
@@ -270,47 +368,12 @@ export default function App({ user, onLogout }: { user: AuthUser; onLogout: () =
     setProductFilter('all');
   }, [organizationId]);
 
-  const invoices = documents.filter((d) => d.kind === 'invoice');
-  const quotations = documents.filter((d) => d.kind === 'quotation');
-  const invoiceTotal = invoices.reduce((sum, d) => sum + paidAmount(d), 0);
-  const outstanding = invoices
-    .filter((d) => ['sent', 'partially_paid'].includes(d.status))
-    .reduce((sum, d) => sum + balanceDue(d), 0);
-  const scheduledDues = invoices
-    .filter((d) => d.installmentPlan && d.status !== 'cancelled' && d.status !== 'draft')
-    .flatMap((doc) =>
-      installmentBalances(doc, today())
-        .filter((row) => row.balanceDue > 0)
-        .map((row) => ({ ...row, document: doc })),
-    )
-    .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
-  const installmentOverdue = scheduledDues
-    .filter((row) => row.status === 'overdue')
-    .reduce((sum, row) => sum + row.balanceDue, 0);
-  const activeQuotes = quotations.filter((d) => d.status === 'draft' || d.status === 'sent');
-  const overdue = invoices.filter((d) => statusOf(d) === 'overdue');
-  const filteredDocuments = useMemo(
-    () =>
-      documents
-        .filter(
-          (d) =>
-            (!documentViews[view] || d.kind === documentViews[view]) &&
-            (productFilter === 'all' || d.businessProductId === productFilter) &&
-            (statusFilter === 'all' || statusOf(d) === statusFilter || d.status === statusFilter) &&
-            `${d.number} ${d.customerSnapshot.name} ${d.title} ${d.businessProductSnapshot?.name || ''}`
-              .toLowerCase()
-              .includes(search.toLowerCase()),
-        )
-        .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
-    [documents, search, statusFilter, productFilter, view],
-  );
-  const selectedDocument = route?.id
-    ? documents.find(
-        (doc) =>
-          doc.id === route.id && doc.organizationId === organizationId && doc.kind === documentViews[view],
-      )
-    : undefined;
-  const documentKind = documentViews[view];
+  const filteredDocuments = documentPage?.items ?? [];
+  const invoiceTotal = documentSummary?.totalCollected ?? 0;
+  const outstanding = documentSummary?.outstanding ?? 0;
+  const selectedDocument = detailKey && detail.key === detailKey ? detail.document : undefined;
+  const loadingDetail = Boolean(detailKey && (detail.key !== detailKey || !detail.loaded));
+  const kindSummary = documentKind ? documentSummary?.byKind[documentKind] : undefined;
   const editor: Editor =
     documentKind && (route?.action === 'new' || (route?.action === 'edit' && selectedDocument))
       ? {
@@ -345,7 +408,9 @@ export default function App({ user, onLogout }: { user: AuthUser; onLogout: () =
   const pageDenied = adminPage && !isAdmin;
   const pageMissing =
     view === 'not_found' ||
-    Boolean(documentKind && route?.action !== 'new' && route?.action && !selectedDocument) ||
+    Boolean(
+      documentKind && route?.action !== 'new' && route?.action && !loadingDetail && !selectedDocument,
+    ) ||
     Boolean(view === 'organizations' && route?.action === 'edit' && !editor);
   const managerPage =
     route?.action && ['customers', 'catalog', 'formats', 'business_products'].includes(view)
@@ -459,7 +524,9 @@ export default function App({ user, onLogout }: { user: AuthUser; onLogout: () =
       id ? `/documents/${id}` : '/documents',
       sendJson(id ? 'PUT' : 'POST', input),
     );
-    setDocuments((current) => [saved, ...current.filter((d) => d.id !== saved.id)]);
+    if (currentOrganization.current !== saved.organizationId) return;
+    setDocumentRevision((value) => value + 1);
+    setDetail({ key: `${saved.organizationId}:${saved.kind}:${saved.id}`, document: saved, loaded: true });
     draftCache.current.delete(draftKey(saved.organizationId, saved.kind, id));
     move(documentRoute(saved), true);
     setToast(`${DOCUMENT_LABELS[input.kind]} ${id ? 'updated' : 'saved'}`);
@@ -536,30 +603,26 @@ export default function App({ user, onLogout }: { user: AuthUser; onLogout: () =
   }
   async function convert(doc: BusinessDocument) {
     const result = await api<BusinessDocument>(`/documents/${doc.id}/convert`, sendJson('POST'));
-    setDocuments((current) => [
-      result,
-      ...current
-        .filter((d) => d.id !== result.id)
-        .map((d) =>
-          d.id === doc.id ? { ...d, status: 'accepted' as const, convertedInvoiceId: result.id } : d,
-        ),
-    ]);
+    if (currentOrganization.current !== result.organizationId) return;
+    setDocumentRevision((value) => value + 1);
     setPreview(result);
     setToast(`${DOCUMENT_LABELS[doc.kind]} converted to invoice`);
   }
   async function createDeliveryNote(doc: BusinessDocument) {
     const result = await api<BusinessDocument>(`/documents/${doc.id}/delivery-note`, sendJson('POST'));
-    setDocuments((current) => [
-      result,
-      ...current
-        .filter((d) => d.id !== result.id)
-        .map((d) => (d.id === doc.id ? { ...d, deliveryNoteId: result.id } : d)),
-    ]);
+    if (currentOrganization.current !== result.organizationId) return;
+    setDocumentRevision((value) => value + 1);
     setPreview(result);
     setToast('Delivery challan ready');
   }
   function paymentUpdated(doc: BusinessDocument) {
-    setDocuments((current) => current.map((d) => (d.id === doc.id ? doc : d)));
+    if (
+      currentOrganization.current !== doc.organizationId ||
+      JSON.stringify(detail.document) === JSON.stringify(doc)
+    )
+      return;
+    setDetail({ key: `${doc.organizationId}:${doc.kind}:${doc.id}`, document: doc, loaded: true });
+    setDocumentRevision((value) => value + 1);
   }
   async function saveBusinessProduct(input: BusinessProductInput, id?: string) {
     const saved = await api<BusinessProduct>(
@@ -606,60 +669,18 @@ export default function App({ user, onLogout }: { user: AuthUser; onLogout: () =
     setToast('Format deleted. Saved documents keep their design.');
   }
   function exportCsv() {
-    const rows = [
-      [
-        'Number',
-        'Type',
-        'Business product',
-        'Customer',
-        'Date',
-        'Due date',
-        'Status',
-        'Taxable (INR)',
-        'GST (INR)',
-        'Total (INR)',
-        'Received (INR)',
-        'Balance (INR)',
-        'Finalized',
-      ],
-      ...filteredDocuments.map((d) => [
-        d.number,
-        d.kind,
-        d.businessProductSnapshot?.name || '',
-        d.customerSnapshot.name,
-        d.issueDate,
-        d.dueDate,
-        statusOf(d),
-        d.totals.taxable,
-        d.totals.cgst + d.totals.sgst + d.totals.igst,
-        d.kind === 'delivery_note' ? '' : d.totals.total,
-        paidAmount(d),
-        balanceDue(d),
-        d.finalizedAt || '',
-      ]),
-    ];
-    const csv = rows
-      .map((row) =>
-        row
-          .map((value) => {
-            let s = String(value);
-            if (/^\s*[=+@-]/.test(s)) s = "'" + s;
-            return '"' + s.replaceAll('"', '""') + '"';
-          })
-          .join(','),
-      )
-      .join('\r\n');
-    const url = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' }));
+    const query = new URLSearchParams(listKey);
+    if (search.trim()) query.set('search', search.trim());
+    else query.delete('search');
     const a = document.createElement('a');
-    a.href = url;
+    a.href = `/api/documents/export.csv?${query}`;
     a.download = `${organization?.name.toLowerCase().replace(/\W+/g, '-')}-${view}-${today()}.csv`;
     a.click();
-    URL.revokeObjectURL(url);
-    setToast('CSV exported');
+    setToast('Downloading all matching documents as CSV');
   }
 
   function renderDocumentTable(recent = false) {
-    const rows = recent ? filteredDocuments.slice(0, 5) : filteredDocuments;
+    const rows = recent ? (documentSummary?.recentDocuments ?? []) : filteredDocuments;
     return (
       <div className="table-scroll">
         <table className="data-table">
@@ -965,11 +986,17 @@ export default function App({ user, onLogout }: { user: AuthUser; onLogout: () =
             </button>
             <button className={view === 'invoices' ? 'active' : ''} onClick={() => navigate('invoices')}>
               <ReceiptText size={19} />
-              Invoices{invoices.length > 0 && <span className="nav-count">{invoices.length}</span>}
+              Invoices
+              {Boolean(documentSummary?.invoiceCount) && (
+                <span className="nav-count">{documentSummary!.invoiceCount}</span>
+              )}
             </button>
             <button className={view === 'quotations' ? 'active' : ''} onClick={() => navigate('quotations')}>
               <FileText size={19} />
-              Quotations{quotations.length > 0 && <span className="nav-count">{quotations.length}</span>}
+              Quotations
+              {Boolean(documentSummary?.byKind.quotation.count) && (
+                <span className="nav-count">{documentSummary!.byKind.quotation.count}</span>
+              )}
             </button>
             <button className={view === 'proformas' ? 'active' : ''} onClick={() => navigate('proformas')}>
               <BriefcaseBusiness size={19} />
@@ -1178,7 +1205,7 @@ export default function App({ user, onLogout }: { user: AuthUser; onLogout: () =
                     <>
                       <button className="button secondary" onClick={exportCsv}>
                         <ArrowDownToLine size={16} />
-                        Export
+                        Export all matches
                       </button>
                       <button
                         className="button primary"
@@ -1205,7 +1232,7 @@ export default function App({ user, onLogout }: { user: AuthUser; onLogout: () =
                 </button>
               </div>
             )}
-            {loadingData || loadedOrganization !== organizationId ? (
+            {loadingData || loadedOrganization !== organizationId || loadingDetail ? (
               <div className="data-loading">
                 <LoaderCircle className="spin" size={25} />
                 <span>Loading {organization.name}…</span>
@@ -1536,7 +1563,7 @@ export default function App({ user, onLogout }: { user: AuthUser; onLogout: () =
                         label="TOTAL COLLECTED"
                         value={money(invoiceTotal)}
                         icon={<Wallet size={20} />}
-                        hint={`${invoices.filter((d) => paidAmount(d) > 0).length} invoices with payments`}
+                        hint={`${documentSummary?.invoicesWithPayments ?? 0} invoices with payments`}
                         variant="green"
                         onClick={() => navigate('invoices')}
                       />
@@ -1545,16 +1572,18 @@ export default function App({ user, onLogout }: { user: AuthUser; onLogout: () =
                         value={money(outstanding)}
                         icon={<ArrowDownLeft size={20} />}
                         hint={
-                          overdue.length ? `${overdue.length} invoices overdue` : 'Keep an eye on what’s due'
+                          documentSummary?.overdueInvoices
+                            ? `${documentSummary.overdueInvoices} invoices overdue`
+                            : 'Keep an eye on what’s due'
                         }
                         variant="orange"
                         onClick={() => navigate('invoices')}
                       />
                       <Metric
                         label="OPEN QUOTATIONS"
-                        value={String(activeQuotes.length).padStart(2, '0')}
+                        value={String(documentSummary?.openQuotationCount ?? 0).padStart(2, '0')}
                         icon={<FileText size={20} />}
-                        hint={`${money(activeQuotes.reduce((sum, d) => sum + d.totals.total, 0))} in potential business`}
+                        hint={`${money(documentSummary?.openQuotationValue ?? 0)} in potential business`}
                         variant="purple"
                         onClick={() => navigate('quotations')}
                       />
@@ -1569,20 +1598,22 @@ export default function App({ user, onLogout }: { user: AuthUser; onLogout: () =
                         onClick={() => navigate('customers')}
                       />
                     </section>
-                    {scheduledDues.length > 0 && (
+                    {documentSummary?.nextInstallment && (
                       <section className="emi-overview">
                         <div>
                           <span className="page-eyebrow">INSTALLMENT COLLECTIONS</span>
-                          <h3>{scheduledDues.length} installments remaining</h3>
+                          <h3>{documentSummary.remainingInstallments} installments remaining</h3>
                           <p>
-                            Overdue installments: <strong>{money(installmentOverdue)}</strong>
+                            Overdue installments:{' '}
+                            <strong>{money(documentSummary.overdueInstallmentValue)}</strong>
                           </p>
                         </div>
                         <button
                           className="button secondary"
-                          onClick={() => setPaymentDocument(scheduledDues[0].document)}
+                          onClick={() => setPaymentDocument(documentSummary.nextInstallment!.document)}
                         >
-                          Next: {displayDate(scheduledDues[0].dueDate)} · {money(scheduledDues[0].balanceDue)}
+                          Next: {displayDate(documentSummary.nextInstallment.dueDate)} ·{' '}
+                          {money(documentSummary.nextInstallment.balanceDue)}
                           <ArrowRight size={15} />
                         </button>
                       </section>
@@ -1717,34 +1748,19 @@ export default function App({ user, onLogout }: { user: AuthUser; onLogout: () =
                       <div>
                         <span>{view === 'shipping' ? 'DELIVERY CHALLANS' : 'DOCUMENT VALUE'}</span>
                         <strong>
-                          {view === 'shipping'
-                            ? filteredDocuments.length
-                            : money(
-                                documents
-                                  .filter((d) => d.kind === documentViews[view] && d.status !== 'cancelled')
-                                  .reduce((sum, d) => sum + d.totals.total, 0),
-                              )}
+                          {view === 'shipping' ? (kindSummary?.count ?? 0) : money(kindSummary?.value ?? 0)}
                         </strong>
                       </div>
                       <div>
                         <span>{view === 'invoices' ? 'COLLECTED' : 'COMPLETED / ACCEPTED'}</span>
                         <strong>
-                          {view === 'invoices'
-                            ? money(invoiceTotal)
-                            : documents.filter(
-                                (d) =>
-                                  d.kind === documentViews[view] &&
-                                  ['accepted', 'delivered'].includes(d.status),
-                              ).length}
+                          {view === 'invoices' ? money(invoiceTotal) : (kindSummary?.completed ?? 0)}
                         </strong>
                       </div>
                       <div>
                         <span>{view === 'invoices' ? 'AWAITING PAYMENT' : 'DRAFTS'}</span>
                         <strong>
-                          {view === 'invoices'
-                            ? money(outstanding)
-                            : documents.filter((d) => d.kind === documentViews[view] && d.status === 'draft')
-                                .length}
+                          {view === 'invoices' ? money(outstanding) : (kindSummary?.drafts ?? 0)}
                         </strong>
                       </div>
                       <div className="summary-illustration">
@@ -1772,13 +1788,8 @@ export default function App({ user, onLogout }: { user: AuthUser; onLogout: () =
                             >
                               {status === 'all' ? 'All documents' : statusLabel(status)}
                               <span>
-                                {
-                                  documents.filter(
-                                    (d) =>
-                                      d.kind === documentViews[view] &&
-                                      (status === 'all' || statusOf(d) === status || d.status === status),
-                                  ).length
-                                }
+                                {documentPage?.statusCounts[status as keyof DocumentPage['statusCounts']] ??
+                                  0}
                               </span>
                             </button>
                           ))}
@@ -1818,9 +1829,46 @@ export default function App({ user, onLogout }: { user: AuthUser; onLogout: () =
                           </div>
                         </div>
                       </div>
-                      {renderDocumentTable()}
-                      <div className="panel-footnote">
-                        {filteredDocuments.length} {filteredDocuments.length === 1 ? 'document' : 'documents'}
+                      {loadingDocuments ? (
+                        <div className="document-list-loading" role="status">
+                          <LoaderCircle className="spin" size={20} /> Loading documents…
+                        </div>
+                      ) : (
+                        renderDocumentTable()
+                      )}
+                      <div className="panel-footnote document-pagination" aria-label="Document pagination">
+                        <span role="status">
+                          {documentPage?.total
+                            ? `${(documentPage.page - 1) * documentPage.pageSize + 1}–${(documentPage.page - 1) * documentPage.pageSize + documentPage.items.length} of ${documentPage.total}`
+                            : '0 documents'}
+                        </span>
+                        <div className="document-pagination-controls">
+                          <button
+                            className="button secondary"
+                            disabled={loadingDocuments || !documentPage || documentPage.page <= 1}
+                            onClick={() =>
+                              setPagination({ key: listKey, page: (documentPage?.page ?? 1) - 1 })
+                            }
+                          >
+                            Previous
+                          </button>
+                          <span>
+                            Page {documentPage?.page ?? pageNumber} of {documentPage?.totalPages ?? 1}
+                          </span>
+                          <button
+                            className="button secondary"
+                            disabled={
+                              loadingDocuments ||
+                              !documentPage ||
+                              documentPage.page >= documentPage.totalPages
+                            }
+                            onClick={() =>
+                              setPagination({ key: listKey, page: (documentPage?.page ?? 1) + 1 })
+                            }
+                          >
+                            Next
+                          </button>
+                        </div>
                         <span>
                           {view === 'shipping' ? 'Quantity-only delivery documents' : 'Amounts in INR'}
                         </span>

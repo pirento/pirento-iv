@@ -127,6 +127,7 @@ export function prepareSyntheticPreview({ root, environment = process.env }) {
       PUBLIC_APP_URL: origin,
       HOST: host,
       PORT: String(Number(port)),
+      ...(environment.TRUSTED_PROXY ? { TRUSTED_PROXY: environment.TRUSTED_PROXY } : {}),
       DATABASE_PATH: databasePath,
       DATABASE_BACKUP_DIR: join(directory, 'backups'),
       BACKUP_ENABLED: 'false',

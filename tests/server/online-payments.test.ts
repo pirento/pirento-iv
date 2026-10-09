@@ -4,6 +4,7 @@ import { createHmac } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import {
   createOnlinePayments,
+  OnlinePaymentError,
   verifyRazorpaySignature,
 } from '../../server/integrations/payments/online-payments.ts';
 import type { BusinessDocument, PaymentRecord } from '../../shared/types.ts';
@@ -47,7 +48,10 @@ test('Razorpay recovery rejects nonstandard payment-link ports', async (t) => {
   assert.equal(f.getDocumentPayments('invoice-1').links[0].url, '');
 });
 
-function fixture(t: TestContext, options: { env?: NodeJS.ProcessEnv; notifyFails?: boolean } = {}) {
+function fixture(
+  t: TestContext,
+  options: { env?: NodeJS.ProcessEnv; notifyFails?: boolean; now?: () => Date } = {},
+) {
   const db = new DatabaseSync(':memory:');
   db.exec(`PRAGMA foreign_keys=ON;
     CREATE TABLE documents (id TEXT PRIMARY KEY,data TEXT NOT NULL);
@@ -144,7 +148,7 @@ function fixture(t: TestContext, options: { env?: NodeJS.ProcessEnv; notifyFails
     getDocument,
     env: options.env ?? environment,
     fetch: provider,
-    now: () => new Date(timestamp),
+    now: options.now ?? (() => new Date(timestamp)),
     recordVerifiedPayment(input) {
       const existing = db
         .prepare('SELECT data FROM test_receipts WHERE request_id = ?')
@@ -493,4 +497,70 @@ test('a delayed failed attempt does not email a payment request after the invoic
   assert.equal(f.count('test_notifications'), 1);
   assert.equal(f.count('online_failed_attempts'), 1);
   assert.equal(f.getDocument()!.status, 'paid');
+});
+
+for (const { now, paidAt } of [
+  { now: timestamp, paidAt: '2199-01-01T00:00:00.000Z' },
+  { now: '2026-10-08T18:29:59.000Z', paidAt: '2026-10-08T18:30:00.000Z' },
+]) {
+  test(`Razorpay future capture ${paidAt} enters review without credit or notification`, async (t) => {
+    const f = fixture(t, { now: () => new Date(now) });
+    await f.createPaymentLink('invoice-1');
+    f.addPayment('pay_future', 10000);
+    f.payments.get('pay_future')!.created_at = Date.parse(paidAt) / 1000;
+    await assert.rejects(
+      f.webhook('payment_link.paid', 'event_future', 'pay_future'),
+      (error: unknown) =>
+        error instanceof OnlinePaymentError &&
+        error.status === 409 &&
+        /future payment date/.test(error.message),
+    );
+    assert.ok(f.calls.some((call) => call.path === '/v1/payments/pay_future'));
+    assert.deepEqual(f.getDocument(), f.original);
+    assert.equal(f.count('test_receipts'), 0);
+    assert.equal(f.count('test_notifications'), 0);
+    assert.equal(f.count('online_verified_payments'), 0);
+    assert.equal(f.getDocumentPayments('invoice-1').links[0].state, 'needs_review');
+    assert.equal(f.getDocumentPayments('invoice-1').hasBlockingPaymentLink, true);
+  });
+}
+
+test('Razorpay records the India date when the capture and receipt occur after India midnight', async (t) => {
+  const f = fixture(t, { now: () => new Date('2026-10-08T18:45:00.000Z') });
+  await f.createPaymentLink('invoice-1');
+  f.addPayment('pay_india', 10000);
+  f.payments.get('pay_india')!.created_at = Date.parse('2026-10-08T18:35:00.000Z') / 1000;
+  await f.webhook('payment_link.paid', 'event_india', 'pay_india');
+  const saved = f.db.prepare('SELECT data FROM test_receipts').get() as { data: string };
+  assert.equal((JSON.parse(saved.data) as PaymentRecord).paidOn, '2026-10-09');
+  assert.equal(f.getDocument()!.status, 'paid');
+  assert.equal(f.count('test_notifications'), 1);
+});
+
+test('Razorpay never changes an already recorded receipt when a repeated provider timestamp becomes future', async (t) => {
+  const f = fixture(t);
+  await f.createPaymentLink('invoice-1');
+  f.addPayment('pay_repeatdate', 10000);
+  await f.webhook('payment_link.paid', 'event_original_date', 'pay_repeatdate');
+  const document = f.getDocument();
+  const receipts = f.db.prepare('SELECT * FROM test_receipts').all();
+  f.payments.get('pay_repeatdate')!.created_at = Date.parse('2199-01-01T00:00:00.000Z') / 1000;
+  await f.webhook('payment.captured', 'event_repeated_date', 'pay_repeatdate');
+  assert.deepEqual(f.getDocument(), document);
+  assert.deepEqual(f.db.prepare('SELECT * FROM test_receipts').all(), receipts);
+  assert.equal(f.count('test_notifications'), 1);
+  assert.equal(f.getDocumentPayments('invoice-1').links[0].state, 'paid');
+});
+
+test('Razorpay missing and invalid capture timestamps retain the current India date fallback', async (t) => {
+  for (const createdAt of [undefined, 'not-a-timestamp']) {
+    const f = fixture(t, { now: () => new Date('2026-10-08T18:45:00.000Z') });
+    await f.createPaymentLink('invoice-1');
+    f.addPayment('pay_fallback', 10000);
+    f.payments.get('pay_fallback')!.created_at = createdAt;
+    await f.webhook('payment_link.paid', 'event_fallback', 'pay_fallback');
+    const saved = f.db.prepare('SELECT data FROM test_receipts').get() as { data: string };
+    assert.equal((JSON.parse(saved.data) as PaymentRecord).paidOn, '2026-10-09');
+    assert.equal(f.getDocument()!.status, 'paid');
+  }
 });

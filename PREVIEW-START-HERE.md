@@ -8,6 +8,8 @@ For the permanent business system, follow [PREVIEW_DEPLOYMENT.md](PREVIEW_DEPLOY
 
 Use Node.js **24.5 or newer**, npm, `tar` and `zip`:
 
+Run these build/test commands from the complete [Git repository](https://github.com/pirento/pirento-iv), which includes `tests/`. The upload ZIP is a runtime deployment artifact; its `npm test` deliberately reports the omitted tests and points to the full repository rather than claiming a passing run.
+
 ```bash
 npm ci --include=dev
 npm test
@@ -45,6 +47,8 @@ HOST=0.0.0.0
 ```
 
 Enter **preview-only** `IV_PREVIEW_ADMIN_EMAIL` and a unique `IV_PREVIEW_ADMIN_PASSWORD` of 12–256 characters through the host's secure environment settings. `IV_PREVIEW_ADMIN_NAME` is optional. Keep these values configured for later fresh starts. Do not reuse production passwords or production `INITIAL_ADMIN_*` values. Public signup still requires administrator approval and organization assignments.
+
+If the host uses a reverse proxy, set optional `TRUSTED_PROXY` to its actual IP addresses/CIDRs, comma separated. The default ignores forwarded IP headers. Never use `true`, a hop count or a universal range. The ingress must replace client-supplied forwarded headers and keep the backend port inaccessible to other clients. Login limits use normalized email plus resolved client IP; successful logins do not exhaust the failed-attempt limits.
 
 Remove inherited database, payment, GST, email, broker and cloud credentials, `DATABASE_PATH`, `DATABASE_BACKUP_DIR`, `IV_ALLOW_NEW_DATABASE`, and production `INITIAL_ADMIN_*` settings from the preview app. Never upload `.env`, business databases, original assets or private backups. The launcher refuses private dotenv files and integration/database settings, then passes only sanitized preview settings to the application.
 

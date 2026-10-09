@@ -16,6 +16,8 @@ Forgot-password emails work after a sender is configured. Links expire after 30 
 
 Business settings, contacts, documents, previews, payments, email, formats and other workspace tasks open as full pages. Browser Back and Forward follow the page history; a saved record's page can be refreshed or bookmarked. The active organization and requested record are resolved together, and the server independently checks permission on every business API call. Editing a URL does not grant access to another business.
 
+For reverse-proxied hosting, configure `TRUSTED_PROXY` with the actual ingress IPs/CIDRs; default behavior ignores forwarded headers. Never enable blanket or numeric hop-count trust. Successful logins release rate-limit reservations; failed attempts are bounded per normalized email+resolved IP and by a larger client-IP guard. Proxy ranges and header replacement must be verified on the host.
+
 Save a draft before depending on refresh to preserve entered data. Unsaved forms are not persistent business records. Adding a contact from a document uses a separate page and returns to the pending document; saving the document is still required. Delete confirmations appear within the page and never bypass the existing draft/reference restrictions. Browser-native file selection and print/PDF dialogs remain part of uploading and printing.
 
 ## Customers, vendors and B2B buyers

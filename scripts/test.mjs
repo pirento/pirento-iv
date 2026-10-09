@@ -1,4 +1,4 @@
-import { readdirSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
@@ -10,7 +10,12 @@ function discover(directory) {
     return entry.isDirectory() ? discover(path) : entry.name.endsWith('.test.ts') ? [path] : [];
   });
 }
-const files = discover(join(root, 'tests')).sort();
+const testRoot = join(root, 'tests');
+if (!existsSync(testRoot))
+  throw new Error(
+    'This deployment package omits the development tests. Clone the complete https://github.com/pirento/pirento-iv repository, run npm ci --include=dev, then npm test there.',
+  );
+const files = discover(testRoot).sort();
 if (!files.length) throw new Error('No tests found; refusing to report a passing empty run.');
 const result = spawnSync(
   process.execPath,

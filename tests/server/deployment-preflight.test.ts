@@ -77,6 +77,23 @@ test('old runtimes, nonproduction mode and invalid listening settings are deploy
   }
 });
 
+test('deployment preflight rejects unsafe proxy trust without disclosing configuration values', async (t) => {
+  const f = fixture(t);
+  for (const TRUSTED_PROXY of ['true', '2', '0.0.0.0/0', 'https://secret-user:secret-value@example.test']) {
+    const report: Report = await checkDeployment({ ...f, environment: { ...f.environment, TRUSTED_PROXY } });
+    assert.equal(report.ready, false);
+    assert.equal(report.checks.find((check) => check.id === 'trusted-proxy')?.status, 'blocker');
+    assert.equal(JSON.stringify(report).includes('secret-'), false);
+  }
+  const allowed: Report = await checkDeployment({
+    ...f,
+    environment: { ...f.environment, TRUSTED_PROXY: '192.0.2.4,2001:db8::/64' },
+  });
+  assert.equal(allowed.ready, true);
+  assert.equal(allowed.checks.find((check) => check.id === 'trusted-proxy')?.status, 'pass');
+  assert.equal(JSON.stringify(allowed).includes('192.0.2.4'), false);
+});
+
 test('the HTTPS origin cannot contain a path, trailing slash or secret in credentials/query/fragment', async (t) => {
   const f = fixture(t);
   for (const PUBLIC_APP_URL of [

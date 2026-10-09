@@ -61,6 +61,8 @@ The public home page provides Login and Signup. A server-provisioned administrat
 
 CSV export is available from document and catalog lists; invoice exports include received amounts, balance and finalization date. Search and filters apply to exports. Contacts of every role, catalogs, formats and documents belong to the selected organization.
 
+Document lists show 25 records per page with Previous/Next controls and server-side search, status and business-product filters. Dashboard totals include the whole selected organization, independent of the current page. Saved document links resolve directly even when the record is outside the current page. CSV downloads stream all matching records in bounded batches. The legacy `/api/documents` array is capped at 100 records per request and includes `X-Total-Count`, `X-Page` and `X-Page-Size`; API clients should use `/api/documents/page` for the pagination envelope or request pages explicitly. JSON-backed filters and summaries can still require database scans, so pagination is not a claim of unlimited scale.
+
 ## Catalog and formats
 
 - Add products and services, edit or duplicate them, search by name/SKU/HSN, and archive or restore old offerings. A nonempty SKU must be unique within an organization, including archived entries.
@@ -116,6 +118,7 @@ The installed workspace was backed up with SQLite's online backup API before the
 - Delivery challans record quantities, recipient, destination, carrier, tracking reference, vehicle and dispatch/delivery dates without prices or taxes. Track draft, dispatched, delivered and cancelled statuses. Shipping details can also appear on regular financial documents.
 - New proforma and delivery numbers use the invoice prefix with `P`/`D` before their sequence, such as `P2EI/2627/P0001` or `P2EI/2627/D0001`.
 - Receipt amounts use integer paise. Overpayments are rejected; request IDs make retries idempotent. Finalizing a zero-value invoice requires the explicit finalize action.
+- Manual receipt dates must be today or earlier in India, and the server enforces this before changing financial or email records. Authenticated Razorpay/Cashfree responses with a future India calendar date enter payment review rather than crediting or finalizing the invoice. Already recorded verified-payment retries retain their original date and receipt.
 - Only unlinked drafts without payments can be deleted. Customers referenced by saved documents cannot be deleted.
 
 ## GST fetching
