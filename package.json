@@ -8,6 +8,10 @@
     "build": "tsc -b && vite build",
     "package:preview": "npm run build && node scripts/package-preview.mjs",
     "start": "node --use-env-proxy --import tsx server/index.ts",
+    "check:deployment": "node scripts/check-deployment.mjs",
+    "db:backup": "node --import tsx scripts/database.mjs backup",
+    "db:restore": "node --import tsx scripts/database.mjs restore",
+    "db:resume": "node --import tsx scripts/database.mjs resume",
     "test": "node scripts/test.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check ."

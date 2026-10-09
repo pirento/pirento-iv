@@ -106,6 +106,8 @@ Real connection verification requires secure credentials and an authenticated qu
 
 ## Deployment and validation
 
+Database operations include verified online backups, an admin backup page and opt-in automatic snapshots. Configure private persistent paths and follow [DATABASE_OPERATIONS.md](DATABASE_OPERATIONS.md) for new-file recovery and reconciliation. Run `npm run check:deployment` against actual host settings; its safe report separates required blockers from unconfigured optional providers.
+
 Use one Node.js 24+ server, HTTPS and persistent storage for the SQLite file. See [PREVIEW_DEPLOYMENT.md](PREVIEW_DEPLOYMENT.md), [ARCHITECTURE.md](ARCHITECTURE.md) and [SECURITY.md](SECURITY.md). The built app and APIs use one origin. Do not run multiple replicas against separate SQLite copies. Automatic emails require a running worker/server; a static-only host cannot provide this system.
 
 `npm test` exercises authentication, organization access, contacts, financial locks, signed/deduplicated payment events, email persistence/retries, saved PDF layouts and existing invoice behavior. Provider tests use injected simulated HTTP responses; they create no real charges or external emails. Hostinger deployment, live Razorpay/Cashfree webhooks and payments, verified per-business sender delivery and live GST portal lookup remain separate activation checks.

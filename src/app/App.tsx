@@ -34,6 +34,7 @@ import {
   LockKeyhole,
   LogOut,
   PlugZap,
+  Archive,
 } from 'lucide-react';
 import { api, sendJson } from '../shared/api/api';
 import {
@@ -71,6 +72,7 @@ import TeamManager from '../features/team/TeamManager';
 import ContactsManager from '../features/contacts/ContactsManager';
 import MessagingPanel from '../features/messaging/MessagingPanel';
 import IntegrationSettings from '../features/integrations/IntegrationSettings';
+import DatabaseBackups from '../features/backups/DatabaseBackups';
 import { isInvoiceRecipient } from '../../shared/contact-types';
 import { isIndependentBusiness, organizationSupportEmail } from '../../shared/business-identity';
 import type { AuthUser } from '../../shared/auth-types';
@@ -338,7 +340,7 @@ export default function App({ user, onLogout }: { user: AuthUser; onLogout: () =
       ? { type: 'document' as const, id: selectedDocument.id, name: selectedDocument.number }
       : null;
   const adminPage =
-    ['business_settings', 'dashboard_branding', 'team', 'integrations'].includes(view) ||
+    ['business_settings', 'dashboard_branding', 'team', 'integrations', 'backups'].includes(view) ||
     (view === 'organizations' && Boolean(route?.action));
   const pageDenied = adminPage && !isAdmin;
   const pageMissing =
@@ -879,6 +881,7 @@ export default function App({ user, onLogout }: { user: AuthUser; onLogout: () =
     business_products: 'Business products',
     team: 'Team & access',
     integrations: 'Payments & email',
+    backups: 'Database backups',
     business_settings: 'Business settings',
     dashboard_branding: 'Dashboard branding',
     help: 'Help & getting started',
@@ -897,6 +900,7 @@ export default function App({ user, onLogout }: { user: AuthUser; onLogout: () =
     business_products: 'Choose which product your next invoice belongs to.',
     team: 'Approve accounts and assign organization access.',
     integrations: 'Payment collection and customer email setup.',
+    backups: 'Create and download private snapshots of the workspace database.',
     business_settings: 'Legal identity, GST and payment details.',
     dashboard_branding: 'Your workspace identity.',
     help: 'Make the most of your workspace.',
@@ -1033,6 +1037,10 @@ export default function App({ user, onLogout }: { user: AuthUser; onLogout: () =
                   <PlugZap size={19} />
                   Payments &amp; email
                 </button>
+                <button className={view === 'backups' ? 'active' : ''} onClick={() => navigate('backups')}>
+                  <Archive size={19} />
+                  Database backups
+                </button>
               </>
             )}
           </nav>
@@ -1159,9 +1167,14 @@ export default function App({ user, onLogout }: { user: AuthUser; onLogout: () =
                         New organization
                       </button>
                     ) : null
-                  ) : ['customers', 'catalog', 'business_products', 'team', 'integrations'].includes(
-                      view,
-                    ) ? null : (
+                  ) : [
+                      'customers',
+                      'catalog',
+                      'business_products',
+                      'team',
+                      'integrations',
+                      'backups',
+                    ].includes(view) ? null : (
                     <>
                       <button className="button secondary" onClick={exportCsv}>
                         <ArrowDownToLine size={16} />
@@ -1865,6 +1878,7 @@ export default function App({ user, onLogout }: { user: AuthUser; onLogout: () =
                 {view === 'integrations' && isAdmin && (
                   <IntegrationSettings key={organizationId} organization={organization} />
                 )}
+                {view === 'backups' && isAdmin && <DatabaseBackups currentUser={user} />}
                 {view === 'organizations' && (
                   <>
                     <div className="company-banner">

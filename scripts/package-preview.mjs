@@ -17,6 +17,7 @@ const files = [
   'PLATFORM_SETUP.md',
   'ARCHITECTURE.md',
   'SECURITY.md',
+  'DATABASE_OPERATIONS.md',
   'index.html',
   'tsconfig.json',
   'vite.config.ts',

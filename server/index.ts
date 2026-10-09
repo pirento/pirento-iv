@@ -1,8 +1,14 @@
 import { createApp } from './app.ts';
 import { existsSync } from 'node:fs';
+import { isAbsolute } from 'node:path';
 
 // Native Node 24 env parsing keeps provider credentials exclusively on the server.
 if (existsSync('.env')) process.loadEnvFile('.env');
+if (
+  process.env.NODE_ENV === 'production' &&
+  (!process.env.DATABASE_PATH || !isAbsolute(process.env.DATABASE_PATH))
+)
+  throw new Error('Production requires an absolute DATABASE_PATH on private persistent storage.');
 const port = Number(process.env.PORT || 3001);
 const host = process.env.HOST || '127.0.0.1';
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('PORT must be between 1 and 65535.');
@@ -29,6 +35,7 @@ const interval = setInterval(processMail, 15_000);
 interval.unref();
 server.on('listening', () => {
   console.log(`Venturecore workspace API listening on http://${host}:${port}`);
+  app.locals.services.backups.start();
   processMail();
 });
 server.on('error', (error: NodeJS.ErrnoException) => {
@@ -43,6 +50,7 @@ for (const signal of ['SIGINT', 'SIGTERM'] as const)
     clearInterval(interval);
     server.close(async () => {
       await worker;
+      await app.locals.services.backups.stop();
       app.locals.services.db.close();
     });
   });

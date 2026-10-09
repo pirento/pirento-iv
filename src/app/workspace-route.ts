@@ -13,6 +13,7 @@ export const WORKSPACE_VIEWS = [
   'business_products',
   'team',
   'integrations',
+  'backups',
   'business_settings',
   'dashboard_branding',
   'help',

@@ -1,0 +1,325 @@
+.database-backups {
+  margin-bottom: 40px;
+}
+.backup-intro {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 24px;
+  margin-bottom: 24px;
+  border: 1px solid #dce7da;
+  border-radius: 11px;
+  background: #eef4eb;
+}
+.backup-intro h2 {
+  margin-top: 8px;
+  font-family: Manrope, sans-serif;
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+  color: #3d5d3f;
+}
+.backup-intro p {
+  max-width: 650px;
+  margin-top: 10px;
+  font-size: 12px;
+  line-height: 1.85;
+  color: #687d65;
+}
+.backup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.backup-message {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 14px 17px;
+  margin-bottom: 20px;
+  border: 1px solid #e3eadb;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+.backup-message svg {
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+.backup-message.error {
+  color: #984338;
+  background: #fff2ee;
+  border-color: #f0d8d1;
+}
+.backup-message.success {
+  color: #476e39;
+  background: #edf6e7;
+}
+.backup-message.warning {
+  color: #86652b;
+  background: #fff8e8;
+  border-color: #ecdfbd;
+}
+.backup-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin-bottom: 24px;
+}
+.backup-summary-card {
+  min-width: 0;
+  padding: 22px;
+  border: 1px solid #e2e9dd;
+  border-radius: 11px;
+  background: #fff;
+}
+.backup-summary-heading {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 20px;
+  color: #7b9667;
+}
+.backup-summary-heading svg {
+  flex-shrink: 0;
+}
+.backup-summary-heading h3 {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.6;
+  color: #6b8060;
+}
+.backup-summary-card > strong {
+  display: block;
+  font-family: Manrope, sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.8;
+  color: #355d45;
+}
+.backup-summary-card > p {
+  margin-top: 9px;
+  font-size: 11px;
+  line-height: 1.9;
+  color: #74856c;
+}
+.backup-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 8px;
+  border-radius: 5px;
+  font-size: 10px;
+  white-space: nowrap;
+  color: #927239;
+  background: #fbf2dc;
+}
+.backup-badge.ready {
+  color: #63884a;
+  background: #edf5e6;
+}
+.backup-history {
+  overflow: hidden;
+  border: 1px solid #e2e9dd;
+  border-radius: 11px;
+  background: #fff;
+}
+.backup-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  padding: 24px;
+  color: #7f9b69;
+}
+.backup-section-heading h2,
+.backup-restore h2 {
+  font-family: Manrope, sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.4px;
+  color: #3e603b;
+}
+.backup-section-heading p {
+  margin-top: 7px;
+  font-size: 11px;
+  color: #7c8b72;
+}
+.backup-table-wrapper {
+  overflow-x: auto;
+}
+.backup-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+.backup-table th {
+  padding: 14px 24px;
+  background: #f7f9f4;
+  color: #839376;
+  font-size: 10px;
+  font-weight: 500;
+  border-top: 1px solid #eaf0e3;
+}
+.backup-table td {
+  padding: 18px 24px;
+  border-top: 1px solid #eaf0e3;
+  color: #4e6b46;
+  font-size: 12px;
+  vertical-align: middle;
+}
+.backup-table td:first-child {
+  min-width: 200px;
+}
+.backup-table th:last-child,
+.backup-table td:last-child {
+  text-align: right;
+}
+.backup-id {
+  display: block;
+  margin-top: 7px;
+  font-family: monospace;
+  font-size: 10px;
+  color: #8b987e;
+  overflow-wrap: anywhere;
+}
+.backup-download-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.backup-download {
+  white-space: nowrap;
+  text-decoration: none;
+}
+.backup-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 220px;
+  padding: 35px 24px;
+  text-align: center;
+  color: #87a071;
+}
+.backup-empty h2,
+.backup-empty h3 {
+  font-family: Manrope, sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: #5d7d49;
+}
+.backup-empty p {
+  max-width: 420px;
+  font-size: 12px;
+  line-height: 1.85;
+  color: #839375;
+}
+.backup-restore {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 24px;
+  margin-top: 24px;
+  border: 1px solid #e3eadb;
+  border-radius: 11px;
+  background: #f6f9f1;
+  color: #86a273;
+}
+.backup-restore > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.backup-restore p {
+  margin-top: 11px;
+  font-size: 12px;
+  line-height: 1.9;
+  color: #728565;
+}
+.backup-restore code {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 1100px) {
+  .backup-intro {
+    flex-wrap: wrap;
+  }
+  .backup-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .backup-summary-card:last-child {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 760px) {
+  .backup-intro,
+  .backup-section-heading,
+  .backup-restore {
+    padding: 20px;
+  }
+  .backup-intro h2 {
+    font-size: 18px;
+    line-height: 1.6;
+  }
+  .backup-actions {
+    width: 100%;
+  }
+  .backup-summary {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .backup-summary-card:last-child {
+    grid-column: auto;
+  }
+  .backup-table,
+  .backup-table tbody {
+    display: block;
+  }
+  .backup-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .backup-table tbody tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px 20px;
+    padding: 20px;
+    border-top: 1px solid #eaf0e3;
+  }
+  .backup-table td {
+    min-width: 0;
+    padding: 0;
+    border: 0;
+  }
+  .backup-table td[data-label]::before {
+    display: block;
+    margin-bottom: 9px;
+    color: #839376;
+    font-size: 10px;
+    content: attr(data-label);
+  }
+  .backup-table td:first-child,
+  .backup-table td:last-child {
+    grid-column: 1 / -1;
+    min-width: 0;
+    text-align: left;
+  }
+  .backup-download {
+    flex: 1 1 120px;
+    justify-content: center;
+  }
+  .backup-download-actions {
+    justify-content: flex-start;
+  }
+  .backup-restore {
+    gap: 10px;
+  }
+}

@@ -16,7 +16,8 @@ import {
 } from '../shared/business-identity.ts';
 import { renderInvoiceAttachment } from './documents/invoice-pdf.ts';
 import { existsSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { resolve, relative, isAbsolute, join, sep } from 'node:path';
+import { tmpdir } from 'node:os';
 import type { DatabaseSync } from 'node:sqlite';
 import { z } from 'zod';
 import {
@@ -57,6 +58,13 @@ import {
 } from './validation/validation.ts';
 import { createGstPortal, PortalError, readLimited } from './integrations/gst/gst-portal.ts';
 import { createSandboxGst, SandboxGstError } from './integrations/gst/sandbox-gst.ts';
+import {
+  createDatabaseBackupService,
+  parseDatabaseBackupConfig,
+  DatabaseBackupError,
+} from './operations/database-backup.ts';
+import { createBackupManager } from './operations/backup-scheduler.ts';
+import { assertDatabaseRecoveryReviewed } from './operations/recovery.ts';
 
 export class HttpError extends Error {
   constructor(
@@ -101,10 +109,11 @@ function configuredLookupUrl(template: string | undefined) {
 }
 
 export function createApp(options: AppOptions = {}) {
-  const db = options.db ?? initDb(process.env.DATABASE_PATH);
+  const environment = options.environment ?? process.env;
+  const db = options.db ?? initDb(environment.DATABASE_PATH);
+  assertDatabaseRecoveryReviewed(db);
   const app = express();
   app.disable('x-powered-by');
-  const environment = options.environment ?? process.env;
   app.use(securityHeaders(environment.NODE_ENV === 'production'));
   app.post(
     '/api/webhooks/razorpay',
@@ -140,6 +149,25 @@ export function createApp(options: AppOptions = {}) {
   const fetcher = options.fetch ?? globalThis.fetch;
   const portal = createGstPortal(fetcher);
   const now = options.now ?? (() => new Date());
+  const backupConfig = parseDatabaseBackupConfig(
+    environment,
+    db.location() ?? join(tmpdir(), `venture-memory-${randomUUID()}`, 'workspace.sqlite'),
+  );
+  for (const root of [
+    options.distPath ?? resolve('dist'),
+    ...['public', 'src', 'server', 'shared', 'scripts'].map((name) => resolve(name)),
+  ]) {
+    const child = relative(resolve(root), backupConfig.directory);
+    if (!child || (child !== '..' && !child.startsWith(`..${sep}`) && !isAbsolute(child)))
+      throw new Error('Database backups require a private directory outside application and public assets.');
+  }
+  const backupStorage = createDatabaseBackupService({
+    database: db,
+    directory: backupConfig.directory,
+    retention: backupConfig.retention,
+    now,
+  });
+  const backups = createBackupManager({ service: backupStorage, ...backupConfig, now });
   const requestedGstProvider = environment.GST_PROVIDER?.trim().toLowerCase();
   if (requestedGstProvider && !['portal', 'generic', 'sandbox'].includes(requestedGstProvider))
     throw new Error('GST_PROVIDER must be portal, generic or sandbox.');
@@ -590,8 +618,12 @@ export function createApp(options: AppOptions = {}) {
       });
     },
   });
-  app.locals.services = { auth, mailer, online, db };
-  app.locals.initialize = () => auth?.initializeOwner() ?? Promise.resolve(null);
+  app.locals.services = { auth, mailer, online, db, backups };
+  app.locals.initialize = async () => {
+    const owner = await auth?.initializeOwner();
+    await backups.initialize();
+    return owner ?? null;
+  };
   if (auth) app.use('/api/auth', auth.router);
   app.get('/api/health', (req, res) =>
     res.json(
@@ -607,6 +639,35 @@ export function createApp(options: AppOptions = {}) {
     ),
   );
   if (auth) app.use('/api', auth.requireSession, auth.mutationGuard, createAccessGuard(db));
+  if (auth) app.use('/api/backups', auth.requireAdmin);
+  app.get('/api/backups/status', (_req, res) => res.json(backups.status()));
+  app.get('/api/backups', async (_req, res) => res.json(await backupStorage.listBackups()));
+  let lastManualBackupAt: number | undefined;
+  app.post('/api/backups', async (_req, res) => {
+    const time = now().getTime();
+    if (!backups.status().running && lastManualBackupAt !== undefined && time - lastManualBackupAt < 60_000)
+      throw new HttpError(429, 'Please wait one minute before creating another database backup.');
+    lastManualBackupAt = time;
+    res.status(201).json(await backups.create());
+  });
+  app.get('/api/backups/:id/download', async (req, res) => {
+    const filename = await backupStorage.getVerifiedDatabasePath(req.params.id);
+    res.download(filename, `${req.params.id}.sqlite`, (error) => {
+      if (error && !res.headersSent)
+        res.status(503).json({ error: 'The verified backup could not be downloaded. Please retry.' });
+    });
+  });
+  app.get('/api/backups/:id/manifest', async (req, res) => {
+    const metadata = await backupStorage.verifyBackup(req.params.id);
+    res.attachment(`${metadata.id}.manifest.json`).json({
+      schemaVersion: metadata.schemaVersion,
+      kind: 'venturecore-sqlite-backup',
+      id: metadata.id,
+      createdAt: metadata.createdAt,
+      sqliteUserVersion: metadata.sqliteUserVersion,
+      database: { file: 'database.sqlite', byteLength: metadata.byteLength, sha256: metadata.sha256 },
+    });
+  });
   app.use('/api', online.router);
   app.get('/api/integrations/status', (req, res) => {
     const user = res.locals.user as AuthUser | undefined;
@@ -1453,6 +1514,8 @@ export function createApp(options: AppOptions = {}) {
       error instanceof OnlinePaymentError
     ) {
       res.status(error.status).json({ error: error.message });
+    } else if (error instanceof DatabaseBackupError) {
+      res.status(error.code === 'not_found' ? 404 : 503).json({ error: error.message });
     } else if (error instanceof URIError) {
       res.status(400).json({ error: 'The request URL contains an invalid identifier.' });
     } else if (error instanceof SyntaxError && 'body' in error) {
