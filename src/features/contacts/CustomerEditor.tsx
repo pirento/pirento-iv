@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Search, LoaderCircle, Building2, CheckCircle2, Info, RefreshCw } from 'lucide-react';
 import { api, sendJson } from '../../shared/api/api';
 import { STATES, type Customer, type GstLookupResult } from '../../../shared/types';
@@ -18,6 +18,13 @@ interface Props {
   invoiceRecipientOnly?: boolean;
   onClose: () => void;
   onSave: (input: Omit<Customer, 'id'>, id?: string) => Promise<void>;
+}
+
+interface GstHealth {
+  gstMode: 'portal' | 'provider';
+  gstConfigured: boolean;
+  gstProvider?: 'portal' | 'generic' | 'sandbox';
+  gstEnvironment?: 'test' | 'production';
 }
 
 export default function CustomerEditor({
@@ -51,6 +58,53 @@ export default function CustomerEditor({
   const [lookupDate, setLookupDate] = useState('');
   const [challenge, setChallenge] = useState<{ challengeId: string; image: string } | null>(null);
   const [captcha, setCaptcha] = useState('');
+  const [gstHealth, setGstHealth] = useState<GstHealth | null>(null);
+  const [healthError, setHealthError] = useState('');
+  const lookupSequence = useRef(0);
+  const lookupController = useRef<AbortController | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    lookupSequence.current++;
+    lookupController.current?.abort();
+    setForm(
+      normalizeContact(
+        customer || {
+          organizationId,
+          name: '',
+          email: '',
+          phone: '',
+          gstin: '',
+          address: '',
+          stateCode: '',
+          contactPerson: '',
+          roles: [defaultRole],
+        },
+      ),
+    );
+    setFetching(false);
+    setError('');
+    setLookupError('');
+    setLookupMessage('');
+    setLookupDate('');
+    setChallenge(null);
+    setCaptcha('');
+    setGstHealth(null);
+    setHealthError('');
+    const currentLookup = lookupSequence.current;
+    void api<GstHealth>('/health', { signal: controller.signal })
+      .then((health) => {
+        if (!controller.signal.aborted && currentLookup === lookupSequence.current) setGstHealth(health);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted && currentLookup === lookupSequence.current)
+          setHealthError('Could not check GST lookup settings. Fetch details will check again.');
+      });
+    return () => {
+      controller.abort();
+      lookupSequence.current++;
+      lookupController.current?.abort();
+    };
+  }, [organizationId, customer?.id, defaultRole]);
   const change = <K extends keyof Omit<Customer, 'id'>>(field: K, value: Omit<Customer, 'id'>[K]) =>
     setForm((current) => ({ ...current, [field]: value }));
   const roles = form.roles || ['customer'];
@@ -64,7 +118,7 @@ export default function CustomerEditor({
     change('roles', next);
     setError('');
   }
-  function applyLookup(result: GstLookupResult) {
+  function applyLookup(result: GstLookupResult, health: GstHealth | null) {
     setForm((current) => ({
       ...current,
       gstin: result.gstin,
@@ -72,56 +126,84 @@ export default function CustomerEditor({
       address: result.address,
       stateCode: result.stateCode,
     }));
+    const testMode = health?.gstProvider === 'sandbox' && health.gstEnvironment === 'test';
     setLookupMessage(
-      `Business details fetched${result.status ? ` · ${result.status}` : ''}. Please review before saving.`,
+      `${testMode ? 'Sandbox test response received' : 'Business details fetched'}${result.status ? ` · ${result.status}` : ''}. ${testMode ? 'Test records are examples, not verification of an actual customer. Use production mode for real taxpayer details.' : 'Please review before saving.'}`,
     );
     setLookupDate(new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }));
     setChallenge(null);
     setCaptcha('');
   }
   async function lookup() {
+    lookupController.current?.abort();
+    const controller = new AbortController();
+    lookupController.current = controller;
+    const request = ++lookupSequence.current;
+    const current = () => request === lookupSequence.current && !controller.signal.aborted;
     setFetching(true);
     setLookupError('');
     setLookupMessage('');
+    setChallenge(null);
+    setCaptcha('');
     try {
-      const health = await api<{ gstMode: 'portal' | 'provider' }>('/health');
+      const health = await api<GstHealth>('/health', { signal: controller.signal });
+      if (!current()) return;
+      setGstHealth(health);
+      setHealthError('');
       if (health.gstMode === 'portal') {
-        const nextChallenge = await api<{ challengeId: string; image: string }>('/gst/captcha');
+        const nextChallenge = await api<{ challengeId: string; image: string }>('/gst/captcha', {
+          signal: controller.signal,
+        });
+        if (!current()) return;
         setChallenge(nextChallenge);
         setCaptcha('');
       } else {
-        applyLookup(
-          await api<GstLookupResult>(`/gst/${encodeURIComponent(form.gstin.trim().toUpperCase())}`),
+        if (!health.gstConfigured)
+          throw new Error(
+            health.gstProvider === 'sandbox'
+              ? 'Sandbox GST lookup needs its API key and API secret in the server settings. You can enter contact details manually until it is configured.'
+              : 'The GST API is not configured in the server settings. You can enter contact details manually.',
+          );
+        const result = await api<GstLookupResult>(
+          `/gst/${encodeURIComponent(form.gstin.trim().toUpperCase())}`,
+          { signal: controller.signal },
         );
+        if (current()) applyLookup(result, health);
       }
     } catch (err) {
-      setLookupError((err as Error).message);
+      if (current()) setLookupError((err as Error).message);
     } finally {
-      setFetching(false);
+      if (current()) setFetching(false);
     }
   }
   async function verifyCaptcha() {
     if (!challenge) return;
+    lookupController.current?.abort();
+    const controller = new AbortController();
+    lookupController.current = controller;
+    const request = ++lookupSequence.current;
+    const current = () => request === lookupSequence.current && !controller.signal.aborted;
     setFetching(true);
     setLookupError('');
     setLookupMessage('');
     try {
-      applyLookup(
-        await api<GstLookupResult>(
-          '/gst/lookup',
-          sendJson('POST', {
-            gstin: form.gstin.trim().toUpperCase(),
-            challengeId: challenge.challengeId,
-            captcha,
-          }),
-        ),
-      );
+      const result = await api<GstLookupResult>('/gst/lookup', {
+        ...sendJson('POST', {
+          gstin: form.gstin.trim().toUpperCase(),
+          challengeId: challenge.challengeId,
+          captcha,
+        }),
+        signal: controller.signal,
+      });
+      if (current()) applyLookup(result, gstHealth);
     } catch (err) {
-      setLookupError((err as Error).message);
-      setChallenge(null);
-      setCaptcha('');
+      if (current()) {
+        setLookupError((err as Error).message);
+        setChallenge(null);
+        setCaptcha('');
+      }
     } finally {
-      setFetching(false);
+      if (current()) setFetching(false);
     }
   }
   return (
@@ -201,6 +283,7 @@ export default function CustomerEditor({
                       change('gstin', e.target.value.toUpperCase());
                       setLookupMessage('');
                       setLookupError('');
+                      setLookupDate('');
                       setChallenge(null);
                       setCaptcha('');
                     }}
@@ -215,8 +298,22 @@ export default function CustomerEditor({
                     {fetching ? 'Fetching…' : 'Fetch details'}
                   </button>
                 </div>
-                <p className="field-hint">
-                  Free portal lookup asks you to enter a CAPTCHA. You can also fill in details below.
+                <p className="field-hint" aria-live="polite">
+                  {gstHealth?.gstProvider === 'sandbox'
+                    ? gstHealth.gstEnvironment === 'test'
+                      ? 'Sandbox GST lookup · Test mode. Responses are example records. Use production mode for real customer GST details.'
+                      : gstHealth.gstEnvironment === 'production'
+                        ? 'Sandbox GST lookup · Production mode. Review the fetched legal name, address and GST status before saving.'
+                        : 'Sandbox GST lookup. Review the fetched legal name, address and GST status before saving.'
+                    : gstHealth?.gstMode === 'portal'
+                      ? 'Free GST portal lookup asks you to enter a CAPTCHA.'
+                      : gstHealth?.gstMode === 'provider'
+                        ? 'GST details are fetched through the configured API provider.'
+                        : healthError || 'Checking GST lookup settings…'}{' '}
+                  {gstHealth?.gstMode === 'provider' && !gstHealth.gstConfigured
+                    ? 'Server credentials are still required. '
+                    : ''}
+                  You can always fill in the details below manually.
                 </p>
                 {challenge && (
                   <div className="captcha-panel">

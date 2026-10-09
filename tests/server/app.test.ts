@@ -40,7 +40,14 @@ async function fixture(
   filename = ':memory:',
 ) {
   const db = initDb(filename);
-  const app = createApp({ auth: false, db, now: () => new Date('2026-10-08T12:00:00.000Z'), ...extra });
+  // Application tests never inherit real provider credentials from the hosting environment.
+  const app = createApp({
+    auth: false,
+    db,
+    environment: {},
+    now: () => new Date('2026-10-08T12:00:00.000Z'),
+    ...extra,
+  });
   const server = app.listen(0, '127.0.0.1');
   await once(server, 'listening');
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;

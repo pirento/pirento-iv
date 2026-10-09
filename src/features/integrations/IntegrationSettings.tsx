@@ -6,6 +6,7 @@ import {
   LoaderCircle,
   Mail,
   RefreshCw,
+  Search,
   Settings2,
   ShieldCheck,
 } from 'lucide-react';
@@ -25,6 +26,13 @@ interface IntegrationStatus {
   payment: OnlinePaymentConfiguration;
   environmentPrefix?: string;
   webhookPath?: string;
+  gst?: {
+    provider: 'sandbox' | 'generic' | 'portal';
+    mode: 'test' | 'production' | 'custom' | 'captcha';
+    configured: boolean;
+    keyConfigured: boolean;
+    secretConfigured: boolean;
+  };
 }
 function SetupState({ ready, children }: { ready: boolean; children: React.ReactNode }) {
   return (
@@ -63,6 +71,7 @@ export default function IntegrationSettings({ organization }: { organization: Or
     };
   }, [load]);
   const payment = settings?.payment;
+  const gst = settings?.gst;
   const cashfree = payment?.provider === 'cashfree';
   const manualOnly = payment?.provider === 'none';
   const providerName = cashfree ? 'Cashfree' : manualOnly ? 'Manual payments' : 'Razorpay';
@@ -77,10 +86,11 @@ export default function IntegrationSettings({ organization }: { organization: Or
       <div className="integration-intro">
         <div>
           <span className="page-eyebrow">{organization.name.toUpperCase()} · CONNECTED WORKFLOWS</span>
-          <h2>Payments and email for {organization.name}</h2>
+          <h2>Payments, email and GST for {organization.name}</h2>
           <p>
             Review this business’s payment provider and sender. Change the gateway, support address, bank
-            details and QR in organization settings.
+            details and QR in organization settings. GST lookup fills contact details from the shared lookup
+            service.
           </p>
           <div className="integration-business">
             <span>
@@ -292,6 +302,131 @@ export default function IntegrationSettings({ organization }: { organization: Or
                   </a>
                 </details>
               </section>
+              {gst && (
+                <section className="integration-card gst-card" aria-labelledby="gst-integration-heading">
+                  <div className="integration-card-heading">
+                    <span className="integration-icon gst">
+                      <Search size={24} />
+                    </span>
+                    <div>
+                      <h3 id="gst-integration-heading">GST lookup</h3>
+                      <p>Customer, vendor and B2B buyer auto-fill</p>
+                    </div>
+                    <SetupState ready={gst.configured}>
+                      {gst.provider === 'portal'
+                        ? 'CAPTCHA required'
+                        : gst.configured
+                          ? 'Settings added'
+                          : 'Setup needed'}
+                    </SetupState>
+                  </div>
+                  <p className="integration-description">
+                    All organizations use this shared taxpayer lookup service. Fetch GST details while adding
+                    or editing a contact, review the result, then save it in the selected organization’s
+                    directory. This does not change your organization’s own GST registration.
+                  </p>
+                  <dl>
+                    <div>
+                      <dt>Provider</dt>
+                      <dd>
+                        {gst.provider === 'sandbox'
+                          ? 'Sandbox'
+                          : gst.provider === 'generic'
+                            ? 'Custom GST API'
+                            : 'Official GST portal'}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Environment</dt>
+                      <dd>
+                        {gst.mode === 'test'
+                          ? 'Test mode'
+                          : gst.mode === 'production'
+                            ? 'Production mode'
+                            : gst.mode === 'captcha'
+                              ? 'Human CAPTCHA'
+                              : 'Custom API'}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>API key</dt>
+                      <dd>
+                        {gst.provider === 'portal'
+                          ? 'Not required'
+                          : gst.keyConfigured
+                            ? 'Added'
+                            : gst.provider === 'sandbox'
+                              ? 'Required'
+                              : 'Not set'}
+                      </dd>
+                    </div>
+                    {gst.provider === 'sandbox' && (
+                      <div>
+                        <dt>API secret</dt>
+                        <dd>{gst.secretConfigured ? 'Added' : 'Required'}</dd>
+                      </div>
+                    )}
+                  </dl>
+                  <div className="integration-guidance">
+                    <ShieldCheck size={17} />
+                    <p>
+                      {gst.provider === 'sandbox' && gst.mode === 'test'
+                        ? 'Sandbox test mode returns example taxpayer records; it does not verify actual customers. Use production credentials and environment for real GST lookups.'
+                        : gst.provider === 'portal'
+                          ? 'Complete the GST portal’s CAPTCHA for each lookup, or enter contact details manually.'
+                          : 'Review the fetched name, address and GST status before saving. Credentials being present does not confirm a successful API connection.'}
+                      {gst.provider === 'sandbox' && !gst.configured
+                        ? ' Add both Sandbox credentials to the hosting server settings to enable lookup.'
+                        : ''}
+                    </p>
+                  </div>
+                  <details>
+                    <summary>Connection instructions</summary>
+                    {gst.provider === 'sandbox' ? (
+                      <>
+                        <p>
+                          In the hosting server settings, select Sandbox and add the API key and secret from
+                          your Sandbox account. Keep credentials on the server, then restart the application
+                          and refresh this page.
+                        </p>
+                        <div className="integration-env">
+                          <code>GST_PROVIDER=sandbox</code>
+                          <code>SANDBOX_API_KEY</code>
+                          <code>SANDBOX_API_SECRET</code>
+                          <code>SANDBOX_ENVIRONMENT=test</code>
+                        </div>
+                        <p>
+                          Set <code>SANDBOX_ENVIRONMENT</code> to <code>test</code> for Sandbox testing or{' '}
+                          <code>production</code> for real taxpayer details. The key and secret must match
+                          that environment and have GST search access. Settings added means the required
+                          values are present; perform a lookup to check the API connection.
+                        </p>
+                        <a
+                          href="https://developer.sandbox.co.in/api-reference/gst/compliance/endpoints/public/search_gstin"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          Open Sandbox GST search documentation <ExternalLink size={13} />
+                        </a>
+                      </>
+                    ) : gst.provider === 'portal' ? (
+                      <p>
+                        The free portal requires no API credentials. Select <code>GST_PROVIDER=portal</code>{' '}
+                        in server settings and restart to use the CAPTCHA lookup. You can always save manually
+                        entered contact details.
+                      </p>
+                    ) : (
+                      <p>
+                        The custom provider is configured in the hosting server settings. To use your Sandbox
+                        subscription, set <code>GST_PROVIDER=sandbox</code> and add{' '}
+                        <code>SANDBOX_API_KEY</code>, <code>SANDBOX_API_SECRET</code> and{' '}
+                        <code>SANDBOX_ENVIRONMENT</code> (<code>test</code> or <code>production</code>), then
+                        restart the application.
+                      </p>
+                    )}
+                  </details>
+                </section>
+              )}
             </div>
             <div className="integration-workflow">
               <h3>A clear path from sent to settled</h3>

@@ -64,6 +64,13 @@
   background: #eef3e2;
   color: #839956;
 }
+.integration-icon.gst {
+  background: #e8f2f5;
+  color: #467985;
+}
+.integration-card.gst-card {
+  grid-column: 1 / -1;
+}
 .integration-card-heading > div {
   flex: 1;
 }

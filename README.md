@@ -120,11 +120,19 @@ The installed workspace was backed up with SQLite's online backup API before the
 
 By default, **Fetch details** uses the GST public portal with a **CAPTCHA completed by the person using the app**. CAPTCHA cookies remain on the server; opaque challenges expire after three minutes and are single use. Lookup fills the registered name, address, state and GSTIN. It does not promise phone or email data. Review retrieved details before saving.
 
+For **Sandbox GST Search**, set `GST_PROVIDER=sandbox`, `SANDBOX_ENVIRONMENT=test`, `SANDBOX_API_KEY` and `SANDBOX_API_SECRET` in secure server settings, then restart the app. Use the matching test key/secret from Sandbox Console → Settings → API Keys. The application obtains and renews a server-only access token automatically; do not paste a token into the app or expose credentials through `VITE_` variables. **Payments & email** shows the GST provider, environment and whether credentials are present, without revealing their values. A configuration badge does not verify the provider account.
+
+Sandbox test APIs return documented example/mock records only, not actual customer verification. Use matching production credentials and `SANDBOX_ENVIRONMENT=production` for real taxpayer details after checking the account plan. The contact editor clearly labels test responses and requires saving the reviewed form; fetching never creates a customer automatically or changes an organization's seller GST. Do not copy mock customer details into business invoices. Sandbox lookup is shared across the workspace's organizations and is independent of their separate payment/email accounts.
+
+The adapter follows Sandbox's official [Authenticate](https://developer.sandbox.co.in/api-reference/authenticate) and [Search GSTIN](https://developer.sandbox.co.in/api-reference/gst/compliance/endpoints/public/search_gstin) contracts: `POST /authenticate` with `x-api-key`/`x-api-secret`, then `POST /gst/compliance/public/gstin/search` with a raw access token and API key. Only the fixed `api.sandbox.co.in` and `test-api.sandbox.co.in` hosts are used. Authentication tokens stay in memory; responses are bounded and validated against the requested GSTIN. Successful results are cached for up to five minutes, simultaneous identical lookups are coalesced, and request limits reduce accidental repeated billable requests. Lookup failures are not automatically retried. Cancelled GST registrations remain labelled with the returned status. Manual entry remains available when the provider is unavailable.
+
+**Live Sandbox status:** the adapter and isolated tests do not establish a live connection. The user's credentials are currently held privately and have not been configured in this environment. Secure key/secret entry, outbound API access and a successful authenticated query remain necessary.
+
 The supplied [reference repository](https://github.com/sivunq/fetch-GST-details-without-using-any-paid-API/tree/25df28e76ce285210292f9321840666f10c0e487) describes this CAPTCHA/cookie flow. It is an incomplete set of snippets without a license. This implementation is independently written; none of its source was copied, and no CAPTCHA bypass or solver is used.
 
 **Live portal status:** the cloud environment blocked `services.gst.gov.in` with a proxy CONNECT 403 during implementation. The environment draft adds that host, but the draft must be reviewed, saved and published before the new policy applies. Live lookup remains unverified until a real CAPTCHA and taxpayer lookup succeed after activation. Portal endpoint behavior may change. If fetching fails, the app shows an error and allows manual entry; it never fabricates taxpayer data.
 
-An optional provider can replace the portal flow. Copy `.env.example` to `.env` and configure:
+Another normalized provider can replace the portal flow. Keep `GST_PROVIDER` unset for legacy URL-based selection, or set it to `generic`. Copy `.env.example` to `.env` and configure:
 
 ```dotenv
 GST_LOOKUP_URL=https://your-provider.example/lookup/{gstin}

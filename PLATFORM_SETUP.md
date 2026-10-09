@@ -94,6 +94,16 @@ Configure shared `EMAIL_FROM` and `RESEND_API_KEY` for the Venturecore workspace
 - The worker runs every 15 seconds in the server process. It uses persistent leases, bounded retry backoff and provider idempotency keys. After the provider's safe retry window, ambiguous deliveries require checking its logs before a new send.
 - **Accepted by provider** means the provider accepted the message, not that it reached the inbox. Bounces, spam classification, open tracking and confirmed delivery webhooks are not implemented.
 
+## Sandbox GST lookup
+
+Set `GST_PROVIDER=sandbox`, `SANDBOX_ENVIRONMENT=test`, `SANDBOX_API_KEY` and `SANDBOX_API_SECRET` in secure hosting settings; restart the server after changing them. Retrieve the matching test key/secret in Sandbox Console → Settings → API Keys. The server creates its own access token; customers and staff never receive credentials. An incomplete configuration stays disabled and does not silently switch to another provider. Test credentials must use the test environment; production credentials must use `SANDBOX_ENVIRONMENT=production`.
+
+Allow outbound HTTPS to `test-api.sandbox.co.in` for tests and `api.sandbox.co.in` for production. Sandbox's test environment only responds to its documented saved examples and supplies mock data. Test mode is displayed before lookup and in the success message; it cannot verify a real customer's registration. For real customers use production mode after confirming the account's API permissions/credits. Configuration indicators show presence, not successful authentication.
+
+From **Contacts**, enter a valid GSTIN and press **Fetch details**. The registered legal name, address, state and status are normalized from the provider response. Review and save the contact within its organization; lookup does not create/update records on its own, fetch phone/email, change the seller GST registration or rewrite old invoices. Paid requests are throttled and successful results cached for five minutes. Check again later for recent registration changes. Lookup calls are not automatically retried; expired/invalid tokens are cleared before the next deliberate attempt.
+
+Real connection verification requires secure credentials and an authenticated query. Development tests use injected synthetic transport and cannot prove provider availability or credits. The credentials remain in the user's private file and have not been installed here. See the official [authentication](https://developer.sandbox.co.in/api-reference/authenticate) and [GST search](https://developer.sandbox.co.in/api-reference/gst/compliance/endpoints/public/search_gstin) documentation.
+
 ## Deployment and validation
 
 Use one Node.js 24+ server, HTTPS and persistent storage for the SQLite file. See [PREVIEW_DEPLOYMENT.md](PREVIEW_DEPLOYMENT.md), [ARCHITECTURE.md](ARCHITECTURE.md) and [SECURITY.md](SECURITY.md). The built app and APIs use one origin. Do not run multiple replicas against separate SQLite copies. Automatic emails require a running worker/server; a static-only host cannot provide this system.

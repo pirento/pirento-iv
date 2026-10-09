@@ -44,6 +44,8 @@ Shared `RAZORPAY_*` and Resend settings may serve the Venturecore divisions and 
 
 Use Cashfree sandbox before enabling production. Permit the actual provider API hosts in the host's outbound policy: `api.razorpay.com`, `sandbox.cashfree.com` / `api.cashfree.com`, and `api.resend.com`. Webhook URLs and all prefixes are documented in [PLATFORM_SETUP.md](PLATFORM_SETUP.md). Support contacts in organization settings are Reply-To addresses, not automatically verified sending identities. Keys stay in hosting server settings; they are not included in deployment packages.
 
+Sandbox GST lookup additionally uses `GST_PROVIDER=sandbox`, server-only `SANDBOX_API_KEY` / `SANDBOX_API_SECRET`, and `SANDBOX_ENVIRONMENT=test|production`. Permit `test-api.sandbox.co.in` and `api.sandbox.co.in` as needed. Use matching environment credentials. Test mode provides mock/example records only; production mode is required for real taxpayer details. Configure values securely on the host and restart; never bundle a credentials spreadsheet or `.env` in the source package. Verify an actual authenticated query before describing lookup as connected.
+
 ## Build an upload package
 
 ```bash

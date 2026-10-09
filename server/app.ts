@@ -56,6 +56,7 @@ import {
   validGstin,
 } from './validation/validation.ts';
 import { createGstPortal, PortalError, readLimited } from './integrations/gst/gst-portal.ts';
+import { createSandboxGst, SandboxGstError } from './integrations/gst/sandbox-gst.ts';
 
 export class HttpError extends Error {
   constructor(
@@ -134,11 +135,26 @@ export function createApp(options: AppOptions = {}) {
   // the broader invoice upload parser or password hashing receives them.
   app.use('/api/auth', express.json({ limit: '16kb' }));
   app.use(express.json({ limit: '12mb' }));
-  const lookupUrl = configuredLookupUrl(options.gstLookupUrl ?? process.env.GST_LOOKUP_URL);
-  const apiKey = options.gstApiKey ?? process.env.GST_API_KEY;
+  const lookupUrl = configuredLookupUrl(options.gstLookupUrl ?? environment.GST_LOOKUP_URL);
+  const apiKey = options.gstApiKey ?? environment.GST_API_KEY;
   const fetcher = options.fetch ?? globalThis.fetch;
   const portal = createGstPortal(fetcher);
   const now = options.now ?? (() => new Date());
+  const requestedGstProvider = environment.GST_PROVIDER?.trim().toLowerCase();
+  if (requestedGstProvider && !['portal', 'generic', 'sandbox'].includes(requestedGstProvider))
+    throw new Error('GST_PROVIDER must be portal, generic or sandbox.');
+  const gstProvider = requestedGstProvider || (lookupUrl ? 'generic' : 'portal');
+  const sandboxGst = createSandboxGst({ environment, fetch: fetcher, now: () => now().getTime() });
+  const gstStatus = () =>
+    gstProvider === 'sandbox'
+      ? sandboxGst.status()
+      : {
+          provider: gstProvider,
+          mode: gstProvider === 'generic' ? 'custom' : 'captcha',
+          configured: gstProvider === 'generic' && Boolean(lookupUrl),
+          keyConfigured: gstProvider === 'generic' && Boolean(apiKey),
+          secretConfigured: false,
+        };
 
   function getOrganization(id: string): Organization {
     const row = db.prepare('SELECT data FROM organizations WHERE id = ?').get(id) as Row | undefined;
@@ -581,7 +597,13 @@ export function createApp(options: AppOptions = {}) {
     res.json(
       auth && !auth.getSessionUser(req)
         ? { ok: true }
-        : { ok: true, gstConfigured: Boolean(lookupUrl), gstMode: lookupUrl ? 'provider' : 'portal' },
+        : {
+            ok: true,
+            gstConfigured: gstStatus().configured,
+            gstMode: gstProvider === 'portal' ? 'portal' : 'provider',
+            gstProvider,
+            ...(gstProvider === 'sandbox' ? { gstEnvironment: sandboxGst.status().mode } : {}),
+          },
     ),
   );
   if (auth) app.use('/api', auth.requireSession, auth.mutationGuard, createAccessGuard(db));
@@ -612,6 +634,7 @@ export function createApp(options: AppOptions = {}) {
       email: mailer.status(organizationId),
       payment,
       razorpay: payment,
+      gst: gstStatus(),
       environmentPrefix: integrationEnvironmentPrefix(organization),
       webhookPath: payment.provider === 'none' ? '' : `/api/webhooks/${payment.provider}/${organizationId}`,
     });
@@ -1371,7 +1394,12 @@ export function createApp(options: AppOptions = {}) {
     const number = req.params.gstin.trim().toUpperCase();
     if (!validGstin(number))
       throw new HttpError(400, 'Enter a valid 15-character GSTIN, including its check digit.');
-    if (!lookupUrl)
+    if (gstProvider === 'sandbox') {
+      const user = res.locals.user as AuthUser | undefined;
+      res.json(await sandboxGst.lookup(number, user?.id ?? req.ip ?? 'local'));
+      return;
+    }
+    if (gstProvider !== 'generic' || !lookupUrl)
       throw new HttpError(
         503,
         'GST lookup is not configured yet. Add your GST provider endpoint in server settings, or enter the customer details manually.',
@@ -1420,6 +1448,7 @@ export function createApp(options: AppOptions = {}) {
     } else if (
       error instanceof HttpError ||
       error instanceof PortalError ||
+      error instanceof SandboxGstError ||
       error instanceof EmailQueueError ||
       error instanceof OnlinePaymentError
     ) {
