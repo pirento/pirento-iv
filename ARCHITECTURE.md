@@ -74,8 +74,14 @@ Amounts and receipt allocations use integer paise at financial boundaries. Verif
 
 ## Development and packaging
 
-Run `npm ci --include=dev`, `npm test` and `npm run build` from the repository root with Node.js 24+. The test runner recursively discovers `*.test.ts` files under `tests/` and rejects an empty test run. Use a temporary `DATABASE_PATH` for browser checks. The development checkout includes tests, while upload packages intentionally contain only application files and setup documentation.
+Run `npm ci --include=dev`, `npm test` and `npm run build` from the repository root with Node.js 24.5+. The test runner recursively discovers `*.test.ts` files under `tests/` and rejects an empty test run. Use a temporary `DATABASE_PATH` for browser checks. The development checkout includes tests, while upload packages intentionally contain only application files and setup documentation.
 
 `npm run package:preview` builds and packages an explicit list of roots. Add a new runtime root to that list when splitting modules. Do not replace the allowlist with an archive of the entire checkout: `.data`, `.env`, uploaded certificates, credentials and backups must remain private. `tsx` is a runtime dependency; TypeScript/Vite and their types remain build tools.
 
 `server/operations/` owns online backup verification, retention, the automatic scheduler and persisted recovery holds. `scripts/database.mjs` performs private offline backup/recovery commands without starting provider workers; `scripts/check-deployment.mjs` reports configuration readiness without revealing secrets. The admin full-page UI lives in `src/features/backups/`. Backup downloads include the SQLite file and a separate manifest; originals/environment secrets are separate. Recovery guards run before application initialization and refuse pending recovered databases.
+
+`hostinger-entry.mjs` selects the explicit disposable preview or guarded hosted production. `scripts/hosted-startup-config.mjs` checks Node version, HTTPS and the outside-release database before application imports. Ordinary `npm start` stays compatible with local dotenv development.
+
+`scripts/synthetic-preview-config.mjs` creates a fresh private test run and allowlists its environment; `server/preview/preview-app.ts` independently checks storage, seeds test seller labels, wraps authenticated APIs, disables integrations and serves only built assets. `scripts/preview-network-lock.mjs` blocks process client transports after module imports. `src/shared/ui/PreviewNotice.tsx` supplies the preview warning, navigation guard and print watermark; browser PDF output adds its own watermark. These UI labels are presentation, while backend isolation and disabled transports enforce the boundary.
+
+`scripts/deployment-package.mjs` collects regular files from an explicit allowlist and creates persistent or separately named disposable archives. Only disposable staged packages replace their start script; source and persistent artifacts keep ordinary startup. See [PREVIEW-START-HERE.md](PREVIEW-START-HERE.md) for the test mode's restart behavior and hosting settings.

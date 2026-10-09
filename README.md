@@ -13,7 +13,7 @@ Additional organizations can be created in the app. The dashboard header, sideba
 
 ## Run locally
 
-Requires **Node.js 24+** and npm.
+Requires **Node.js 24.5+** and npm.
 
 ```bash
 npm ci --include=dev
@@ -32,6 +32,8 @@ npm start
 The built frontend and API run together on local port `3001`. The API binds to localhost by default. Startup honors the platform HTTPS proxy; never disable certificate verification to work around connectivity failures.
 
 For a website with account login accessible to approved staff, see [Private testing deployment](PREVIEW_DEPLOYMENT.md). It requires a Node.js host with HTTPS and persistent storage. `npm run package:preview` creates an application-only upload archive, excluding private business data and credentials.
+
+For invented-data UI testing on temporary hosting, use the separate [Disposable synthetic preview](PREVIEW-START-HERE.md). `npm run package:synthetic-preview` creates a clearly named Hostinger ZIP and tar archives; only those artifacts change `npm start` to disposable mode. Every preview process starts a new database, shows TEST labels and blocks external integrations. The normal checkout retains its persistent application startup and full test suite.
 
 ## Code organization and pages
 

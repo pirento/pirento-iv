@@ -95,6 +95,15 @@ export async function downloadDocumentPdf(doc: BusinessDocument): Promise<{ warn
     import('pdfmake/build/vfs_fonts'),
   ]);
   const definition = buildDocumentDefinition(doc, images);
+  const syntheticPreview =
+    document.documentElement.dataset.ivDeploymentMode === 'disposable-synthetic-preview';
+  if (syntheticPreview)
+    definition.watermark = {
+      text: 'TEST PREVIEW — NOT A VALID INVOICE',
+      color: '#9b1c20',
+      opacity: 0.18,
+      bold: true,
+    };
   const blob = await new Promise<Blob>((resolve, reject) => {
     try {
       const stream = pdfModule.default
@@ -112,7 +121,7 @@ export async function downloadDocumentPdf(doc: BusinessDocument): Promise<{ warn
   const downloadUrl = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = downloadUrl;
-  anchor.download = pdfFileName(doc);
+  anchor.download = `${syntheticPreview ? 'TEST-PREVIEW-' : ''}${pdfFileName(doc)}`;
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();

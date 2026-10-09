@@ -1,0 +1,95 @@
+.iv-preview-notice {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  padding: 10px 20px;
+  border-bottom: 2px solid #b26b0e;
+  background: #fff1c2;
+  color: #503409;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.iv-preview-notice strong {
+  display: block;
+  font-size: 12px;
+  letter-spacing: 0.07em;
+}
+
+.iv-preview-notice p {
+  margin: 1px 0 0;
+}
+
+.iv-preview-print-watermark {
+  display: none;
+}
+
+html[data-iv-deployment-mode='disposable-synthetic-preview'] .app-shell,
+html[data-iv-deployment-mode='disposable-synthetic-preview'] .inv-public {
+  min-height: calc(100dvh - var(--iv-preview-notice-height, 84px));
+}
+
+@media (min-width: 761px) {
+  html[data-iv-deployment-mode='disposable-synthetic-preview'] .sidebar {
+    top: var(--iv-preview-notice-height, 84px);
+  }
+}
+
+@media (max-width: 760px) {
+  .iv-preview-notice {
+    padding: 8px 12px;
+    font-size: 11px;
+  }
+
+  html[data-iv-deployment-mode='disposable-synthetic-preview'] .navigation-open .main-shell .topbar {
+    top: var(--iv-preview-notice-height, 112px);
+  }
+}
+
+@media print {
+  /* Document print styles hide all UI outside the document. Keep the deployment
+     warning on the paper too; downloadable PDFs are handled by their own renderer. */
+  html[data-iv-deployment-mode='disposable-synthetic-preview'] body #root > .iv-preview-notice,
+  html[data-iv-deployment-mode='disposable-synthetic-preview'] body #root > .iv-preview-notice * {
+    display: block !important;
+    visibility: visible !important;
+  }
+
+  html[data-iv-deployment-mode='disposable-synthetic-preview'] body #root > .iv-preview-notice {
+    position: static !important;
+    margin: 0 0 8mm !important;
+    padding: 3mm !important;
+    border: 1pt solid #000 !important;
+    background: #fff !important;
+    color: #000 !important;
+    font-size: 9pt !important;
+    break-inside: avoid;
+  }
+
+  /* Fixed print elements repeat on every page, so later pages cannot lose the
+     test label when the full notice remains on the first page. */
+  html[data-iv-deployment-mode='disposable-synthetic-preview']
+    body
+    #root
+    > .iv-preview-notice
+    > .iv-preview-print-watermark {
+    position: fixed !important;
+    top: 45% !important;
+    left: 0 !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    color: rgba(155, 28, 32, 0.2) !important;
+    font-size: 22pt !important;
+    font-weight: 800;
+    line-height: 1.2;
+    text-align: center;
+    transform: rotate(-30deg);
+    z-index: 1000;
+    pointer-events: none;
+  }
+}

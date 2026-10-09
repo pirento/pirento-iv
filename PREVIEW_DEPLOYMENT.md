@@ -1,28 +1,32 @@
 # Private testing website
 
-Run this application as one **Node.js 24+ service**, behind a hosting provider's **HTTPS** endpoint, with a **persistent disk**. The Express service serves the built frontend and API together. A provider-assigned HTTPS subdomain is sufficient; buying a domain is unnecessary.
+Run this application as one **Node.js 24.5+ service**, behind a hosting provider's **HTTPS** endpoint, with a **persistent disk**. The Express service serves the built frontend and API together. A provider-assigned HTTPS subdomain is sufficient; buying a domain is unnecessary.
 
 This document prepares a deployment; it does not mean a public website has been created. The Codex onboarding workspace does not provide user-facing localhost previews.
 
+For a disposable test site with invented records and disabled integrations, use [PREVIEW-START-HERE.md](PREVIEW-START-HERE.md) instead. Its separate artifacts never replace the permanent database.
+
 ## Hosting settings
 
-| Setting                  | Value                                                                            |
-| ------------------------ | -------------------------------------------------------------------------------- |
-| Install                  | `npm ci --include=dev`                                                           |
-| Build                    | `npm run build`                                                                  |
-| Start                    | `npm start`                                                                      |
-| Node.js                  | 24 or newer                                                                      |
-| `NODE_ENV`               | `production`                                                                     |
-| `HOST`                   | `0.0.0.0`                                                                        |
-| `PORT`                   | Provider-assigned port, or `3001`                                                |
-| `DATABASE_PATH`          | An absolute file path on the mounted persistent disk                             |
-| `PUBLIC_APP_URL`         | The exact HTTPS website origin                                                   |
-| `INITIAL_ADMIN_EMAIL`    | An email controlled by the initial owner, set in server settings                 |
-| `INITIAL_ADMIN_PASSWORD` | A unique password of at least 12 characters, entered securely in server settings |
-| Health check             | `GET /api/health`                                                                |
-| Instances / replicas     | One                                                                              |
+| Setting                  | Value                                                                                         |
+| ------------------------ | --------------------------------------------------------------------------------------------- |
+| Install                  | `npm ci --include=dev`                                                                        |
+| Build                    | `npm run build`                                                                               |
+| Start                    | `npm run start:hostinger` for hosted production; `npm start` for ordinary local startup       |
+| Node.js                  | 24.5 or newer                                                                                 |
+| `NODE_ENV`               | `production`                                                                                  |
+| `HOST`                   | `0.0.0.0`                                                                                     |
+| `PORT`                   | Provider-assigned port, or `3001`                                                             |
+| `DATABASE_PATH`          | An absolute private file path on the mounted persistent disk, outside the application release |
+| `PUBLIC_APP_URL`         | The exact HTTPS website origin                                                                |
+| `INITIAL_ADMIN_EMAIL`    | An email controlled by the initial owner, set in server settings                              |
+| `INITIAL_ADMIN_PASSWORD` | A unique password of at least 12 characters, entered securely in server settings              |
+| Health check             | `GET /api/health`                                                                             |
+| Instances / replicas     | One                                                                                           |
 
 Enable verified local database snapshots with `BACKUP_ENABLED=true`, a private persistent absolute `DATABASE_BACKUP_DIR`, `BACKUP_INTERVAL_MINUTES=1440` and `BACKUP_RETENTION_COUNT=7`. The admin **Database backups** page can also create snapshots and download the SQLite file plus its manifest. Keep both for recovery. These copies stay on the server; an offsite destination is not configured. See [DATABASE_OPERATIONS.md](DATABASE_OPERATIONS.md).
+
+When Hostinger asks for an entry file, choose `hostinger-entry.mjs`. Leave `IV_PREVIEW_MODE` absent for the permanent system. The hosted adapter validates production settings before dotenv loading or application imports and refuses an absent or empty expected database. Supply settings in the host's secure environment UI. For first provisioning only, create the private persistent parent directory and set `IV_ALLOW_NEW_DATABASE=true`; remove it after successful owner login and database verification. Do not use this flag to bypass a missing existing business database. Unknown or empty preview mode values fail startup. These guards cannot prove mount durability; verify that storage survives a hosted redeploy.
 
 The runtime uses `tsx` from production dependencies. The build still needs the development dependencies, so keep `--include=dev` for the install/build phase. Run commands from the project root. Do not deploy only `dist`: the service also needs `server/` and root `shared/`, including the common invoice PDF definition. The package script includes all required application roots and the frontend source needed for a host-side build.
 
@@ -62,7 +66,7 @@ This builds and creates two archives with SHA-256 checksums:
 - `release/venturecore-preview.tar.gz` contains application source, build and setup files for a Node service.
 - `release/venturecore-hostinger-source.tar.gz` contains source only, without `dist`, for Hostinger's Node.js application deployment. Hostinger installs dependencies and builds on the host. Use the Node.js deployment option, not a static-site upload.
 
-Both use an explicit list of application roots (`server`, `src`, `shared`, `scripts`) and setup/architecture/security documents. They exclude business data, credentials, backups, Git metadata, tests and installed dependencies. These are runtime deployment archives; run the test suite from the complete development checkout. Install dependencies after extracting on a generic Node host. The private company backup is transferred separately, not bundled. Before deploying on Hostinger, confirm the actual plan supports Node 24 and a persistent location for SQLite; account ownership alone does not establish those capabilities.
+Both use an explicit list of application roots (`server`, `src`, `shared`, `scripts`) and setup/architecture/security documents, including hosted/preview launchers. Packaging rejects symlinks and private files accidentally added to source roots. It excludes business data, credentials, backups, Git metadata, tests and installed dependencies. These are runtime deployment archives; run the test suite from the complete development checkout. Install dependencies after extracting on a generic Node host. The private company backup is transferred separately, not bundled. Before deploying on Hostinger, confirm the actual plan supports Node 24.5+ and a persistent location for SQLite; account ownership alone does not establish those capabilities.
 
 ## Verify the hosted website
 

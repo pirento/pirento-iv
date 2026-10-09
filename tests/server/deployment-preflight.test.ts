@@ -45,7 +45,7 @@ function fixture(t: TestContext) {
 
 test('a complete hosted manual-invoice deployment passes without optional provider keys and leaves storage empty', async (t) => {
   const f = fixture(t);
-  const report: Report = await checkDeployment({ ...f, nodeVersion: '24.0.0' });
+  const report: Report = await checkDeployment({ ...f, nodeVersion: '24.5.0' });
   assert.equal(report.ready, true);
   assert.deepEqual(
     readdirSync(f.storage),
@@ -66,6 +66,7 @@ test('old runtimes, nonproduction mode and invalid listening settings are deploy
   const f = fixture(t);
   for (const override of [
     { nodeVersion: '22.0.0' },
+    { nodeVersion: '24.4.0' },
     { environment: { ...f.environment, NODE_ENV: 'development' } },
     { environment: { ...f.environment, HOST: 'https://host.example.test:443' } },
     { environment: { ...f.environment, PORT: '65536' } },

@@ -1,6 +1,6 @@
 # Database storage, backup and recovery
 
-The workspace uses SQLite on Node.js 24 or newer. All organizations share one database; records and staff access remain organization scoped. Shri Sarraf keeps its separate legal, GST, bank, gateway and email identity in that database. A backup is a copy of the entire workspace, not an organization export.
+The workspace uses SQLite on Node.js 24.5 or newer. All organizations share one database; records and staff access remain organization scoped. Shri Sarraf keeps its separate legal, GST, bank, gateway and email identity in that database. A backup is a copy of the entire workspace, not an organization export.
 
 Use a persistent private disk for `DATABASE_PATH`. A container's temporary filesystem, a build directory and a public website directory are unsuitable. Database and backup paths must survive restarts and deployments, and must be readable only by the application account and authorized operators. Source packages and GitHub do not include the business database.
 

@@ -12,6 +12,7 @@ import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { isIP } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
+import { assertHostedNodeVersion } from './hosted-startup-config.mjs';
 
 const defaultRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const present = (value) => typeof value === 'string' && value.trim().length > 0;
@@ -55,8 +56,14 @@ export async function checkDeployment(options = {}) {
   const checks = [];
   const integrations = [];
   const add = (id, status, message) => checks.push({ id, status, message });
-  const nodeReady = /^\d+\./.test(nodeVersion) && Number(nodeVersion.split('.')[0]) >= 24;
-  add('node', nodeReady ? 'pass' : 'blocker', 'Node.js 24 or newer is required.');
+  let nodeReady = false;
+  try {
+    assertHostedNodeVersion(nodeVersion);
+    nodeReady = true;
+  } catch {
+    /* The startup flag --use-env-proxy requires at least Node 24.5. */
+  }
+  add('node', nodeReady ? 'pass' : 'blocker', 'Node.js 24.5 or newer is required.');
   add(
     'production',
     environment.NODE_ENV === 'production' ? 'pass' : 'blocker',
