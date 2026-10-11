@@ -1389,3 +1389,36 @@ tbody tr:hover {
 .public-page > .preview-notice {
   width: 100%;
 }
+.preview-notice [hidden],
+.preview-print-watermark {
+  display: none;
+}
+
+@media print {
+  /* Printed pages keep the test-preview warning; downloadable PDFs carry their own watermark. */
+  .preview-notice {
+    margin: 0 0 8mm;
+    padding: 3mm;
+    border: 1pt solid #000;
+    background: #fff;
+    color: #000;
+    font-size: 9pt;
+    break-inside: avoid;
+  }
+  /* Fixed print elements repeat on every page, so later pages cannot lose the label. */
+  .preview-notice > .preview-print-watermark {
+    display: block;
+    position: fixed;
+    top: 45%;
+    left: 0;
+    width: 100%;
+    color: rgba(155, 28, 32, 0.2);
+    font-size: 22pt;
+    font-weight: 800;
+    line-height: 1.2;
+    text-align: center;
+    transform: rotate(-30deg);
+    z-index: 1000;
+    pointer-events: none;
+  }
+}

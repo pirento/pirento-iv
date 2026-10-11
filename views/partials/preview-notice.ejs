@@ -1,6 +1,9 @@
 <% if (typeof syntheticPreview !== 'undefined' && syntheticPreview) { %>
-  <aside class="preview-notice" role="status">
+  <aside class="preview-notice" role="status" aria-label="Temporary synthetic preview" data-preview-notice>
+    <span class="preview-print-watermark" aria-hidden="true">TEST PREVIEW — NOT A VALID INVOICE</span>
     <strong>TEMPORARY SYNTHETIC PREVIEW</strong>
-    <span>Test data only. Data is disposable. External integrations are disabled.</span>
+    <span>Test data only. Do not enter real invoices, customer data or integration credentials. Data may be lost on restart or redeploy.</span>
+    <span>GST, payment, email and other external integrations are disabled.</span>
+    <span data-preview-link-status hidden>External links are disabled in this test preview.</span>
   </aside>
 <% } %>

@@ -6,7 +6,7 @@ The runtime database is now MongoDB. `.example.env` is loaded directly, so the o
 
 An existing original **schema-v5 SQLite** workspace can be imported with the command below. Earlier SQLite schema versions must first be upgraded using the original application and backed up. The importer refuses unknown versions instead of guessing how financial history should be transformed.
 
-For an existing MongoDB workspace, Phase 4 is a **coordinated source upgrade**, not a new SQLite import. Stop every v2.3 or older application/worker process, preserve the database and private configuration, then start all replacements on 2.4.0. The new 32-stripe transaction protocol must not run alongside older writers that only acquire the old global coordination row. See [Phase 4 upgrade notes](PHASE-4.md) and [Deployment](DEPLOYMENT.md).
+For an existing MongoDB workspace, Phase 4 is a **coordinated source upgrade**, not a new SQLite import. Stop every v2.3 or older application/worker process, preserve the database and private configuration, then start all replacements on 2.4.0. The new 32-stripe transaction protocol must not run alongside older writers that only acquire the old global coordination row. See [Phase 4 upgrade notes](CHANGELOG.md#v2.4.0) and [Deployment](DEPLOYMENT.md).
 
 | Original storage                                        | MongoDB destination                                                                        |
 | ------------------------------------------------------- | ------------------------------------------------------------------------------------------ |

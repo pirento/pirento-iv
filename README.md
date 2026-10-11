@@ -6,84 +6,11 @@ The frontend consists of real server-rendered EJS pages and ordinary browser Jav
 
 **Hindi quick start:** Node.js 24.5+ install karein, MongoDB replica set start karein, `.example.env` mein apne database aur initial admin details bharein, phir `npm ci` aur `npm start` chalayein. `.env` banana ya file rename karna zaroori nahi hai.
 
-## Current release — Phase 7, version 2.5.0
+## Current release — 2.5.0
 
-This is the complete updated application, including the earlier phases. Phase 7 completes the reviewed reliability work and adds maintained browser verification to the source package.
+Decimal half-up pricing for new financial work, reliable saves when browser storage is blocked, server-paged contacts and catalog, one production startup preflight and maintained browser verification. Release notes, API contract changes and upgrade instructions for every version are in the [Changelog](docs/CHANGELOG.md).
 
-**Hindi:** Naye invoice ki decimal rounding theek hai; purane saved invoice ka agreed amount apne aap nahi badlega. Browser notification storage unavailable ho tab bhi contact/product save aur logout complete hote hain. Contacts aur catalog ab 50 records per page dikhate hain; editor 20-record search pages use karta hai aur CSV mein saare matching records milte hain. `.example.env` ko directly fill karke setup ab bhi supported hai.
-
-| Phase 7 area              | Included behavior                                                                                                                                                                                                              |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Exact decimal pricing     | Decimal half-up calculation for new financial work, with a saved rounding-policy marker. Both `0.5 × 20.15` and `1.25 × 8.06` produce ₹10.08. Historical amounts are preserved until an editable draft is financially changed. |
-| Reliable save/navigation  | Optional toast and logout storage errors cannot turn a successful server action into a reported failure. Critical draft/request recovery keeps its existing protection.                                                        |
-| Production startup        | Normal production startup and the Hostinger entry use the same environment selection and read-only database preflight before initialization.                                                                                   |
-| Release configuration     | Packaging and readiness checks reject duplicate template keys, malformed assignments and populated private settings, including values hidden behind a later blank duplicate.                                                   |
-| Contacts and catalog      | Server search, filters, 50-row pages, complete filtered CSV, 20-row editor lookups, and selected-record hydration for archived records and draft returns. Tenant and record IDs use exact comparisons.                         |
-| Reproducible verification | Included Playwright tests, strict native-test prerequisites, an isolated local replica-set runner and a GitHub Actions workflow.                                                                                               |
-
-See [Phase 7 behavior and upgrade instructions](docs/PHASE-7.md) and [current verification results](docs/VERIFICATION.md). The original Phase 5–6 checkpoint documents are retained as historical records; their old environment limitations do not describe this release.
-
-**Upgrade:** back up the existing database, preserve private configuration, stop older application/worker processes, replace the complete source and browser assets, then restart. Startup adds the two directory indexes. There is no historical-invoice repricing or destructive data migration. Production startup now deliberately refuses an unintended empty database; use `IV_ALLOW_NEW_DATABASE=true` only for an intentional first deployment and turn it off afterward.
-
-## Included Phase 4 release — 2.4.0
-
-This complete ZIP includes every earlier phase and adds account-session controls, administrator security history, shared authentication request limits, safe business transaction scopes and the remaining payment/ledger/reminder fixes.
-
-**Hindi:** **My sessions** mein apne active logins dekh kar ek session ya baaki sab sessions sign out kar sakte hain. Admin **Security activity** mein account history dekh sakta hai aur **Team access** se kisi member ke sessions end kar sakta hai. Purani receipt rounding/correction compatibility fix hai; automatic reminders ab relevant due dates ko indexes se select karte hain.
-
-| Phase 4 area                  | Result                                                                                                                                                                                                                                     |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Shared account protection     | MongoDB request counters preserve login/signup/reset limits across application instances and restarts; unavailable protection returns a controlled 503.                                                                                    |
-| Account sessions              | Own sessions, timestamps, pagination, current-session indication, individual revocation and sign-out-others with confirmation.                                                                                                             |
-| Administrator activity        | Filtered, paginated account history, safe before/after access details and selected-account session revocation.                                                                                                                             |
-| Business writes               | Fixed organization stripes allow different stripes to overlap; the exclusive fallback still protects global settings, account administration and recovery.                                                                                 |
-| Pending correctness/read work | Consistent legacy receipt/payment rounding, an exact overpayment guard, corrected overdue boundaries, parent-invoice ownership for legacy receipt voids, one receipt-history read per statement and indexed automatic-reminder candidates. |
-
-**Upgrade requirement:** stop all older application and worker processes before starting 2.4.0. Old writers cannot coordinate with the new stripe protocol. Preserve the existing database and private configuration; startup creates the additional schema. `.example.env` adds optional **`TRUST_PROXY=`**, left blank until the actual hosting proxy peers are known. No new provider credentials are required.
-
-See [Phase 4 workflows, API, upgrade and pending-work status](docs/PHASE-4.md), [Deployment](docs/DEPLOYMENT.md) and [final verification results](docs/VERIFICATION.md). The transaction/query improvements are verified with native MongoDB and controlled fixtures; production capacity and live provider/hosting setup still depend on the target environment.
-
-## Included Phase 3 changes — 2.3.0
-
-This is the complete project, including all Phase 1 and Phase 2 changes. The new **Receivables** section adds customer ledgers, payment reminders and recurring invoice schedules using the same EJS, JavaScript, Express MVC and native MongoDB architecture.
-
-**Hindi:** Customer ledger mein har contact ka received, outstanding aur overdue balance dekh sakte hain. Statement par date filter, complete CSV aur Print / Save PDF hai. Payment reminder pehle preview hota hai, phir queue hota hai; automatic reminders har business ke liye alag enable karne honge. Recurring schedule se har due date ka **draft invoice** banta hai, jise review karke issue/send karna hai.
-
-| Phase 3 area         | Result                                                                                                                                                                            |
-| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Customer ledger      | Scoped customer balances, archived contacts, dated invoice/receipt/void entries, opening/closing balances where history permits, complete CSV and printable statements.           |
-| Payment reminders    | Invoice/installment eligibility, manual preview and queue, daily duplicate protection, delivery history and administrator-managed reminder timing per business.                   |
-| Recurring invoices   | Weekly/monthly/quarterly/yearly schedules, month-end anchors, frozen commercial inputs, current identity checks, reviewable drafts, pause/resume and occurrence/activity history. |
-| Recovery and workers | A bounded shared automation runner, transactional duplicate prevention, graceful draining, reminder opt-out and recurring pause after database restore.                           |
-
-Ledger statements use **current invoice status** and saved transaction dates. Where older records lack dated receipts, the UI explicitly marks incomplete history instead of calculating an unsupported historical balance. Automatic reminders are off by default. Recurring schedules start paused unless activation is explicitly selected; generated drafts are never automatically issued, charged or emailed.
-
-Open [Phase 3 workflow, API and upgrade notes](docs/PHASE-3.md) for exact behavior, and [verification results](docs/VERIFICATION.md) for the completed checks. New collections/indexes are created on application startup; existing invoice, receipt and provider data is retained. Phase 3 introduced no new environment variables; Phase 4 adds optional `TRUST_PROXY`. Keep private `.example.env` values when replacing source, and upgrade the server and browser assets together.
-
-## Included Phase 2 changes — 2.2.0
-
-This full release includes the Phase 1 correctness fixes and implements the next six reviewed areas: page-specific data loading, fast backup inventory, renewable email worker leases, readiness and structured diagnostics, an accessible mobile menu, and explicit local draft controls.
-
-**Hindi:** Invoice lists ab 50 records per page dikhati hain. Search aur filters poore matching data par chalte hain; CSV mein sabhi matching records aate hain. Mobile menu keyboard aur touch dono se close hota hai. **Start fresh** se naya local draft shuru kar sakte hain; pehle bheji hui save request ka result unknown ho to **Retry save** se use resolve karna zaroori hai.
-
-| Phase 2 area      | Result                                                                                                                                                                    |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Workspace loading | Each normal page loads its own dependencies. Lists use projected records; previews and editors fetch the selected full document. Overview totals still cover all records. |
-| Backup navigation | Normal pages do not read backup inventory. The Backups page reads small metadata; a download still verifies the complete snapshot and checksum.                           |
-| Email workers     | Each claim has an expiring token and heartbeat. A stale worker cannot update a newer claim. Shutdown stops new claims and drains the active delivery.                     |
-| Operations        | `/api/ready` reports database/recovery readiness, safe JSON logs carry server-generated request IDs, and accepted work gets a bounded shutdown grace period.              |
-| Mobile menu       | Escape, outside click, close button, focus management and background scroll protection are implemented.                                                                   |
-| Local drafts      | Confirmed Start fresh creates a new draft. Discard unsaved changes reloads the saved document. Unknown creation results remain protected.                                 |
-
-See [Phase 2 changes and upgrade notes](docs/PHASE-2.md) and [verification results](docs/VERIFICATION.md). Upgrade the server and browser assets together, stop all older email workers before starting this version, and refresh existing tabs. New query/lease indexes are created at startup; `.example.env` and the existing business calculation rules are retained.
-
-## Included Phase 1 fixes — 2.1.0
-
-This release fixes the reviewed customer handoff, stale document updates, duplicate creation after a lost response, receipt amount/date validation, gateway business dates, and cancellation of unattempted invoice emails.
-
-**Hindi:** Contact ab sirf usi draft mein select hoga jahan se add kiya tha. Purani copy save karne par conflict dikhega aur aapke unsaved changes screen par rahenge. Network error ke baad **Retry save** wahi request check karega. Future manual receipts aur ek paise se chhoti amounts reject hongi. Gateway receipts ki date India timezone mein hogi.
-
-Existing unversioned documents are read as revision zero until their first update. New documents expose a `version`, and full-document and installment-plan API updates must send that version. New browser drafts send a persisted `requestId`; a retry returns the same saved document. See [Phase 1 changes and upgrade notes](docs/PHASE-1.md) for the exact API contract, recovery behavior and verification scope.
+**Upgrade:** back up the existing database, preserve private configuration, stop older application/worker processes, replace the complete source and browser assets, then restart. Production startup refuses an unintended empty database; use `IV_ALLOW_NEW_DATABASE=true` only for an intentional first deployment and turn it off afterward.
 
 ## Start locally
 
@@ -181,7 +108,7 @@ Each organization owns its contacts, catalog, products, formats and documents. H
 | `scripts/`               | Source checks, database backup/recovery and SQLite import.                |
 | `tests/`                 | Render/business checks and isolated MongoDB integration tests.            |
 
-The requested “MVS” structure is implemented as conventional **Model–View–Controller (MVC)** with a separate service layer. See [Architecture](docs/ARCHITECTURE.md) for the boundaries and database design.
+The project follows conventional **Model–View–Controller (MVC)** with a separate service layer. See [Architecture](docs/ARCHITECTURE.md) for the boundaries and database design.
 
 ## Commands
 
@@ -214,11 +141,7 @@ The requested “MVS” structure is implemented as conventional **Model–View�
 - [MongoDB migration and recovery](docs/MIGRATION.md)
 - [Deployment and provider configuration](docs/DEPLOYMENT.md)
 - [Verification results and how to run tests](docs/VERIFICATION.md)
-- [Phase 7 decimal pricing, directory queries, startup and release verification](docs/PHASE-7.md)
-- [Phase 4 account security, transaction scopes and pending fixes](docs/PHASE-4.md)
-- [Phase 3 customer ledger, reminders and recurring invoice schedules](docs/PHASE-3.md)
-- [Phase 2 performance, worker, operations and usability changes](docs/PHASE-2.md)
-- [Phase 1 fixes, API changes and upgrade notes](docs/PHASE-1.md)
+- [Changelog: release notes, API changes and upgrade steps](docs/CHANGELOG.md)
 - [Optional disposable synthetic preview](docs/SYNTHETIC-PREVIEW.md)
 
 The supplied source archive contained no live business database. Import tooling is included, but no unprovided customer database or external provider account has been migrated or activated. Live payment, email and GST checks require your credentials and the target hosting environment.

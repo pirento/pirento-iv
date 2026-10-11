@@ -3,7 +3,7 @@
   "version": "2.5.0",
   "private": true,
   "type": "module",
-  "description": "Venturecore workspace \u2014 Express MVC, EJS, JavaScript and MongoDB",
+  "description": "Venturecore workspace — Express MVC, EJS, JavaScript and MongoDB",
   "engines": {
     "node": ">=24.5.0 <27"
   },
@@ -25,10 +25,7 @@
     "check:deployment": "node --use-env-proxy scripts/check-deployment.js",
     "package:preview": "npm run check && node scripts/package-preview.js",
     "package:synthetic-preview": "npm run check && node scripts/package-preview.js --synthetic",
-    "audit:readiness": "node scripts/phase5-audit.js",
-    "test:phase5": "node --test tests/phase5-audit.test.js",
-    "test:phase6": "node --test tests/phase6-*.test.js",
-    "audit:phase56": "node scripts/phase56-check.js",
+    "audit:readiness": "node scripts/readiness-audit.js",
     "test:integration:optional": "node scripts/run-integration-tests.js --optional",
     "test:browser": "playwright test",
     "test:browser:install": "playwright install chromium",

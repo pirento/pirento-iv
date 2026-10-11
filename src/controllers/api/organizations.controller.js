@@ -1,9 +1,8 @@
-import { isIndependentBusiness } from '../../../shared/business-identity.js';
-import { organizationGateway } from '../../../shared/business-identity.js';
-import { seedDefaultFormat } from '../../models/workspace-seed.js';
-import { billingProfileFor } from '../../../shared/billing-presets.js';
 import { randomUUID } from 'node:crypto';
+import { isIndependentBusiness, organizationGateway } from '../../../shared/business-identity.js';
+import { billingProfileFor } from '../../../shared/billing-presets.js';
 import { transaction } from '../../config/database.js';
+import { seedDefaultFormat } from '../../models/workspace-seed.js';
 import { organizationSchema } from '../../services/validation/validation.js';
 export function createController(context) {
   const { db, auth, online, now, getOrganization, assertPrefixesAvailable } = context;

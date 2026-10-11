@@ -54,7 +54,7 @@ The trusted proxy must remove/overwrite incoming `X-Forwarded-For`, `X-Forwarded
 
 Account request counters now live in MongoDB and are shared across processes using the same database. Login allows 20 requests per 15 minutes, signup 10/hour, forgot-password 8/hour and reset-password 15/hour per normalized client address. Expired windows are reset using the database clock, independently of TTL cleanup. An unavailable counter returns a controlled 503 before credential checks; a reached allowance returns 429 and `Retry-After`. Successful account mutations retain their existing transaction and access checks.
 
-Use **My sessions** for own active sign-ins, and **Security activity** / **Team access** for administrator history and selected-account session revocation. Repeated failed attempts are sampled in history, so event counts are not a count of every attempted login. See [Phase 4](PHASE-4.md) for the exact contracts and limits.
+Use **My sessions** for own active sign-ins, and **Security activity** / **Team access** for administrator history and selected-account session revocation. Repeated failed attempts are sampled in history, so event counts are not a count of every attempted login. See [Phase 4](CHANGELOG.md#v2.4.0) for the exact contracts and limits.
 
 ## Razorpay and Cashfree
 

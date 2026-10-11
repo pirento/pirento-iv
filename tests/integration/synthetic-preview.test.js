@@ -121,6 +121,9 @@ test(
     assert.match(pageHtml, /TEMPORARY SYNTHETIC PREVIEW/);
     assert.match(pageHtml, /name="iv-deployment-mode" content="disposable-synthetic-preview"/);
     assert.match(pageHtml, /class="preview-notice"/);
+    assert.match(pageHtml, /TEST PREVIEW — NOT A VALID INVOICE/);
+    assert.match(pageHtml, /Do not enter real invoices, customer data or integration credentials/);
+    assert.match(pageHtml, /data-preview-link-status hidden/);
     t.diagnostic(
       'Preview-only administrator, synthetic seller identities and actual EJS workspace remain usable',
     );

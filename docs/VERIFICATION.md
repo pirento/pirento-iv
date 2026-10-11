@@ -12,7 +12,7 @@ Verified on **11 October 2026** with Node **24.19.0**, a fresh local MongoDB **7
 | Maintained Chromium browser workflows | **9 passed**, 0 failed, 0 skipped, no retries and no uncaught page errors.                  |
 | Readiness audit                       | 9 runtime dependencies checked, **no findings**.                                            |
 
-Node counts include parent tests and subtests. The nine Playwright tests are the maintained Phase 7 suite included in this archive; earlier historical browser counts below are not presented as newly rerun checks. See [the machine-readable release record](PHASE-7-VERIFICATION.json) and [Phase 7 behavior/upgrade notes](PHASE-7.md).
+Node counts include parent tests and subtests. The nine Playwright tests are the maintained Phase 7 suite included in this archive; earlier historical browser counts below are not presented as newly rerun checks. See [Phase 7 behavior/upgrade notes](CHANGELOG.md#v2.5.0).
 
 ### New and retained coverage
 
@@ -54,7 +54,7 @@ The new sessions, activity, team and confirmation layouts were checked at **390 
 
 The final ZIP is checked for valid archive integrity, exact source allowlist/file-byte agreement, consistent **2.4.0** package/lockfile versions and blank distributed credential inputs. All paths from the preserved Phase 3 source ZIP remain present, and new Phase 4 code, EJS views, assets, maintained tests and guides are included. Runtime databases, backups, logs, dependencies, `.env`, TypeScript and JSX are excluded. The maintained unit/native tests are included; local browser harnesses and downloaded test binaries remain verification tools outside the application package.
 
-These results establish the covered behavior with native database transactions and controlled transports. They do not measure production throughput, reconstruct missing historical transactions or validate real provider accounts. No live email/payment, hosting deployment or production database cutover was performed. The [Phase 4 guide](PHASE-4.md) records the remaining environment setup and the mandatory stopped-process upgrade: older writers must be stopped before the new coordination protocol starts.
+These results establish the covered behavior with native database transactions and controlled transports. They do not measure production throughput, reconstruct missing historical transactions or validate real provider accounts. No live email/payment, hosting deployment or production database cutover was performed. The [Phase 4 guide](CHANGELOG.md#v2.4.0) records the remaining environment setup and the mandatory stopped-process upgrade: older writers must be stopped before the new coordination protocol starts.
 
 ## Earlier Phase 3 release 2.3.0 — final results
 
@@ -79,7 +79,7 @@ New and existing mobile layouts were checked at **390 pixels**. The complete sta
 
 The final ZIP is checked for a valid archive, exact agreement with the source allowlist and file bytes, consistent **2.3.0** package/lockfile versions, blank credential inputs and inclusion of the Phase 3 code, views, tests and guides. Runtime databases, backups, logs, dependencies, `.env`, TypeScript and JSX are excluded. The maintained unit/native tests are included; local browser harnesses and downloaded test binaries remain verification tools outside the application package.
 
-No live email, payment, production database migration or hosting deployment was performed. These checks establish the covered behavior with native database transactions and controlled transport; they do not establish production throughput or reconstruct missing historical data. See [Phase 3](PHASE-3.md) for the exact workflow and its limits, and the commands below to run the included checks.
+No live email, payment, production database migration or hosting deployment was performed. These checks establish the covered behavior with native database transactions and controlled transport; they do not establish production throughput or reconstruct missing historical data. See [Phase 3](CHANGELOG.md#v2.3.0) for the exact workflow and its limits, and the commands below to run the included checks.
 
 ## Earlier Phase 2 release 2.2.0 — final results
 
@@ -107,7 +107,7 @@ A separate native experiment stopped the actual disposable MongoDB server. Readi
 
 The final archive is checked for source-byte parity, valid ZIP contents, matching 2.2.0 package/lockfile versions, blank distributed credentials and exclusion of runtime data, dependencies, `.env`, TypeScript and JSX. Browser automation harnesses and downloaded test binaries are scratch verification tools, not application dependencies; the maintained unit/native regression tests are included in the source archive.
 
-See [Phase 2](PHASE-2.md) for the user-facing changes, API details, coordinated worker upgrade and remaining scaling limits.
+See [Phase 2](CHANGELOG.md#v2.2.0) for the user-facing changes, API details, coordinated worker upgrade and remaining scaling limits.
 
 ## Earlier Phase 1 release 2.1.0 — final results
 
@@ -126,7 +126,7 @@ Phase 1 browser verification passed **11 grouped checks** against the real authe
 
 The dedicated payment integration suite also passed with the server process in `America/Los_Angeles`, verifying that the Indian business-date rules do not depend on the host timezone. An independent transaction-retry check injected a transient MongoDB transaction error after a successful document compare-and-save; the retried operation incremented the revision only once.
 
-See [Phase 1](PHASE-1.md) for the precise API compatibility changes, browser recovery behavior and email delivery boundary.
+See [Phase 1](CHANGELOG.md#v2.1.0) for the precise API compatibility changes, browser recovery behavior and email delivery boundary.
 
 ## Earlier migration verification
 

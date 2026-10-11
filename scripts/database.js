@@ -92,7 +92,7 @@ export function validateDatabaseName(value) {
 }
 
 export function assertPrivateLocation(target, cwd = process.cwd()) {
-  for (const name of ['dist', 'public', 'src', 'server', 'shared', 'scripts']) {
+  for (const name of ['public', 'shared', 'src', 'views', 'scripts']) {
     const child = relative(resolve(cwd, name), resolve(target));
     if (!child || (child !== '..' && !child.startsWith(`..${sep}`) && !isAbsolute(child)))
       throw new DatabaseCommandError('Database files must remain outside application/public assets.');

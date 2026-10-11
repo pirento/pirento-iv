@@ -1,8 +1,17 @@
 import { api, sendJson, showToast, setBusy } from './api.js';
 import { getPageData } from './page.js';
 import { clearWorkspaceStorage } from './optional-storage.js';
+import { installPreviewNavigationGuard } from './preview-navigation.js';
 
 const data = getPageData();
+
+// The synthetic preview blocks links that leave this origin; server guards still disable integrations.
+const previewNotice = document.querySelector('[data-preview-notice]');
+if (previewNotice) {
+  installPreviewNavigationGuard(() => {
+    previewNotice.querySelector('[data-preview-link-status]').hidden = false;
+  });
+}
 try {
   const savedToast = sessionStorage.getItem('vc:toast');
   if (savedToast) {

@@ -1,14 +1,13 @@
-import { paymentSchema } from '../../services/validation/validation.js';
-import { installmentPlanSchema } from '../../services/validation/validation.js';
-import { blankShipping } from '../../../shared/types.js';
-import { DOCUMENT_LABELS } from '../../../shared/types.js';
-import { calculateTotals } from '../../../shared/types.js';
-import { getDocumentFormat } from '../../../shared/types.js';
-import { isInvoiceRecipient } from '../../services/validation/contacts.js';
-import { transactionForRecord } from '../../services/transaction-ownership.js';
-import { documentSchema } from '../../services/validation/validation.js';
 import { z } from 'zod';
 import { HttpError } from '../../middleware/errors.js';
+import { blankShipping, calculateTotals, DOCUMENT_LABELS, getDocumentFormat } from '../../../shared/types.js';
+import { isInvoiceRecipient } from '../../services/validation/contacts.js';
+import {
+  documentSchema,
+  installmentPlanSchema,
+  paymentSchema,
+} from '../../services/validation/validation.js';
+import { transactionForRecord } from '../../services/transaction-ownership.js';
 import { assertDocumentVersion, createDocumentWriter } from '../../services/documents/document-writes.js';
 export function createController(context) {
   const {

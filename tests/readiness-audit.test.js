@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { auditProject } from '../scripts/phase5-audit.js';
+import { auditProject } from '../scripts/readiness-audit.js';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-test('phase 5 audit provides actionable structured findings', () => {
+test('readiness audit provides actionable structured findings', () => {
   const result = auditProject();
   assert.equal(result.project, 'venturecore-workspace-mvc');
   assert.ok(Array.isArray(result.findings));

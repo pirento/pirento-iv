@@ -76,10 +76,7 @@ async function initializeApplication(options, environment, db) {
   const portal = createGstPortal(fetcher);
   const now = options.now ?? (() => new Date());
   const backupConfig = parseDatabaseBackupConfig(environment, undefined);
-  for (const root of [
-    options.distPath ?? resolve('dist'),
-    ...['public', 'src', 'server', 'shared', 'scripts'].map((name) => resolve(name)),
-  ]) {
+  for (const root of ['public', 'shared', 'src', 'views', 'scripts'].map((name) => resolve(name))) {
     const child = relative(resolve(root), backupConfig.directory);
     if (!child || (child !== '..' && !child.startsWith(`..${sep}`) && !isAbsolute(child)))
       throw new Error('Database backups require a private directory outside application and public assets.');
