@@ -93,6 +93,12 @@ test(
   async (t) => {
     const f = await pageFixture(t);
     const { backend, original } = f;
+    for (const path of ['/favicon.svg', '/favicon.ico']) {
+      const icon = await fetch(f.base + path);
+      assert.equal(icon.status, 200, path);
+      assert.match(icon.headers.get('content-type'), /^image\/svg\+xml/);
+      assert.match(await icon.text(), /^<svg /);
+    }
     const products = [];
     for (const code of ['PAGE-A', 'PAGE-B']) {
       products.push(
