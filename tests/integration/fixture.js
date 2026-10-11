@@ -42,10 +42,14 @@ export async function createFixture(t, options = {}) {
       };
       for (const { server } of instances)
         await attempt(async () => {
-          if (server.listening)
-            await new Promise((resolve, reject) =>
-              server.close((error) => (error ? reject(error) : resolve())),
-            );
+          if (!server.listening) return;
+          const closed = new Promise((resolve, reject) =>
+            server.close((error) => (error ? reject(error) : resolve())),
+          );
+          // The test is over: browser preconnects that never sent a request are not
+          // "idle" to Node and would otherwise hold close() open until headersTimeout.
+          server.closeAllConnections();
+          await closed;
         });
       // Stop workers and their connections before removing the allocated namespace.
       for (const { backend } of instances) await attempt(() => backend.close());
