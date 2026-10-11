@@ -129,9 +129,6 @@ hr {
 .text-right {
   text-align: right;
 }
-.text-center {
-  text-align: center;
-}
 .eyebrow {
   font-size: 10px;
   letter-spacing: 1.6px;
@@ -592,11 +589,6 @@ input[type='color'] {
   background: #f0f5f5;
   border-color: #dfe8e5;
 }
-.alert-warning {
-  color: #846525;
-  background: #fff8e6;
-  border-color: #efe1bd;
-}
 .badge {
   display: inline-flex;
   gap: 5px;
@@ -635,7 +627,6 @@ input[type='color'] {
   width: 100%;
   overflow: auto;
 }
-.data-table,
 table {
   border-collapse: collapse;
   width: 100%;
