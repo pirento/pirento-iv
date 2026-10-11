@@ -20,7 +20,8 @@ async function loadPdfRuntime() {
   if (!pdfRuntime)
     pdfRuntime = (async () => {
       if (!window.pdfMake) await loadScript('/vendor/pdfmake.min.js');
-      if (!window.pdfMake.vfs) await loadScript('/vendor/vfs_fonts.js');
+      // vfs_fonts.js registers the bundled Roboto fonts through pdfMake.addVirtualFileSystem.
+      await loadScript('/vendor/vfs_fonts.js');
       return window.pdfMake;
     })().catch((error) => {
       pdfRuntime = undefined;
@@ -115,18 +116,7 @@ export async function downloadDocumentPdf(doc) {
       opacity: 0.18,
       bold: true,
     };
-  const blob = await new Promise((resolve, reject) => {
-    try {
-      const stream = pdfMake.createPdf(definition, undefined, undefined, pdfMake.vfs).getStream();
-      const chunks = [];
-      stream.on('data', (chunk) => chunks.push(new Uint8Array(chunk)));
-      stream.on('error', reject);
-      stream.on('end', () => resolve(new Blob(chunks, { type: 'application/pdf' })));
-      stream.end();
-    } catch (error) {
-      reject(error);
-    }
-  });
+  const blob = await pdfMake.createPdf(definition).getBlob();
   const downloadUrl = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = downloadUrl;
