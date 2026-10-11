@@ -4,7 +4,7 @@ An invoice and business workspace using **EJS, JavaScript, Express MVC and Mongo
 
 The frontend consists of real server-rendered EJS pages and ordinary browser JavaScript. There is no React, TypeScript or Vite build. The existing invoice calculations, financial locks, organization access rules, provider adapters and saved-document behavior have been carried into this structure.
 
-**Hindi quick start:** Node.js 24.5+ install karein, MongoDB replica set start karein, `.example.env` mein apne database aur initial admin details bharein, phir `npm ci` aur `npm start` chalayein. `.env` banana ya file rename karna zaroori nahi hai.
+**Hindi quick start:** Node.js 24.5+ install karein, MongoDB replica set start karein, `.example.env` ko copy karke `.env` banayein aur usmein apne database aur initial admin details bharein, phir `npm ci` aur `npm start` chalayein. `.env` git mein commit nahi hoti, isliye passwords aur API keys wahin rakhein.
 
 ## Current release — 2.5.0
 
@@ -28,7 +28,11 @@ npm ci
 docker compose up -d --wait
 ```
 
-Edit **`.example.env` directly** and fill these values:
+Copy the template to a private file, then fill these values in **`.env`**:
+
+```bash
+cp .example.env .env
+```
 
 | Setting                  | What to enter                                                                                     |
 | ------------------------ | ------------------------------------------------------------------------------------------------- |
@@ -48,7 +52,7 @@ Open **http://localhost:3001** and sign in with the administrator details. For d
 
 After the first successful owner login, remove both `INITIAL_ADMIN_EMAIL` and `INITIAL_ADMIN_PASSWORD` from the local configuration or hosting settings. Changing these startup values does not reset an existing administrator's password. Staff use Signup, then an administrator approves them and assigns their organizations in **Team access**.
 
-The application loads `.example.env` directly. Hosting environment variables override the file. Distributed credential fields are blank; fill them privately. No `.env` file or actual merchant credentials are supplied.
+When `.env` exists the application reads it instead of `.example.env`; hosting environment variables override either file. `.env` is ignored by git and excluded from release packages, so passwords and provider keys stay out of source control. Filling `.example.env` directly still works for existing setups, but that file is tracked by git and the packaging check refuses to ship it with values, so prefer `.env` or hosting environment variables. No `.env` file or merchant credentials are supplied.
 
 ## What is included
 
