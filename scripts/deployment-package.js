@@ -36,7 +36,7 @@ export const deploymentRoots = [
   'tests',
 ];
 
-export const optionalDeploymentRoots = ['.github', 'playwright.config.js'];
+export const optionalDeploymentRoots = ['.github', 'eslint.config.js', 'playwright.config.js'];
 
 /** A directly loaded config file may contain secrets; refuse to package a filled copy. */
 export function assertBlankExample(contents) {

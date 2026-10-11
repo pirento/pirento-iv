@@ -36,7 +36,7 @@ test('source packaging accepts the shipped template and rejects filled credentia
       /private or non-template/,
     );
   assert.throws(
-    () => assertBlankExample(`${template}\nMONGODB_URI=mongodb+srv:\/\/private.example.test\n`),
+    () => assertBlankExample(`${template}\nMONGODB_URI=mongodb+srv://private.example.test\n`),
     /private or non-template/,
   );
 });

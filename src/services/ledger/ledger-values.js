@@ -40,11 +40,13 @@ export function ledgerTimestampDate(value) {
 }
 
 export function ledgerIdentifier(value) {
+  // eslint-disable-next-line no-control-regex -- rejects control characters on purpose
   if (typeof value !== 'string' || !value.trim() || value.length > 100 || /[\u0000-\u001f\u007f]/.test(value))
     throw new HttpError(400, 'Choose a valid organization and customer.');
   return value;
 }
 export const linkedCustomerId = (value) =>
+  // eslint-disable-next-line no-control-regex -- rejects control characters on purpose
   typeof value === 'string' && value.trim() && value.length <= 100 && !/[\u0000-\u001f\u007f]/.test(value)
     ? value
     : null;

@@ -611,9 +611,7 @@ export function createModels(context) {
   };
   function providerModels(prefix, scoped) {
     const links = `${prefix}_payment_links`,
-      payments = `${prefix}_verified_payments`,
-      failures = `${prefix}_failed_attempts`,
-      events = `${prefix}_webhook_events`;
+      payments = `${prefix}_verified_payments`;
     const scope = (organization_id, rest) => (scoped ? { organization_id, ...rest } : rest);
     return {
       listLinks: (document_id, organization_id) =>

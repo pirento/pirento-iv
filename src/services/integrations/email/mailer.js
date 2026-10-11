@@ -69,6 +69,7 @@ const escaped = (value) =>
       })[char],
   );
 const textLines = (value) => escaped(value).replace(/\r?\n/g, '<br>');
+// eslint-disable-next-line no-control-regex -- rejects control characters on purpose
 const heading = (value) => value.replace(/[\r\n\x00-\x1f\x7f]/g, ' ').slice(0, 200);
 export class EmailQueueError extends Error {
   status;

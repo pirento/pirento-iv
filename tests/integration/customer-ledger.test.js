@@ -200,7 +200,7 @@ test(
     );
     assert.match(exported.response.headers.get('content-type'), /text\/csv/);
     assert.match(exported.data, /receipt_void/);
-    assert.match(exported.data, /'\=HYPERLINK/);
+    assert.match(exported.data, /'=HYPERLINK/);
     assert.match(exported.data, /current invoice status|current invoice|Current invoice/);
     assert.match(exported.data, /excluded_invoice/);
 

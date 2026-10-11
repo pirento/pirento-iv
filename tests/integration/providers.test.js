@@ -326,7 +326,7 @@ test(
       'sent',
     );
     check('Mongo outbox sends frozen invoice PDF through mocked email provider');
-    const sm = await call(
+    await call(
       '/documents/' + cfInv.id + '/email',
       'POST',
       { requestId: randomUUID(), includePaymentLink: false },
