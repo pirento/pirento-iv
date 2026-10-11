@@ -1,0 +1,254 @@
+<%
+const organization = data.organization;
+const settings = data.integrationStatus;
+const payment = settings?.payment || {};
+const email = settings?.email || {};
+const gst = settings?.gst;
+const cashfree = payment.provider === 'cashfree';
+const manual = payment.provider === 'none';
+const provider = cashfree ? 'Cashfree' : manual ? 'Manual payments' : 'Razorpay';
+const independent = helpers.isIndependentBusiness(organization);
+const prefix = settings?.environmentPrefix || helpers.integrationEnvironmentPrefix(organization);
+const webhook = settings?.webhookPath || `/api/webhooks/${cashfree ? 'cashfree' : 'razorpay'}/${encodeURIComponent(organization.id)}`;
+const support = helpers.organizationSupportEmail(organization);
+%>
+<link rel="stylesheet" href="/css/management.css" />
+<div
+  class="mg-page"
+  id="integrations-page"
+  data-prefix="<%= prefix %>"
+  data-independent="<%= independent %>"
+>
+  <section class="mg-intro">
+    <div>
+      <span class="mg-eyebrow"><%= organization.name %> · CONNECTED WORKFLOWS</span>
+      <h2>Payments, email and GST for <%= organization.name %></h2>
+      <p>
+        Review this business’s payment provider and sender. Change the gateway, support address, bank details
+        and QR in organization settings. GST lookup fills contact details from the shared lookup service.
+      </p>
+      <div class="mg-identity-grid">
+        <div><small>Legal business</small><strong><%= organization.legalName %></strong></div>
+        <div><small>Support</small><strong><%= support || 'Not set' %></strong></div>
+        <div><small>Business type</small><strong><%= independent ? 'Independent business' : 'Venturecore division' %></strong></div>
+      </div>
+    </div>
+    <button class="button secondary" type="button" data-refresh>Refresh status</button>
+  </section>
+  <div data-error class="mg-message error" role="alert" tabindex="-1" hidden></div>
+  <p data-loading role="status" <%= settings ? 'hidden' : '' %>>
+    Checking <%= organization.name %> integration configuration…
+  </p>
+  <div data-status-loaded <%= settings ? '' : 'hidden' %>>
+    <div class="mg-grid mg-integration-cards">
+      <section class="mg-card">
+        <header class="mg-card-heading">
+          <div>
+            <h3 data-provider-name><%= provider %></h3>
+            <small data-provider-subtitle><%= manual ? 'Bank, QR and recorded receipts' : 'Hosted payment links' %></small>
+          </div>
+          <span class="mg-badge" data-payment-state><%= manual ? 'Manual only' : payment.configured ? 'Configured' : 'Setup needed' %></span>
+        </header>
+        <p data-payment-description><%= manual ? 'Online links are disabled. Record confirmed payments in the invoice’s Payments panel; saved bank details and payment QR remain available on your documents.' : `Create a ${provider} link from an invoice’s Payments panel. Verified receipts update that invoice’s balance and EMI schedule.` %></p>
+        <div data-online-payment <%= manual ? 'hidden' : '' %>>
+          <dl class="mg-details">
+            <div>
+              <dt>Mode</dt>
+              <dd data-payment-mode><%= payment.mode === 'live' ? 'Live payments' : payment.mode === 'test' ? 'Test mode' : 'Not configured' %></dd>
+            </div>
+            <div>
+              <dt>API credentials</dt>
+              <dd data-payment-key><%= payment.keyConfigured ? 'Added' : 'Required' %></dd>
+            </div>
+            <div>
+              <dt>Webhook verification</dt>
+              <dd data-payment-webhook><%= payment.webhookConfigured ? 'Credentials added' : 'Required' %></dd>
+            </div>
+          </dl>
+          <p class="mg-note" data-payment-guidance><%= payment.mode === 'test' ? 'Test mode does not collect real money. Complete a test payment before switching to live credentials.' : 'Full verified payment marks the invoice Paid / Final. A failed payment attempt does not reduce the balance due.' %></p>
+          <details>
+            <summary>Connection instructions</summary>
+            <p>
+              <%= independent ? `${organization.name} uses its own credentials; it never inherits the Venturecore payment account.` : 'These organization-specific settings can override the shared Venturecore account. If no organization override is set, this division uses the shared credentials.' %> Add credentials in the hosting server settings, then restart the
+              application.
+            </p>
+            <div class="mg-env-list" data-payment-env>
+              <% for (const key of cashfree ? ['CASHFREE_CLIENT_ID','CASHFREE_CLIENT_SECRET','CASHFREE_ENVIRONMENT'] : ['RAZORPAY_KEY_ID','RAZORPAY_KEY_SECRET','RAZORPAY_WEBHOOK_SECRET']) { %><code><%= `${prefix}_${key}` %></code><% } %>
+            </div>
+            <p data-cashfree-instructions <%= cashfree ? '' : 'hidden' %>>
+              Set Cashfree environment to <code>sandbox</code> for test payments or
+              <code>production</code> for live payments. Cashfree signs webhooks using the client secret; no
+              separate webhook secret is needed. Configure payment-link and payment success / failure
+              notifications, and add a valid Indian mobile number to the customer before creating a link.
+            </p>
+            <p data-razorpay-instructions <%= cashfree ? 'hidden' : '' %>>
+              Subscribe in the Razorpay dashboard to payment-link paid / partially paid / cancelled / expired
+              events and payment captured / failed events.
+            </p>
+            <p>
+              Configure your HTTPS domain with webhook path
+              <code data-webhook-path><%= webhook %></code>.
+            </p>
+            <p>
+              Configured means the required settings are present. Verify the connection with a test invoice,
+              completed test payment and received webhook.
+            </p>
+            <a data-payment-dashboard href="<%= cashfree ? 'https://merchant.cashfree.com/' : 'https://dashboard.razorpay.com/' %>" target="_blank" rel="noopener noreferrer"
+              >Open <%= provider %> dashboard ↗</a
+            >
+          </details>
+        </div>
+      </section>
+      <section class="mg-card">
+        <header class="mg-card-heading">
+          <div>
+            <h3>Invoice emails</h3>
+            <small>Sender for <%= organization.name %></small>
+          </div>
+          <span class="mg-badge" data-email-state><%= email.configured ? 'Configured' : 'Setup needed' %></span>
+        </header>
+        <p>
+          Send document emails, include payment links and track delivery attempts from the Email button in a
+          document preview.
+        </p>
+        <dl class="mg-details">
+          <div>
+            <dt>Sender</dt>
+            <dd data-email-from><%= email.from || 'Not configured' %></dd>
+          </div>
+          <div>
+            <dt>Support / reply-to</dt>
+            <dd><%= support || 'Not set' %></dd>
+          </div>
+          <div>
+            <dt>Automatic emails</dt>
+            <dd data-email-automation><%= email.automationEnabled ? 'Enabled' : 'Off' %></dd>
+          </div>
+          <div>
+            <dt>Provider</dt>
+            <dd>Resend</dd>
+          </div>
+        </dl>
+        <p class="mg-note" data-email-guidance><%= email.configured ? email.automationEnabled ? 'Automatic emails cover issued invoices and recorded payment outcomes. Check document email history to see whether the provider accepted each message.' : 'Manual document emails are available. Enable automation in the server settings to send invoice and payment updates automatically.' : email.reason || 'Add a verified sender address and an email provider API key to begin sending.' %></p>
+        <details>
+          <summary>Connection instructions</summary>
+          <p>
+            Verify your sending domain with Resend, then add this business’s API key and sender address in the
+            hosting server settings. <%= independent ? 'This independent business does not inherit the Venturecore sender or email credentials.' : 'Without an organization-specific override, this division uses the shared Venturecore sender.' %>
+          </p>
+          <div class="mg-env-list" data-email-env>
+            <code><%= prefix %>_RESEND_API_KEY</code><code><%= prefix %>_EMAIL_FROM</code
+            ><code><%= prefix %>_EMAIL_AUTOMATION=true</code><code>PUBLIC_APP_URL</code>
+          </div>
+          <p>
+            The support address is the reply-to contact; entering it does not verify or activate an email
+            sender. Set the public application URL to your HTTPS website address, and restart after changing
+            credentials.
+          </p>
+          <p>
+            Use a test invoice to check the sender and payment link before enabling automatic emails.
+            “Provider accepted” records provider acceptance; it does not confirm inbox delivery.
+          </p>
+          <a href="https://resend.com/domains" target="_blank" rel="noopener noreferrer"
+            >Open Resend domain settings ↗</a
+          >
+        </details>
+      </section>
+      <section class="mg-card" data-gst-card <%= gst ? '' : 'hidden' %>>
+        <header class="mg-card-heading">
+          <div>
+            <h3>GST lookup</h3>
+            <small>Customer, vendor and B2B buyer auto-fill</small>
+          </div>
+          <span class="mg-badge" data-gst-state><%= gst?.provider === 'portal' ? 'CAPTCHA required' : gst?.configured ? 'Settings added' : 'Setup needed' %></span>
+        </header>
+        <p>
+          All organizations use this shared taxpayer lookup service. Fetch GST details while adding or editing
+          a contact, review the result, then save it in the selected organization’s directory. This does not
+          change your organization’s own GST registration.
+        </p>
+        <dl class="mg-details">
+          <div>
+            <dt>Provider</dt>
+            <dd data-gst-provider><%= gst?.provider === 'sandbox' ? 'Sandbox' : gst?.provider === 'generic' ? 'Custom GST API' : 'Official GST portal' %></dd>
+          </div>
+          <div>
+            <dt>Environment</dt>
+            <dd data-gst-mode><%= gst?.mode === 'test' ? 'Test mode' : gst?.mode === 'production' ? 'Production mode' : gst?.mode === 'captcha' ? 'Human CAPTCHA' : 'Custom API' %></dd>
+          </div>
+          <div>
+            <dt>API key</dt>
+            <dd data-gst-key><%= gst?.provider === 'portal' ? 'Not required' : gst?.keyConfigured ? 'Added' : gst?.provider === 'sandbox' ? 'Required' : 'Not set' %></dd>
+          </div>
+          <div data-gst-secret-row <%= gst?.provider === 'sandbox' ? '' : 'hidden' %>>
+            <dt>API secret</dt>
+            <dd data-gst-secret><%= gst?.secretConfigured ? 'Added' : 'Required' %></dd>
+          </div>
+        </dl>
+        <p class="mg-note" data-gst-guidance><%= gst?.provider === 'sandbox' && gst?.mode === 'test' ? 'Sandbox test mode returns example taxpayer records; it does not verify actual customers. Use production credentials and environment for real GST lookups.' : gst?.provider === 'portal' ? 'Complete the GST portal’s CAPTCHA for each lookup, or enter contact details manually.' : 'Review the fetched name, address and GST status before saving. Credentials being present does not confirm a successful API connection.' %></p>
+        <details>
+          <summary>Connection instructions</summary>
+          <div data-gst-sandbox <%= gst?.provider === 'sandbox' ? '' : 'hidden' %>>
+            <p>
+              Select Sandbox and add the API key and secret from your Sandbox account in server settings. Keep
+              credentials on the server, then restart the application and refresh this page.
+            </p>
+            <div class="mg-env-list">
+              <code>GST_PROVIDER=sandbox</code><code>SANDBOX_API_KEY</code><code>SANDBOX_API_SECRET</code
+              ><code>SANDBOX_ENVIRONMENT=test</code>
+            </div>
+            <p>
+              Set <code>SANDBOX_ENVIRONMENT</code> to <code>test</code> for Sandbox testing or
+              <code>production</code> for real taxpayer details. The key and secret must match that
+              environment and have GST search access. Settings added means the required values are present;
+              perform a lookup to check the API connection.
+            </p>
+            <a
+              href="https://developer.sandbox.co.in/api-reference/gst/compliance/endpoints/public/search_gstin"
+              target="_blank"
+              rel="noopener noreferrer"
+              >Open Sandbox GST search documentation ↗</a
+            >
+          </div>
+          <p data-gst-portal <%= gst?.provider === 'portal' ? '' : 'hidden' %>>
+            The free portal requires no API credentials. Select <code>GST_PROVIDER=portal</code> in server
+            settings and restart to use the CAPTCHA lookup. You can always save manually entered contact
+            details.
+          </p>
+          <p data-gst-generic <%= gst?.provider === 'generic' ? '' : 'hidden' %>>
+            The custom provider is configured in the hosting server settings. To use your Sandbox
+            subscription, set <code>GST_PROVIDER=sandbox</code> and add <code>SANDBOX_API_KEY</code>,
+            <code>SANDBOX_API_SECRET</code> and <code>SANDBOX_ENVIRONMENT</code> (<code>test</code> or
+            <code>production</code>), then restart the application.
+          </p>
+        </details>
+      </section>
+    </div>
+    <section class="mg-card">
+      <h3>A clear path from sent to settled</h3>
+      <div class="mg-grid">
+        <article>
+          <span class="mg-eyebrow">01</span>
+          <h4>Issue your invoice</h4>
+          <p>
+            Select a saved customer, vendor or B2B buyer, check the business GST details and issue the
+            document.
+          </p>
+        </article>
+        <article>
+          <span class="mg-eyebrow">02</span>
+          <h4>Share payment details</h4>
+          <p data-workflow-share><%= manual ? 'Include your saved bank or QR details in the invoice email.' : `Create a ${provider} link in Payments and include it in the invoice email.` %></p>
+        </article>
+        <article>
+          <span class="mg-eyebrow">03</span>
+          <h4>Follow every update</h4>
+          <p>
+            Check payment history and email attempts. A fully paid invoice keeps its number and becomes final.
+          </p>
+        </article>
+      </div>
+    </section>
+  </div>
+</div>
+<script type="module" src="/js/management/integrations.js"></script>

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <% if (typeof syntheticPreview !== 'undefined' && syntheticPreview) { %>
+    <meta name="iv-deployment-mode" content="disposable-synthetic-preview" />
+    <% } %>
+    <title><%= data.pageTitle %> · <%= data.workspaceSettings.companyName %></title>
+    <link rel="stylesheet" href="/css/app.css" />
+    <link rel="stylesheet" href="/css/documents.css" />
+    <link rel="stylesheet" href="/css/management.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <div class="sidebar-overlay" data-sidebar-overlay aria-hidden="true"></div>
+    <aside class="sidebar" id="workspace-navigation" aria-label="Workspace navigation" tabindex="-1">
+      <div class="sidebar-mobile-header">
+        <strong>Navigation</strong>
+        <button class="icon-button" type="button" data-close-sidebar aria-label="Close navigation">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
+        </button>
+      </div>
+      <a class="workspace-brand" href="/">
+        <% if (helpers.safeImage(data.workspaceSettings.dashboardLogoUrl)) { %>
+        <img src="<%= data.workspaceSettings.dashboardLogoUrl %>" alt="<%= data.workspaceSettings.companyName %>" />
+        <% } else { %><span class="brand-mark">V</span><% } %>
+        <span><strong><%= data.workspaceSettings.companyName %></strong><small>BUSINESS WORKSPACE</small></span>
+      </a>
+      <label class="organization-switch"
+        >Current business
+        <select data-organization-switch aria-label="Switch business">
+          <% for (const organization of data.organizations) { %>
+          <option value="<%= organization.id %>" <%= organization.id === data.route.organizationId ? 'selected' : '' %>><%= organization.name %></option>
+          <% } %>
+        </select>
+      </label>
+      <nav>
+        <% for (const group of helpers.navigation(data)) { %>
+        <div class="nav-group">
+          <span class="nav-label"><%= group.label %></span>
+          <% for (const item of group.items) { %>
+          <a class="nav-item <%= data.route.view === item.view ? 'active' : '' %>" href="<%= helpers.url(data, item.view) %>" <%- data.route.view === item.view ? 'aria-current="page"' : '' %>>
+            <span class="nav-icon" aria-hidden="true"><%- helpers.icon(item.icon) %></span><%= item.label %>
+          </a>
+          <% } %>
+        </div>
+        <% } %>
+      </nav>
+      <div class="sidebar-footer">
+        <span class="avatar"><%= helpers.initials(data.user.name) %></span
+        ><span><strong><%= data.user.name %></strong><small><%= data.user.role === 'admin' ? 'Administrator' : 'Team member' %></small></span
+        ><button class="icon-button" type="button" data-logout title="Sign out" aria-label="Sign out">
+          <%- helpers.icon('logout') %>
+        </button>
+      </div>
+    </aside>
+    <div class="workspace-main">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button
+            class="icon-button mobile-menu"
+            type="button"
+            data-toggle-sidebar
+            aria-label="Open navigation"
+            aria-controls="workspace-navigation"
+            aria-haspopup="dialog"
+            aria-expanded="false"
+          >
+            <%- helpers.icon('menu') %></button
+          ><span class="breadcrumb"
+            ><%= data.organization?.name || 'Workspace' %><span>/</span><strong><%= data.pageTitle %></strong></span
+          >
+        </div>
+        <div class="topbar-right">
+          <span class="today-label"><%= helpers.displayDate(helpers.today()) %></span
+          ><a class="icon-button" href="<%= helpers.url(data, 'help') %>" aria-label="Workspace help"
+            ><%- helpers.icon('help') %></a
+          >
+        </div>
+      </header>
+      <%- include('../partials/preview-notice') %>
+      <main id="main-content" class="page-content" tabindex="-1">
+        <div class="alert alert-error" data-page-error hidden role="alert"></div>
+        <%- include('../' + bodyView, { data, helpers }) %>
+      </main>
+      <footer class="workspace-footer">
+        <span><%= data.workspaceSettings.companyName %></span><span>Business records, kept together.</span>
+      </footer>
+    </div>
+    <div id="toast-region" class="toast-region" aria-live="polite"></div>
+    <script id="page-data" type="application/json"><%- helpers.json(data) %></script>
+    <script type="module" src="/js/core/shell.js"></script>
+  </body>
+</html>

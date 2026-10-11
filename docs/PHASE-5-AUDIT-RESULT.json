@@ -1,0 +1,52 @@
+{
+  "project": "venturecore-workspace-mvc",
+  "node": "v22.16.0",
+  "checkedDependencies": 9,
+  "findings": [
+    {
+      "level": "BLOCKER",
+      "code": "NODE_VERSION",
+      "detail": "Node v22.16.0 is outside required >=24.5.0 <27"
+    },
+    {
+      "level": "BLOCKER",
+      "code": "DEPENDENCY_MISSING",
+      "detail": "@fontsource/dm-sans"
+    },
+    {
+      "level": "BLOCKER",
+      "code": "DEPENDENCY_MISSING",
+      "detail": "@fontsource/manrope"
+    },
+    {
+      "level": "BLOCKER",
+      "code": "DEPENDENCY_MISSING",
+      "detail": "dotenv"
+    },
+    {
+      "level": "BLOCKER",
+      "code": "DEPENDENCY_MISSING",
+      "detail": "ejs"
+    },
+    {
+      "level": "BLOCKER",
+      "code": "DEPENDENCY_MISSING",
+      "detail": "express"
+    },
+    {
+      "level": "BLOCKER",
+      "code": "DEPENDENCY_MISSING",
+      "detail": "mongodb"
+    },
+    {
+      "level": "BLOCKER",
+      "code": "DEPENDENCY_MISSING",
+      "detail": "pdfmake"
+    },
+    {
+      "level": "BLOCKER",
+      "code": "DEPENDENCY_MISSING",
+      "detail": "zod"
+    }
+  ]
+}

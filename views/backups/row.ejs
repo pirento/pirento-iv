@@ -1,0 +1,30 @@
+<%
+const date = backup.createdAt ? new Intl.DateTimeFormat('en-IN', {year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Asia/Kolkata'}).format(new Date(backup.createdAt)) : '';
+const bytes = Number(backup.byteLength || 0);
+const size = bytes < 1024 ? `${bytes} B` : bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / (1024*1024)).toFixed(1)} MB`;
+%>
+<tr data-backup-row="<%= backup.id %>">
+  <td>
+    <time data-backup-date datetime="<%= backup.createdAt || '' %>"><%= date %></time
+    ><small data-backup-id><%= backup.id %></small>
+  </td>
+  <td data-backup-size><%= size %></td>
+  <td><span class="mg-badge">Completed</span></td>
+  <td>
+    <div class="mg-row-actions">
+      <a
+        class="button secondary small"
+        data-backup-download
+        href="/api/backups/<%= encodeURIComponent(backup.id) %>/download"
+        download
+        >Download</a
+      ><a
+        class="button secondary small"
+        data-backup-manifest
+        href="/api/backups/<%= encodeURIComponent(backup.id) %>/manifest"
+        download
+        >Manifest</a
+      >
+    </div>
+  </td>
+</tr>

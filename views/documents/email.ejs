@@ -1,0 +1,71 @@
+<%
+const doc = data.document;
+const base = `/workspace/${encodeURIComponent(doc.organizationId)}/${data.route.view}/preview/${encodeURIComponent(doc.id)}`;
+%>
+<section
+  class="workspace-page messaging-page messaging-panel"
+  id="messaging-panel"
+  aria-labelledby="messaging-title"
+  aria-busy="true"
+>
+  <header class="messaging-header">
+    <div>
+      <p>EMAIL & NOTIFICATIONS</p>
+      <h1 id="messaging-title">Send to your customer</h1>
+      <span><%= doc.number %></span>
+    </div>
+    <a class="messaging-refresh messaging-page-back" href="<%= base %>">Back to document</a>
+  </header>
+  <div class="messaging-body">
+    <div id="messaging-error" class="messaging-alert messaging-alert-error" role="alert" hidden></div>
+    <div id="messaging-notice" class="messaging-alert messaging-alert-success" role="status" hidden></div>
+    <p id="messaging-loading" class="messaging-loading" role="status">
+      Loading email configuration and history…
+    </p>
+    <div class="messaging-recipient">
+      <span>Customer email</span><strong><%= doc.customerSnapshot.email||'No email saved on this document' %></strong
+      ><small><%= doc.customerSnapshot.name %> · <%= doc.organizationSnapshot.name %></small
+      ><small id="messaging-sender">Checking sender configuration…</small>
+    </div>
+    <div id="messaging-availability"></div>
+    <section class="messaging-compose">
+      <h2><%= helpers.types.DOCUMENT_LABELS[doc.kind] %> email</h2>
+      <p>
+        The email includes a PDF attachment with the saved document details, items, taxes, totals and payment
+        schedule.
+      </p>
+      <label class="messaging-checkbox" id="messaging-payment-option" hidden
+        ><input id="messaging-payment-link" type="checkbox" disabled /><span id="messaging-payment-caption"
+          >Include a secure payment link</span
+        ></label
+      >
+      <p class="messaging-subtle" id="messaging-payment-hint"></p>
+      <button id="messaging-send" class="messaging-primary" type="button" disabled>
+        Queue <%= helpers.types.DOCUMENT_LABELS[doc.kind].toLowerCase() %> email
+      </button>
+    </section>
+    <section class="messaging-automation">
+      <div>
+        <strong id="messaging-automation-title">Payment notifications</strong>
+        <p>
+          Automatic receipts follow verified online or recorded payments. Failed attempts can send
+          unsuccessful-payment notices; the final receipt confirms full payment.
+        </p>
+      </div>
+    </section>
+    <section class="messaging-history">
+      <div class="messaging-section-heading">
+        <h2>Email history <span id="messaging-count">0</span></h2>
+        <button type="button" class="messaging-refresh" id="messaging-refresh">Refresh</button>
+      </div>
+      <p class="messaging-subtle">
+        “Provider accepted” means the sending service accepted the email. It does not confirm inbox delivery
+        or that the customer opened it.
+      </p>
+      <ol id="messaging-history">
+        <li class="messaging-empty">Loading saved email notifications…</li>
+      </ol>
+    </section>
+  </div>
+</section>
+<script type="module" src="/js/documents/email.js"></script>

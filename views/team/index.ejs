@@ -1,0 +1,60 @@
+<%
+const users = [...(data.teamUsers || [])].sort((a,b) => Number(b.status === 'pending') - Number(a.status === 'pending') || b.createdAt.localeCompare(a.createdAt));
+const placeholder = {id:'',name:'',email:'',company:'',status:'pending',role:'staff',organizationIds:[],createdAt:null,lastLoginAt:null};
+%>
+<link rel="stylesheet" href="/css/management.css" />
+<link rel="stylesheet" href="/css/security.css" />
+<div class="mg-page" id="team-page">
+  <% if (data.user.role !== 'admin') { %>
+  <section class="mg-empty">
+    <h2>Administrator access required</h2>
+    <p>Team approvals and access are available to workspace administrators.</p>
+  </section>
+  <% } else { %>
+  <section class="mg-intro">
+    <div>
+      <span class="mg-eyebrow">WORKSPACE ADMINISTRATION</span>
+      <h2>The right access for every person.</h2>
+      <p>
+        New signups wait here for administrator approval. Give staff access to the organizations they work
+        with, or assign an administrator to manage the whole workspace. Organization access applies to
+        customers, vendors, buyers, catalog items and documents.
+      </p>
+    </div>
+  </section>
+  <div class="mg-stats mg-team-stats">
+    <% for (const [status,label] of [['pending','Awaiting approval'],['active','Active members'],['disabled','Disabled accounts']]) { %>
+    <div>
+      <strong data-team-count="<%= status %>"><%= users.filter(user => user.status === status).length %></strong
+      ><span><%= label %></span>
+    </div>
+    <% } %>
+  </div>
+  <div data-notice class="mg-message success" role="status" hidden></div>
+  <div data-error class="mg-message error" role="alert" tabindex="-1" hidden></div>
+  <div class="mg-toolbar">
+    <label class="mg-search"
+      ><span class="mg-sr-only">Search team members</span
+      ><input type="search" data-search placeholder="Search name, email or company" /></label
+    ><label class="mg-field"
+      ><span class="mg-sr-only">Filter account status</span
+      ><select data-status-filter>
+        <option value="all">All accounts</option>
+        <option value="pending">Awaiting approval</option>
+        <option value="active">Active</option>
+        <option value="disabled">Disabled</option>
+      </select></label
+    ><button type="button" class="button secondary" data-refresh>Refresh</button>
+  </div>
+  <div class="mg-team-users" data-team-users>
+    <% for (const member of users) { %><%- include('card', { member }) %><% } %>
+  </div>
+  <template id="team-user-template"><%- include('card', { member: placeholder }) %></template>
+  <div class="mg-empty" data-empty <%= users.length ? 'hidden' : '' %>>
+    <h3 data-empty-title>No account requests yet</h3>
+    <p data-empty-copy>People can request access using Sign up on your Venturecore INV home page.</p>
+  </div>
+  <%- include('../security/session-confirmation') %>
+  <% } %>
+</div>
+<script type="module" src="/js/management/team.js"></script>

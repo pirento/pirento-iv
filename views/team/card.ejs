@@ -1,0 +1,70 @@
+<%
+const initials = String(member.name || '').trim().split(/\s+/).slice(0,2).map(word => word[0] || '').join('').toUpperCase();
+const date = value => value ? new Intl.DateTimeFormat('en-IN', { year:'numeric',month:'short',day:'numeric',timeZone:'Asia/Kolkata' }).format(new Date(value)) : 'Not yet';
+%>
+<article class="mg-card mg-team-card" data-user-card="<%= member.id %>">
+  <header class="mg-card-heading">
+    <div class="mg-user-identity">
+      <span class="mg-avatar" data-user-initials><%= initials %></span>
+      <div>
+        <h3>
+          <span data-user-name><%= member.name %></span>
+          <small data-user-self <%= member.id === data.user.id ? '' : 'hidden' %>>You</small>
+        </h3>
+        <p data-user-email><%= member.email %></p>
+      </div>
+    </div>
+    <span class="mg-badge" data-user-status><%= member.status === 'pending' ? 'Awaiting approval' : member.status === 'active' ? 'Active' : 'Disabled' %></span>
+  </header>
+  <div class="mg-user-meta">
+    <span data-user-company <%= member.company ? '' : 'hidden' %>>Company / team: <%= member.company %></span
+    ><span data-user-created>Requested <%= date(member.createdAt) %></span
+    ><span data-user-last-login>Last login: <%= date(member.lastLoginAt) %></span>
+  </div>
+  <form data-access-form>
+    <div class="mg-form-grid">
+      <label class="mg-field"
+        >Account status<select name="status">
+          <% for (const [key,label] of [['pending','Pending approval'],['active','Active — approved'],['disabled','Disabled']]) { %>
+          <option value="<%= key %>" <%= member.status === key ? 'selected' : '' %>><%= label %></option>
+          <% } %>
+        </select></label
+      ><label class="mg-field"
+        >Workspace role<select name="role">
+          <option value="staff" <%= member.role === 'staff' ? 'selected' : '' %>>Staff — assigned organizations</option>
+          <option value="admin" <%= member.role === 'admin' ? 'selected' : '' %>>Administrator — full workspace</option>
+        </select></label
+      >
+    </div>
+    <p class="mg-note" data-admin-note <%= member.role === 'admin' ? '' : 'hidden' %>>
+      Administrators can access every organization, manage team approvals and configure the workspace. Assign
+      this role only when full access is needed.
+    </p>
+    <fieldset class="mg-fieldset" data-organization-options <%= member.role === 'admin' ? 'hidden' : '' %>>
+      <legend>Organizations this person can access</legend>
+      <% if ((data.organizations || []).length) { %>
+      <div class="mg-org-options">
+        <% for (const organization of data.organizations) { %><label class="mg-checkbox"
+          ><input
+            name="organizationIds"
+            type="checkbox"
+            value="<%= organization.id %>"
+            <%= (member.organizationIds || []).includes(organization.id) ? 'checked' : '' %>
+          /><span><%= organization.name %></span></label
+        ><% } %>
+      </div>
+      <% } else { %>
+      <p>Create an organization before activating a staff account.</p>
+      <% } %>
+    </fieldset>
+    <div data-error class="mg-message error" role="alert" tabindex="-1" hidden></div>
+    <footer class="mg-access-actions">
+      <p class="mg-hint" data-access-hint>Saved access changes end this person’s existing sessions.</p>
+      <button type="submit" class="button primary" data-save-access disabled>Save access</button>
+    </footer>
+  </form>
+  <footer class="security-team-sessions">
+    <p class="mg-hint">End this person's current sessions. They can sign in again while their account remains active.</p>
+    <button class="button secondary" type="button" data-user-revoke-sessions>Sign out all sessions</button>
+  </footer>
+</article>

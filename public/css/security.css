@@ -1,0 +1,149 @@
+/* Account sessions and administrator security history. */
+.security-page h1 {
+  font-size: clamp(25px, 2.5vw, 34px);
+  line-height: 1.2;
+  margin: 0 0 12px;
+  letter-spacing: -0.6px;
+}
+.security-page h2 {
+  font-size: 20px;
+  margin-bottom: 0;
+}
+.security-muted {
+  color: #617168;
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.security-summary,
+.security-session header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+.security-summary > div {
+  display: grid;
+  gap: 5px;
+}
+.security-summary strong {
+  font-size: 32px;
+  line-height: 1.1;
+}
+.security-session-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+.security-session dl,
+.security-access-change dl {
+  display: grid;
+  gap: 5px;
+  margin: 20px 0;
+}
+.security-session dt,
+.security-access-change dt {
+  color: #617168;
+  font-size: 12px;
+}
+.security-session dd,
+.security-access-change dd {
+  margin: 0 0 8px;
+  overflow-wrap: anywhere;
+}
+.security-filters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 14px;
+}
+.security-filters .mg-field {
+  min-width: 0;
+}
+.security-filters :is(input, select) {
+  min-width: 0;
+  max-width: 100%;
+}
+.security-table {
+  width: 100%;
+  min-width: 780px;
+}
+.security-table td {
+  vertical-align: top;
+  max-width: 260px;
+  overflow-wrap: anywhere;
+}
+.security-table small {
+  display: block;
+  margin-top: 5px;
+}
+.security-access-change summary {
+  cursor: pointer;
+}
+.security-access-change dl {
+  min-width: 180px;
+  margin: 12px 0 0;
+}
+.security-page .record-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 20px;
+}
+.security-dialog {
+  width: min(520px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  padding: 26px;
+  border: 1px solid #d3ddd3;
+  border-radius: 14px;
+  color: #263a30;
+  background: #fff;
+  overflow: auto;
+}
+.security-dialog::backdrop {
+  background: rgb(21 38 29 / 50%);
+}
+.security-dialog h2 {
+  margin: 0 0 16px;
+  font-size: 22px;
+}
+.security-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
+}
+.security-team-sessions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding-top: 18px;
+  margin-top: 18px;
+  border-top: 1px solid #e3e9df;
+}
+.security-team-sessions p {
+  flex: 1 1 240px;
+  margin: 0;
+}
+@media (max-width: 760px) {
+  .security-session-list,
+  .security-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .security-summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .security-page .mg-card-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .security-dialog {
+    padding: 20px;
+  }
+}

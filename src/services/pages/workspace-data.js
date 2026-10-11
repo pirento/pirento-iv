@@ -1,0 +1,232 @@
+import { HttpError } from '../../middleware/errors.js';
+import { normalizeContact } from '../validation/contacts.js';
+import { integrationEnvironmentPrefix } from '../../../shared/business-identity.js';
+import { indiaBusinessDate } from '../../../shared/business-date.js';
+import { createWorkspaceQueries } from '../../models/workspace-queries.js';
+import { DOCUMENT_KINDS, readDocumentFilters, documentListUrl, documentCsv } from './document-list.js';
+import { createDirectoryQueries } from '../../models/directory-queries.js';
+import { readDirectoryFilters, directoryPageLinks } from './directory-list.js';
+import { safeWorkspaceReturn } from '../../../public/js/core/workspace-route.js';
+
+/** Page-specific loading keeps unrelated financial snapshots and operations off normal navigation. */
+export function createWorkspacePageData({
+  db,
+  auth,
+  online,
+  mailer,
+  backups,
+  backupStorage,
+  gstStatus,
+  now,
+  logger,
+  ledger,
+  reminders,
+  recurringInvoices,
+}) {
+  const queries = createWorkspaceQueries(db);
+  const directories = createDirectoryQueries(db);
+
+  async function base(user, requestedOrganizationId) {
+    if (auth && (!user || user.status !== 'active')) throw new HttpError(401, 'Please sign in to continue.');
+    const allOrganizations = await db.models.organizations.list();
+    const organizations =
+      auth && user.role !== 'admin'
+        ? allOrganizations.filter((item) => user.organizationIds.includes(item.id))
+        : allOrganizations;
+    const organization =
+      organizations.find((item) => item.id === requestedOrganizationId) ??
+      (requestedOrganizationId ? undefined : organizations[0]);
+    if (!organization) throw new HttpError(403, 'This organization is outside your access.');
+    return {
+      user,
+      organizations,
+      organization,
+      workspaceSettings: await db.models.settings.get(),
+      businessDate: indiaBusinessDate(now()),
+      customers: [],
+      catalog: [],
+      formats: [],
+      businessProducts: [],
+      documents: [],
+    };
+  }
+
+  async function load(user, requestedOrganizationId, route) {
+    const result = await base(user, requestedOrganizationId);
+    const organizationId = result.organization.id;
+    // The optional full-data form remains available to existing internal preview integrations.
+    const legacy = !route;
+    const kind = DOCUMENT_KINDS[route?.view];
+    const editor = kind && ['new', 'edit'].includes(route.action);
+    const tasks = [];
+    const read = (key, action) =>
+      tasks.push(
+        Promise.resolve()
+          .then(action)
+          .then((value) => {
+            result[key] = value;
+          }),
+      );
+    if (legacy)
+      read('customers', async () => (await db.models.customers.list(organizationId)).map(normalizeContact));
+    if (legacy) read('catalog', () => db.models.catalog.list(organizationId));
+    if (['customers', 'catalog'].includes(route?.view)) {
+      const kind = route.view;
+      if (route.action) {
+        read(kind, async () => {
+          if (!route.id) return [];
+          const record = await db.models[kind].findById(route.id);
+          return record?.organizationId === organizationId
+            ? [kind === 'customers' ? normalizeContact(record) : record]
+            : [];
+        });
+      } else {
+        read('directory', async () => {
+          const filters = readDirectoryFilters(kind, route.query);
+          const { items, ...page } = await directories.page(kind, organizationId, filters);
+          result[kind] = items;
+          const returnTo =
+            typeof route.query?.returnTo === 'string' ? safeWorkspaceReturn(route.query.returnTo) : '';
+          return directoryPageLinks(organizationId, kind, page, returnTo);
+        });
+      }
+    }
+    if (legacy || editor || route.view === 'formats')
+      read('formats', () => db.models.formats.list(organizationId));
+    if (legacy || editor || (kind && !route.action) || ['catalog', 'business_products'].includes(route.view))
+      read('businessProducts', () => db.models.businessProducts.list(organizationId));
+    if (legacy) read('documents', () => db.models.documents.list(organizationId));
+    else if (kind && route.id) {
+      read('document', async () => {
+        const document = await db.models.documents.findById(route.id);
+        if (!document || document.organizationId !== organizationId || document.kind !== kind)
+          throw new HttpError(404, 'This document is unavailable in the selected business.');
+        return document;
+      });
+    } else if (kind && !route.action) {
+      tasks.push(
+        (async () => {
+          const filters = readDocumentFilters(route.query);
+          const page = await queries.documentPage(organizationId, kind, filters, result.businessDate);
+          result.documents = page.documents;
+          const href = (extra) => documentListUrl(organizationId, route.view, filters, extra);
+          result.documentList = {
+            total: page.total,
+            page: page.page,
+            pageCount: page.pageCount,
+            pageSize: page.pageSize,
+            filters,
+            previousUrl: page.page > 1 ? href({ page: page.page - 1 }) : '',
+            nextUrl: page.page < page.pageCount ? href({ page: page.page + 1 }) : '',
+            exportUrl: href({ download: 'csv' }),
+          };
+        })(),
+      );
+    }
+    if (route?.view === 'overview')
+      read('overview', () => queries.overview(organizationId, now(), result.businessDate));
+    if (route?.view === 'ledger') {
+      if (route.id) {
+        result.ledgerPrint = route.query?.print === '1';
+        read('ledgerStatement', () =>
+          ledger.statement(user, organizationId, route.id, route.query, { allRows: result.ledgerPrint }),
+        );
+      } else read('ledger', () => ledger.list(user, organizationId, route.query));
+    }
+    if (route?.view === 'reminders') {
+      read('reminders', async () => ({
+        ...(await reminders.list(organizationId, route.query)),
+        filters: { q: route.query?.q ?? '', status: route.query?.status ?? 'all' },
+      }));
+      read('reminderHistory', () =>
+        reminders.history(organizationId, { page: route.query?.historyPage ?? '1' }),
+      );
+    }
+    if (route?.view === 'recurring') read('recurring', () => recurringInvoices.page(organizationId, route));
+    if (legacy || route.view === 'integrations')
+      read('integrationStatus', async () => {
+        const payment = await online.getStatus(organizationId);
+        return {
+          email: await mailer.status(organizationId),
+          payment,
+          razorpay: payment,
+          gst: gstStatus(),
+          environmentPrefix: integrationEnvironmentPrefix(result.organization),
+          webhookPath:
+            payment.provider === 'none' ? '' : `/api/webhooks/${payment.provider}/${organizationId}`,
+        };
+      });
+    if (!auth || user.role === 'admin') {
+      if (legacy || ['team', 'security'].includes(route.view))
+        read('teamUsers', () => (auth ? auth.listUsers() : []));
+      if (legacy || route.view === 'backups') {
+        result.backupStatus = backups.status();
+        read('backups', async () => {
+          try {
+            return await backupStorage.listBackupMetadata();
+          } catch (error) {
+            logger?.error('backup_failed', { error });
+            result.backupStatus.lastFailure = true;
+            return [];
+          }
+        });
+      }
+    } else if (
+      ['team', 'security', 'backups', 'integrations', 'business_settings', 'dashboard_branding'].includes(
+        route?.view,
+      )
+    ) {
+      throw new HttpError(403, 'Administrator access is required for this page.');
+    }
+    await Promise.all(tasks);
+    if (editor) {
+      const [contactPage, catalogPage] = await Promise.all([
+        directories.lookup(
+          'customers',
+          organizationId,
+          readDirectoryFilters('customers', {}, { lookup: true }),
+        ),
+        directories.lookup(
+          'catalog',
+          organizationId,
+          readDirectoryFilters(
+            'catalog',
+            { product: result.document?.businessProductId || 'shared' },
+            { lookup: true },
+          ),
+        ),
+      ]);
+      result.customers = contactPage.items;
+      result.catalog = catalogPage.items;
+      // A selected archived contact is retained without loading the rest of the directory.
+      if (
+        result.document?.customerId &&
+        !result.customers.some((item) => item.id === result.document.customerId)
+      ) {
+        const selected = await db.models.customers.findById(result.document.customerId);
+        if (selected?.organizationId === organizationId) result.customers.push(normalizeContact(selected));
+      }
+      result.lookupPages = Object.fromEntries(
+        [
+          ['customers', contactPage],
+          ['catalog', catalogPage],
+        ].map(([key, { items, ...page }]) => [key, page]),
+      );
+    }
+    return result;
+  }
+
+  async function exportDocuments(user, organizationId, route) {
+    const kind = DOCUMENT_KINDS[route.view];
+    if (!kind || route.action) throw new HttpError(404, 'This document export is unavailable.');
+    const data = await base(user, organizationId);
+    const filters = readDocumentFilters(route.query);
+    const cursor = queries.documentExport(data.organization.id, kind, filters, data.businessDate);
+    return {
+      filename: `${data.organization.name.replace(/[^a-z0-9]+/gi, '-')}-${route.view}.csv`,
+      lines: documentCsv(cursor, data.businessDate),
+    };
+  }
+
+  return { load, exportDocuments };
+}

@@ -1,0 +1,359 @@
+<%
+const organization = data.organization;
+const route = data.route;
+const base = `/workspace/${encodeURIComponent(organization.id)}/formats`;
+const formats = (data.formats || []).filter(format => format.organizationId === organization.id);
+const id = route.id || route.entityId;
+const source = formats.find(format => format.id === id);
+const presets = helpers.TEMPLATE_PRESETS;
+const categories = ['All formats','Business','Services','Products','Shipping','Custom'];
+const categoryFor = format => presets.find(preset => preset.key === format.presetKey)?.category || 'Custom';
+const defaultFormat = formats.find(format => format.isDefault);
+const duplicate = route.action === 'new' && Boolean(source);
+const editing = route.action === 'edit' && Boolean(source);
+const first = formats.length === 0;
+const defaultDesign = helpers.defaultFormatFor(organization);
+let form = { ...defaultDesign, ...(source || {}) };
+form = { ...form, name: duplicate ? `${form.name.slice(0,94)} copy` : source ? form.name : '', presetKey: duplicate ? '' : form.presetKey, isDefault: source && !duplicate ? source.isDefault : first };
+const invalid = route.action && ((route.action !== 'new' && !source) || (id && !source));
+const options = [['showLogo','Organization logo','Use this format’s logo or inherit your brand logo'],['showHsn','HSN / SAC code','Product and service classification'],['showUnit','Unit of measure','Nos, hours, projects and more'],['showGstRate','Item GST rate','Show the tax rate for each item'],['showBankDetails','Bank details','Payment information for this organization'],['showAmountInWords','Amount in words','Write out the total payable'],['showSignature','Signature area','Space for an authorized signatory'],['showSecondarySignature','Secondary signature','A second authorized person or space to sign'],['showStamp','Company stamp','Uploaded stamp or an empty stamping area'],['showPaymentQr','Payment QR','Uses the payment QR image in business settings']];
+%>
+<link rel="stylesheet" href="/css/management.css" />
+<div class="mg-page" id="formats-page">
+  <div data-error class="mg-message error" role="alert" tabindex="-1" hidden></div>
+  <a class="button secondary" data-resume-document hidden>Resume document</a>
+  <% if (invalid) { %>
+  <section class="mg-card">
+    <h2>Invoice format not found</h2>
+    <p>This format may no longer be available in <%= organization.name %>.</p>
+    <a class="button secondary" href="<%= base %>" data-manager-link>Back to invoice formats</a>
+  </section>
+  <% } else if (route.action === 'delete') { %>
+  <section class="mg-card mg-editor">
+    <a class="button secondary" href="<%= base %>" data-manager-link>← Back to invoice formats</a>
+    <h2>Delete <%= source.name %>?</h2>
+    <p>
+      Saved documents keep their original design. This format will no longer be available for new documents.
+    </p>
+    <div class="mg-delete-sample"><%- include('sample', { organization, format: source, small: false }) %></div>
+    <% if (source.isDefault || formats.length === 1) { %>
+    <p class="mg-message error">Choose another default format before deleting this one.</p>
+    <% } %>
+    <div class="mg-actions">
+      <a class="button secondary" href="<%= base %>" data-manager-link>Keep format</a
+      ><button
+        type="button"
+        class="button danger"
+        data-delete-format="<%= source.id %>"
+        data-base="<%= base %>"
+        <%= source.isDefault || formats.length === 1 ? 'disabled' : '' %>
+      >
+        Delete format
+      </button>
+    </div>
+  </section>
+  <% } else if (route.action) { %>
+  <a class="button secondary" href="<%= base %>" data-manager-link>← Back to invoice formats</a>
+  <section class="mg-card">
+    <header class="mg-card-heading">
+      <div>
+        <span class="mg-eyebrow">DESIGNED FOR YOUR BUSINESS</span>
+        <h2><%= editing ? 'Edit invoice format' : duplicate ? 'Duplicate invoice format' : 'Create invoice format' %></h2>
+        <p><%= organization.name %></p>
+      </div>
+    </header>
+    <form
+      id="format-form"
+      data-id="<%= editing ? source.id : '' %>"
+      data-base="<%= base %>"
+      data-default-locked="<%= first || (editing && source.isDefault) %>"
+    >
+      <div class="mg-designer-grid">
+        <div class="mg-design-controls">
+          <label class="mg-field"
+            >Start from a template<select name="presetKey">
+              <option value="">Custom design</option>
+              <% for (const category of ['Business','Services','Products','Shipping']) { %>
+              <optgroup label="<%= category %>">
+                <% for (const preset of presets.filter(preset => preset.category === category)) { %>
+                <option value="<%= preset.key %>" <%= form.presetKey === preset.key ? 'selected' : '' %>>
+                  <%= preset.name %>
+                </option>
+                <% } %>
+              </optgroup>
+              <% } %></select
+            ><small
+              ><%= presets.length %> starting points. Selecting one replaces the design settings
+              below.</small
+            ></label
+          >
+          <label class="mg-field"
+            >Format name <span aria-hidden="true">*</span
+            ><input
+              name="name"
+              required
+              maxlength="100"
+              value="<%= form.name %>"
+              autofocus
+              placeholder="e.g. Service invoice, Product invoice"
+          /></label>
+          <label class="mg-field"
+            >Description<textarea name="description" rows="2" maxlength="500"><%= form.description || '' %></textarea>
+          </label>
+          <fieldset class="mg-fieldset">
+            <legend>Choose a layout</legend>
+            <div class="mg-layout-options">
+              <% for (const [key,label] of [['modern','Modern'],['classic','Classic'],['minimal','Minimal'],['ledger','Ledger'],['sidebar','Sidebar']]) { %><label
+                ><input
+                  name="layout"
+                  type="radio"
+                  value="<%= key %>"
+                  <%= form.layout === key ? 'checked' : '' %>
+                /><span><%= label %></span></label
+              ><% } %>
+            </div>
+          </fieldset>
+          <fieldset class="mg-fieldset">
+            <legend>Accent color</legend>
+            <div class="mg-color-options">
+              <% for (const color of ['#26705b','#2c526b','#6e52a3','#b96739','#a44969','#263744']) { %><button
+                type="button"
+                data-color="<%= color %>"
+                style="background:<%= color %>"
+                aria-label="Use color <%= color %>"
+                aria-pressed="<%= form.accentColor === color %>"
+              ></button
+              ><% } %><label
+                ><span class="mg-sr-only">Custom accent color</span
+                ><input type="color" name="accentColor" value="<%= form.accentColor %>" /></label
+              ><output data-color-value><%= form.accentColor %></output>
+            </div>
+          </fieldset>
+          <label class="mg-field"
+            >Spacing<select name="density">
+              <option value="comfortable" <%= form.density === 'comfortable' ? 'selected' : '' %>>Comfortable</option>
+              <option value="compact" <%= form.density === 'compact' ? 'selected' : '' %>>Compact</option>
+            </select></label
+          >
+          <h3>Paper & typography</h3>
+          <p class="mg-hint">Set up the page for printing and PDF downloads.</p>
+          <div class="mg-form-grid">
+            <label class="mg-field"
+              >Paper size<select name="pageSize">
+                <% for (const [key,label] of [['A4','A4 · 210 × 297 mm'],['A5','A5 · 148 × 210 mm'],['LETTER','Letter · 8.5 × 11 in']]) { %>
+                <option value="<%= key %>" <%= (form.pageSize || 'A4') === key ? 'selected' : '' %>>
+                  <%= label %>
+                </option>
+                <% } %>
+              </select></label
+            ><label class="mg-field"
+              >Orientation<select name="orientation">
+                <% for (const key of ['portrait','landscape']) { %>
+                <option value="<%= key %>" <%= (form.orientation || 'portrait') === key ? 'selected' : '' %>>
+                  <%= key[0].toUpperCase() + key.slice(1) %>
+                </option>
+                <% } %>
+              </select></label
+            >
+          </div>
+          <% for (const [key,label,min,max,unit,fallback] of [['fontSize','Text size',8,14,'pt',9],['pageMargin','Page margin',8,24,'mm',14]]) { %><label class="mg-field"
+            ><span
+              ><%= label %>
+              <output data-range-output="<%= key %>"
+                ><%= form[key] ?? fallback %> <%= unit %></output
+              ></span
+            ><input
+              name="<%= key %>"
+              type="range"
+              min="<%= min %>"
+              max="<%= max %>"
+              step="1"
+              data-range-unit="<%= unit %>"
+              value="<%= form[key] ?? fallback %>" /></label
+          ><% } %>
+          <label class="mg-field"
+            >Table style<select name="tableStyle">
+              <% for (const [key,label] of [['ruled','Ruled · clear row lines'],['striped','Striped · alternating rows'],['plain','Plain · minimal lines']]) { %>
+              <option value="<%= key %>" <%= (form.tableStyle || 'ruled') === key ? 'selected' : '' %>><%= label %></option>
+              <% } %>
+            </select></label
+          >
+          <h3>Logo for this format</h3>
+          <p class="mg-hint">Inherit your organization’s logo or upload a different one.</p>
+          <label class="mg-field"
+            >Upload a format logo<input
+              name="logoFile"
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+            /><small>PNG, JPG or WebP · Up to 500 KB</small></label
+          ><input type="hidden" name="logoUrl" value="<%= form.logoUrl || '' %>" /><span data-upload-name
+            ><%= form.logoUrl ? 'Custom format logo' : organization.logoUrl ? 'Using organization logo' : 'No logo added yet' %></span
+          ><button type="button" class="button secondary small" data-remove-logo <%= form.logoUrl ? '' : 'hidden' %>>
+            Use brand logo
+          </button>
+          <label class="mg-field"
+            ><span>Logo width <output data-range-output="logoWidth"><%= form.logoWidth ?? 72 %> px</output></span
+            ><input
+              type="range"
+              name="logoWidth"
+              min="32"
+              max="140"
+              step="1"
+              data-range-unit="px"
+              value="<%= form.logoWidth ?? 72 %>"
+          /></label>
+          <fieldset class="mg-fieldset">
+            <legend>Details to include</legend>
+            <% for (const [key,label,hint] of options) { %><label class="mg-checkbox"
+              ><input name="<%= key %>" type="checkbox" <%= form[key] ? 'checked' : '' %> /><span
+                ><strong><%= label %></strong><small><%= hint %></small></span
+              ></label
+            ><% } %>
+          </fieldset>
+          <% for (const [key,label,min,max,fallback,toggle] of [['signatureWidth','Signature width',70,220,140,'showSignature'],['stampWidth','Stamp size',70,160,110,'showStamp'],['paymentQrWidth','Payment QR width',70,160,110,'showPaymentQr']]) { %><label
+            class="mg-field"
+            data-visible-when="<%= toggle %>"
+            <%= form[toggle] ? '' : 'hidden' %>
+            ><span
+              ><%= label %>
+              <output data-range-output="<%= key %>"><%= form[key] ?? fallback %> px</output></span
+            ><input
+              name="<%= key %>"
+              type="range"
+              min="<%= min %>"
+              max="<%= max %>"
+              step="1"
+              data-range-unit="px"
+              value="<%= form[key] ?? fallback %>" /></label
+          ><% } %>
+          <label class="mg-field"
+            >Footer message<textarea name="footerText" maxlength="500" rows="3"><%= form.footerText %></textarea
+            ><small>A short note at the bottom of every document.</small></label
+          >
+          <label class="mg-checkbox"
+            ><input name="isDefault" type="checkbox" <%= form.isDefault ? 'checked' : '' %> <%= first || (editing && source.isDefault) ? 'disabled' : '' %> /><span
+              ><strong>Use as default</strong><small><%= editing && source.isDefault ? 'To change the default, choose another saved format.' : 'Preselect this format for new invoices and quotations.' %></small></span
+            ></label
+          >
+        </div>
+        <aside class="mg-live-preview">
+          <div class="mg-preview-caption">
+            <strong>SAMPLE PREVIEW</strong
+            ><span data-paper-label
+              ><%= form.pageSize || 'A4' %> · <%= form.orientation || 'portrait' %> · <%= form.fontSize || 9 %> pt</span
+            >
+          </div>
+          <%- include('sample', { organization, format: form, small: false }) %>
+          <p class="mg-hint">
+            Illustrative customer and items. Preview scaled to fit. Your saved documents use their own
+            details.
+          </p>
+          <div class="mg-note">
+            <strong><%= helpers.isIndependentBusiness(organization) ? 'Independent business identity.' : 'Your division’s business identity.' %></strong>
+            <p><%= organization.legalName %></p>
+            <p><%= helpers.organizationSupportEmail(organization) %></p>
+          </div>
+        </aside>
+      </div>
+      <div data-error class="mg-message error" role="alert" tabindex="-1" hidden></div>
+      <footer class="mg-actions">
+        <span class="mg-hint">Saved documents keep their original format.</span
+        ><a class="button secondary" href="<%= base %>" data-manager-link>Cancel</a
+        ><button class="button primary" type="submit">Save format</button>
+      </footer>
+    </form>
+  </section>
+  <% } else { %>
+  <section class="mg-intro">
+    <div>
+      <span class="mg-eyebrow">MAKE EVERY DOCUMENT YOURS</span>
+      <h2>Your brand, on every page.</h2>
+      <p>Design, save and reuse document formats for <%= organization.name %>.</p>
+      <a class="button primary" href="<%= base %>/new" data-manager-link>Create format</a>
+      <p class="mg-hint">
+        <%= presets.length %> ready-to-use templates · 5 layout styles · Print & PDF ready
+      </p>
+    </div>
+    <div class="mg-stats">
+      <div><strong><%= formats.length %></strong><span>Saved formats</span></div>
+    </div>
+  </section>
+  <header class="mg-card-heading">
+    <div>
+      <h3>Your format library</h3>
+      <p><%= defaultFormat ? `${defaultFormat.name} is your default for new documents.` : 'Create your first format to get started.' %></p>
+    </div>
+  </header>
+  <div class="mg-toolbar">
+    <div class="mg-tabs" aria-label="Filter formats by category">
+      <% for (const category of categories) { %><button
+        type="button"
+        data-category="<%= category %>"
+        aria-pressed="<%= category === 'All formats' %>"
+      >
+        <%= category %> <span><%= formats.filter(format => category === 'All formats' || categoryFor(format) === category).length %></span></button
+      ><% } %>
+    </div>
+    <label class="mg-search"
+      ><span class="mg-sr-only">Search invoice formats</span
+      ><input type="search" data-search placeholder="Search formats…"
+    /></label>
+  </div>
+  <p data-results aria-live="polite"><%= formats.length %> formats</p>
+  <div class="mg-empty" data-empty <%= formats.length ? 'hidden' : '' %>>
+    <h3>No formats found</h3>
+    <p>Try another name or category, or create a format for this organization.</p>
+    <button type="button" class="button secondary" data-show-all>Show all formats</button>
+  </div>
+  <div class="mg-format-grid">
+    <% for (const format of formats) { const preset = presets.find(preset => preset.key === format.presetKey); %>
+    <article class="mg-card mg-format-card" data-format-row="<%= format.id %>">
+      <div class="mg-format-art">
+        <span class="mg-eyebrow">SAMPLE PREVIEW</span
+        ><span class="mg-badge" data-default-badge <%= format.isDefault ? '' : 'hidden' %>>Default</span
+        ><%- include('sample', { organization, format, small: true }) %>
+      </div>
+      <h3><%= format.name %></h3>
+      <small
+        ><%= categoryFor(format) %> · <%= format.layout %> · <%= format.pageSize || 'A4' %>
+        <%= format.orientation || 'portrait' %></small
+      >
+      <p><%= format.description || preset?.description || 'A custom format for your organization’s documents.' %></p>
+      <div class="mg-row-actions">
+        <a
+          class="button secondary small"
+          href="<%= base %>/edit/<%= encodeURIComponent(format.id) %>"
+          data-manager-link
+          >Customize</a
+        ><a
+          class="button secondary small"
+          href="<%= base %>/new/<%= encodeURIComponent(format.id) %>"
+          data-manager-link
+          >Duplicate</a
+        ><a
+          class="button secondary small"
+          href="<%= base %>/delete/<%= encodeURIComponent(format.id) %>"
+          data-manager-link
+          data-delete-link
+          aria-disabled="<%= format.isDefault || formats.length === 1 %>"
+          tabindex="<%= format.isDefault || formats.length === 1 ? -1 : 0 %>"
+          >Delete</a
+        >
+      </div>
+      <button
+        class="button secondary"
+        type="button"
+        data-make-default="<%= format.id %>"
+        <%= format.isDefault ? 'disabled' : '' %>
+      >
+        <%= format.isDefault ? 'Default for this organization' : 'Use as default' %>
+      </button>
+    </article>
+    <% } %>
+  </div>
+  <p class="mg-hint">
+    Formats belong to <%= organization.name %>. Choose a saved format while creating an invoice or quotation.
+  </p>
+  <% } %>
+</div>
+<script type="module" src="/js/management/formats.js"></script>

@@ -1,0 +1,162 @@
+<%
+const recurring = data.recurring;
+const base = `/workspace/${encodeURIComponent(data.organization.id)}/recurring`;
+const invoiceBase = `/workspace/${encodeURIComponent(data.organization.id)}/invoices`;
+const canManage = data.user?.role === 'admin';
+const schedule = recurring.schedule;
+const source = recurring.source;
+const snapshot = schedule?.sourceSnapshot || source?.snapshot;
+const template = schedule?.template || source?.template;
+const editable = canManage && (recurring.mode === 'new' || ['paused','error'].includes(schedule?.status));
+const statusLabels = { active:'Active', paused:'Paused', error:'Needs review', completed:'Completed' };
+const formatTime = value => new Intl.DateTimeFormat('en-IN',{dateStyle:'medium',timeStyle:'short',timeZone:'Asia/Kolkata'}).format(new Date(value));
+const detailUrl = id => `${base}/edit/${encodeURIComponent(id)}`;
+const historyUrl = (key,value) => `${detailUrl(schedule.id)}?${new URLSearchParams({historyPage:String(recurring.historyPage),eventPage:String(recurring.eventPage),[key]:String(value)})}`;
+%>
+<link rel="stylesheet" href="/css/recurring.css" />
+<div class="recurring-page">
+  <header class="page-header">
+    <div>
+      <span class="eyebrow">SCHEDULED DRAFTS</span>
+      <h1><%= recurring.mode==='new'?'Create recurring schedule':schedule?schedule.name:'Recurring invoices' %></h1>
+      <p>Prepare repeat invoices on schedule, then review and issue each draft yourself.</p>
+    </div>
+    <div class="actions">
+      <% if(recurring.mode!=='list'){ %><a class="button" href="<%= base %>">All schedules</a><% } %>
+      <% if(canManage && recurring.mode==='list'){ %><a class="button button-primary" href="<%= base %>/new">+ New schedule</a><% } %>
+    </div>
+  </header>
+  <div class="alert alert-error" data-recurring-feedback role="alert" tabindex="-1" hidden></div>
+  <div class="recurring-notice" data-recurring-conflict role="alert" hidden>
+    <strong>The saved version needs review.</strong>
+    <p data-recurring-conflict-copy>Your entries are still in this form. Open the latest version in another tab and compare before applying changes.</p>
+    <a class="button" data-recurring-latest href="<%= schedule?detailUrl(schedule.id):base %>" target="_blank" rel="noopener">Open latest saved version</a>
+  </div>
+  <details class="recurring-policy">
+    <summary>What each recurring draft copies</summary>
+    <p><%= recurring.policy %></p>
+    <p>Automatic catch-up creates at most one occurrence per schedule per minute, with up to <%= recurring.limits.batchSize %> schedules handled per run. The next date stays pending if a required record is unavailable. Pause a schedule to stop its backlog from generating.</p>
+  </details>
+
+  <% if(recurring.mode==='list'){ %>
+    <% if(!canManage){ %><p class="muted">You can review schedules and their history. An administrator manages automatic generation.</p><% } %>
+    <% if(!recurring.schedules.length){ %>
+    <section class="card empty-state">
+      <h2>No recurring schedules</h2>
+      <p>Schedules are created explicitly from a saved invoice. No invoices will repeat until an administrator activates a schedule.</p>
+      <% if(canManage){ %><a class="button button-primary" href="<%= base %>/new">Choose a source invoice</a><% } %>
+    </section>
+    <% }else{ %>
+    <div class="recurring-list">
+      <% for(const row of recurring.schedules){ %>
+      <article class="card recurring-list-card" data-recurring-row="<%= row.id %>">
+        <header><div><h2><a href="<%= detailUrl(row.id) %>"><%= row.name %></a></h2><p><%= row.sourceSnapshot.customer.name %> · Source <%= row.sourceSnapshot.number %></p></div><span class="recurring-status recurring-status-<%= row.status %>"><%= statusLabels[row.status] %></span></header>
+        <dl class="recurring-summary">
+          <div><dt>Repeats</dt><dd><%= recurring.labels[row.frequency] %></dd></div>
+          <div><dt>Next occurrence</dt><dd><%= row.nextDate?helpers.displayDate(row.nextDate):'Complete' %></dd></div>
+          <div><dt>Drafts generated</dt><dd><%= row.generatedCount %></dd></div>
+          <div><dt>Pending through today</dt><dd><%= row.dueCount %></dd></div>
+        </dl>
+        <% if(row.lastError && row.status==='error'){ %><p class="recurring-error"><%= row.lastError.message %></p><% } %>
+        <a class="button" href="<%= detailUrl(row.id) %>">View schedule &amp; history</a>
+      </article>
+      <% } %>
+    </div>
+    <% } %>
+    <% if(recurring.pageCount>1){ %><nav class="recurring-pagination" aria-label="Recurring schedules pages"><div><% if(recurring.page>1){ %><a class="button" href="<%= base %>?page=<%= recurring.page-1 %>">← Previous</a><% } %></div><span>Page <%= recurring.page %> of <%= recurring.pageCount %></span><div><% if(recurring.page<recurring.pageCount){ %><a class="button" href="<%= base %>?page=<%= recurring.page+1 %>">Next →</a><% } %></div></nav><% } %>
+
+  <% }else if(recurring.mode==='new' && !source){ %>
+    <section class="card">
+      <h2>Choose the invoice to repeat</h2>
+      <p>The schedule will keep a copy of its items and terms. The original invoice stays unchanged.</p>
+      <form class="recurring-search" method="get" action="<%= base %>/new">
+        <label>Search saved invoices<input type="search" name="q" maxlength="200" value="<%= recurring.search %>" placeholder="Number, customer or title" /></label>
+        <button type="submit" class="button">Search</button>
+        <% if(recurring.search){ %><a class="button" href="<%= base %>/new">Clear</a><% } %>
+      </form>
+      <p class="muted">Showing up to <%= recurring.limit %> latest matching invoices. Search to find an older invoice.</p>
+      <div class="table-wrap"><table><thead><tr><th>Invoice</th><th>Customer</th><th>Status</th><th>Choose</th></tr></thead><tbody>
+        <% for(const invoice of recurring.sources){ %><tr><td><a href="<%= invoiceBase %>/preview/<%= encodeURIComponent(invoice.id) %>" target="_blank" rel="noopener"><%= invoice.number %></a><small><%= invoice.title %></small></td><td><%= invoice.customerSnapshot.name %></td><td><%= helpers.statusLabel(invoice.status) %></td><td><a class="button" href="<%= base %>/new?documentId=<%= encodeURIComponent(invoice.id) %>">Use invoice</a></td></tr><% } %>
+      </tbody></table></div>
+      <% if(!recurring.sources.length){ %><div class="empty-state"><h3>No matching invoices</h3><p>Adjust the search or save an invoice before scheduling it.</p><a class="button" href="<%= invoiceBase %>/new">Create invoice</a></div><% } %>
+    </section>
+
+  <% }else{ %>
+    <% if(schedule){ %>
+    <section class="card recurring-overview">
+      <header><h2>Schedule status</h2><span class="recurring-status recurring-status-<%= schedule.status %>"><%= statusLabels[schedule.status] %></span></header>
+      <dl class="recurring-summary">
+        <div><dt>Anchor date</dt><dd><%= helpers.displayDate(schedule.startDate) %></dd></div>
+        <div><dt>Next occurrence</dt><dd><%= schedule.nextDate?helpers.displayDate(schedule.nextDate):'Complete' %></dd></div>
+        <div><dt>Generated</dt><dd><%= schedule.generatedCount %><%= schedule.maxOccurrences?` of ${schedule.maxOccurrences}`:'' %></dd></div>
+        <div><dt>Pending through today</dt><dd data-recurring-backlog><%= schedule.dueCount %></dd></div>
+      </dl>
+      <% if(schedule.dueCount>1){ %><p class="recurring-notice">There are <strong><%= schedule.dueCount %> pending occurrences</strong> through <%= helpers.displayDate(recurring.businessDate) %>. They will be created one at a time from the oldest pending date. Pause the schedule if this backlog needs review.</p><% } %>
+      <% if(schedule.lastError && schedule.status==='error'){ %><div class="alert alert-error" role="alert"><strong>Generation stopped at <%= helpers.displayDate(schedule.lastError.scheduledDate) %>.</strong><p><%= schedule.lastError.message %></p><p>Fix the required records, review this schedule, then resume. The failed occurrence has not been skipped.</p></div><% } %>
+      <% if(schedule.recoveryPausedAt && (!schedule.recoveryReviewedAt || schedule.recoveryReviewedAt<schedule.recoveryPausedAt)){ %><p class="recurring-notice">A database restore paused this schedule. Check its next date and generated history before explicitly resuming.</p><% } %>
+      <% if(canManage && schedule.status!=='completed'){ %>
+      <div class="recurring-actions">
+        <% if(schedule.status==='active'){ %><button type="button" class="button" data-recurring-state="pause">Pause schedule</button><button type="button" class="button button-primary" data-recurring-generate <%= schedule.dueCount?'':'disabled' %>>Generate due draft now</button><% }else{ %><button type="button" class="button button-primary" data-recurring-state="resume">Review and resume</button><% } %>
+      </div>
+      <% if(schedule.status==='active' && !schedule.dueCount){ %><p class="muted">The next draft is due on <%= helpers.displayDate(schedule.nextDate) %> (India time).</p><% } %>
+      <% } %>
+    </section>
+    <% } %>
+
+    <div class="recurring-editor-grid">
+      <section class="card">
+        <h2><%= schedule?'Schedule settings':'Set the recurrence' %></h2>
+        <% if(schedule && !editable){ %><p class="muted"><%= canManage?(schedule.status==='completed'?'This completed schedule is kept as history.':'Pause the schedule before changing its settings.'):'Administrator access is required to change these settings.' %></p><% } %>
+        <div class="recurring-notice" data-recurring-pending hidden><strong>An earlier create request needs confirmation.</strong><p>Its exact settings are kept in this browser tab. Retry the same request to recover the saved schedule before creating another one.</p></div>
+        <form id="recurring-form" data-mode="<%= recurring.mode %>">
+          <fieldset data-recurring-inputs <%= editable?'':'disabled' %>>
+            <div class="recurring-form-grid">
+              <label class="recurring-wide">Schedule name<input name="name" required maxlength="120" value="<%= schedule?.name || `${snapshot.customer.name} · ${snapshot.title}`.slice(0,120) %>" /></label>
+              <label>Frequency<select name="frequency" <%= schedule?'disabled':'' %>><% for(const [value,label] of Object.entries(recurring.labels)){ %><option value="<%= value %>" <%= (schedule?.frequency||'monthly')===value?'selected':'' %>><%= label %></option><% } %></select></label>
+              <label>Start / anchor date<input name="startDate" type="date" min="2000-01-01" max="2199-12-31" required value="<%= schedule?.startDate || recurring.businessDate %>" <%= schedule?'disabled':'' %> /></label>
+              <label>Payment term (days)<input name="dueDays" type="number" min="0" max="<%= recurring.limits.dueDays %>" step="1" required value="<%= schedule?.dueDays ?? 30 %>" /><small>0–<%= recurring.limits.dueDays %> calendar days after each scheduled issue date.</small></label>
+              <label>End date (optional)<input name="endDate" type="date" min="<%= schedule?.nextDate || recurring.businessDate %>" max="2199-12-31" value="<%= schedule?.endDate || '' %>" /><small>The occurrence on this date is included.</small></label>
+              <label class="recurring-wide">Maximum drafts (optional)<input name="maxOccurrences" type="number" min="<%= schedule?schedule.nextIndex+1:1 %>" max="<%= recurring.limits.maxOccurrences %>" step="1" placeholder="No occurrence limit" value="<%= schedule?.maxOccurrences || '' %>" /><small>1–<%= recurring.limits.maxOccurrences %>, including the first occurrence. Leave empty for no count limit.</small></label>
+              <% if(!schedule){ %><label class="recurring-checkbox recurring-wide"><input name="active" type="checkbox" /><span><strong>Activate automatic draft generation</strong><small>Leave unchecked to save a paused schedule for review.</small></span></label><% } %>
+            </div>
+          </fieldset>
+          <div class="recurring-date-preview" data-recurrence-preview aria-live="polite"></div>
+          <% if(schedule){ %><p class="muted">The source template, frequency and anchor stay fixed. To change what is billed or when it repeats, pause this schedule and create a replacement from a reviewed invoice.</p><% } %>
+          <% if(editable){ %><button class="button button-primary" type="submit" data-recurring-save><%= schedule?'Save settings':'Create schedule' %></button><% } %>
+        </form>
+      </section>
+      <section class="card recurring-source">
+        <span class="eyebrow">FROZEN SOURCE TEMPLATE</span>
+        <h2><%= snapshot.number %></h2>
+        <p><strong><%= snapshot.customer.name %></strong><br /><%= snapshot.title %></p>
+        <p class="muted">Source total: <%= helpers.money(snapshot.totals.total) %>. Future draft totals are recalculated with the saved items and current valid seller identity.</p>
+        <a class="button" href="<%= invoiceBase %>/preview/<%= encodeURIComponent(snapshot.documentId) %>" target="_blank" rel="noopener">Open source invoice</a>
+        <% if(!schedule){ %><a class="button" href="<%= base %>/new">Choose another source</a><% } %>
+        <div class="table-wrap"><table><thead><tr><th>Saved item</th><th>Qty</th><th>Rate</th></tr></thead><tbody><% for(const item of template.items){ %><tr><td><%= item.description %><small>GST <%= item.gstRate %>%</small></td><td><%= item.quantity %></td><td><%= helpers.money(item.rate) %></td></tr><% } %></tbody></table></div>
+        <dl class="recurring-source-details"><div><dt>Discount</dt><dd><%= template.discountPercent %>%</dd></div><div><dt>Source seller</dt><dd><%= snapshot.seller.name %></dd></div><% if(snapshot.businessProduct){ %><div><dt>Business product</dt><dd><%= snapshot.businessProduct.name %></dd></div><% } %><% if(template.notes){ %><div><dt>Saved notes</dt><dd><%= template.notes %></dd></div><% } %><% if(template.terms){ %><div><dt>Saved terms</dt><dd><%= template.terms %></dd></div><% } %></dl>
+      </section>
+    </div>
+
+    <% if(schedule){ %>
+    <section class="card recurring-history">
+      <h2>Occurrence history</h2>
+      <p>Generated markers remain even if a draft is deleted, so retrying that occurrence cannot recreate it.</p>
+      <% if(!recurring.history.length){ %><p class="muted">No occurrences have been attempted yet.</p><% }else{ %>
+      <div class="table-wrap"><table><thead><tr><th>Scheduled date</th><th>Result</th><th>Invoice</th><th>Attempts</th></tr></thead><tbody>
+        <% for(const occurrence of recurring.history){ %><tr data-recurring-occurrence="<%= occurrence.scheduledDate %>"><td><%= helpers.displayDate(occurrence.scheduledDate) %><% if(occurrence.dueDate){ %><small>Due <%= helpers.displayDate(occurrence.dueDate) %></small><% } %></td><td><%= occurrence.status==='generated'?'Draft created':'Needs review' %><% if(occurrence.lastFailure){ %><small><%= occurrence.status==='generated'?'Previous issue: ':'' %><%= occurrence.lastFailure.message %></small><% } %></td><td><% if(occurrence.documentAvailable){ %><a href="<%= invoiceBase %>/edit/<%= encodeURIComponent(occurrence.documentId) %>"><%= occurrence.documentNumber %></a><small>Current status: <%= helpers.statusLabel(occurrence.documentStatus) %></small><% }else if(occurrence.documentNumber){ %><%= occurrence.documentNumber %><small>Draft no longer available; occurrence retained.</small><% }else{ %>Not generated<% } %></td><td><%= occurrence.attempts %></td></tr><% } %>
+      </tbody></table></div><% } %>
+      <% if(recurring.historyPageCount>1){ %><nav class="recurring-pagination" aria-label="Occurrence history pages"><div><% if(recurring.historyPage>1){ %><a class="button" href="<%= historyUrl('historyPage',recurring.historyPage-1) %>">← Previous</a><% } %></div><span>Page <%= recurring.historyPage %> of <%= recurring.historyPageCount %></span><div><% if(recurring.historyPage<recurring.historyPageCount){ %><a class="button" href="<%= historyUrl('historyPage',recurring.historyPage+1) %>">Next →</a><% } %></div></nav><% } %>
+    </section>
+    <section class="card recurring-history">
+      <h2>Activity</h2>
+      <ol class="recurring-activity"><% for(const entry of recurring.activity){ %><li><strong><%= entry.description %></strong><small><%= formatTime(entry.at) %> IST · <%= entry.actorId==='automation'?'Automatic run':'Administrator action' %></small><% if(entry.type==='updated'){ %><p>Payment term: <%= entry.previous.dueDays %> → <%= entry.changes.dueDays %> days. End date: <%= entry.changes.endDate || 'No date limit' %>. Maximum drafts: <%= entry.changes.maxOccurrences || 'No count limit' %>.</p><% } %></li><% } %></ol>
+      <% if(recurring.eventPageCount>1){ %><nav class="recurring-pagination" aria-label="Activity pages"><div><% if(recurring.eventPage>1){ %><a class="button" href="<%= historyUrl('eventPage',recurring.eventPage-1) %>">← Previous</a><% } %></div><span>Page <%= recurring.eventPage %> of <%= recurring.eventPageCount %></span><div><% if(recurring.eventPage<recurring.eventPageCount){ %><a class="button" href="<%= historyUrl('eventPage',recurring.eventPage+1) %>">Next →</a><% } %></div></nav><% } %>
+    </section>
+    <% } %>
+  <% } %>
+</div>
+<dialog class="recurring-dialog" id="recurring-confirm" aria-labelledby="recurring-confirm-title" aria-describedby="recurring-confirm-copy">
+  <h2 id="recurring-confirm-title"></h2><p id="recurring-confirm-copy"></p>
+  <div class="recurring-actions"><button class="button" type="button" data-recurring-cancel autofocus>Cancel</button><button class="button button-primary" type="button" data-recurring-confirm>Continue</button></div>
+</dialog>
+<script type="module" src="/js/recurring/recurring.js"></script>

@@ -1,0 +1,161 @@
+<%
+const statement = data.ledgerStatement;
+const customer = statement.customer;
+const period = statement.period;
+const amounts = value =>
+  value === null || value === undefined ? 'Not available' : helpers.money(value / 100);
+const filters = { from: statement.filters.from, to: statement.filters.to };
+const statementUrl = extra =>
+  helpers.pageUrl(data, 'ledger', { ...filters, ...extra }, 'preview', customer.id);
+const labels = {
+  invoice: 'Invoice',
+  receipt: 'Receipt',
+  receipt_void: 'Receipt void',
+  legacy_balance: 'Legacy balance'
+};
+%>
+<link rel="stylesheet" href="/css/receivables.css" />
+<header class="page-header no-print">
+  <div>
+    <span class="eyebrow">CUSTOMER LEDGER</span>
+    <h1><%= customer.name %></h1>
+    <p>Review invoices, receipts and corrections in one statement.</p>
+  </div>
+  <div class="actions">
+    <a class="button" href="<%= helpers.url(data, 'ledger') %>">Customer ledger</a>
+    <a class="button" href="<%= statementUrl({ download: 'csv' }) %>" data-ledger-export download>Export statement</a>
+    <% if (data.ledgerPrint) { %>
+      <button class="button button-primary" type="button" data-print-statement>Print / Save PDF</button>
+    <% } else { %>
+      <a class="button button-primary" href="<%= statementUrl({ print: '1' }) %>" target="_blank" rel="noopener" data-ledger-print-link>Print statement</a>
+    <% } %>
+  </div>
+</header>
+<% if (!data.ledgerPrint) { %>
+  <form class="card finance-filters no-print" method="get" action="<%= helpers.url(data, 'ledger', 'preview', customer.id) %>" data-ledger-filters>
+    <label class="field">
+      From date
+      <input type="date" name="from" min="2000-01-01" max="2199-12-31" value="<%= filters.from %>" />
+    </label>
+    <label class="field">
+      Through date
+      <input type="date" name="to" min="2000-01-01" max="2199-12-31" value="<%= filters.to %>" />
+    </label>
+    <button class="button" type="submit">Apply dates</button>
+    <a class="text-button" href="<%= helpers.url(data, 'ledger', 'preview', customer.id) %>">All dates</a>
+  </form>
+<% } else { %>
+  <p class="finance-basis no-print">All <%= statement.total %> matching statement rows are included. Use Print / Save PDF to print this statement.</p>
+<% } %>
+<article class="card ledger-report" data-ledger-report>
+  <header class="ledger-report-heading">
+    <div>
+      <span class="eyebrow">CUSTOMER STATEMENT</span>
+      <h2><%= statement.organization.legalName || statement.organization.name %></h2>
+      <p class="preserve-lines"><%= statement.organization.address || '' %></p>
+      <% if (statement.organization.gstin) { %>
+        <small>GSTIN: <%= statement.organization.gstin %></small>
+      <% } %>
+    </div>
+    <div>
+      <h3><%= customer.name %></h3>
+      <p class="preserve-lines"><%= customer.address || '' %></p>
+      <p><%= customer.email || '' %></p>
+      <% if (customer.gstin) { %>
+        <small>GSTIN: <%= customer.gstin %></small>
+      <% } %>
+      <% if (customer.active === false) { %>
+        <p><span class="badge">Archived contact</span></p>
+      <% } %>
+    </div>
+  </header>
+  <div class="ledger-report-period">
+    <strong><%= filters.from ? helpers.displayDate(filters.from) : 'All recorded dates' %><%= filters.to ? ' through ' + helpers.displayDate(filters.to) : '' %></strong>
+    <span>Prepared <%= helpers.displayDate(statement.businessDate) %> · INR</span>
+  </div>
+  <p class="finance-basis">Scope: currently issued invoices, using their recorded invoice and receipt dates. Later invoice status changes affect this statement.</p>
+  <% for (const notice of statement.history.notices || []) { %>
+    <div class="alert alert-info"><%= notice.message || notice %></div>
+  <% } %>
+  <div class="metrics-grid finance-metrics ledger-period-metrics">
+    <% for (const [label, value] of [
+      ['Opening balance', period.openingBalancePaise],
+      ['Invoiced in period', period.invoicedPaise],
+      ['Net receipts in period', period.receivedPaise - period.voidedPaise],
+      ['Closing balance', period.closingBalancePaise]
+    ]) { %>
+      <section class="metric">
+        <div class="metric-label"><%= label %></div>
+        <div class="metric-value"><%= amounts(value) %></div>
+      </section>
+    <% } %>
+  </div>
+  <div class="table-wrap ledger-table-wrap">
+    <table class="finance-table ledger-statement-table" data-statement-table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Document / entry</th>
+          <th>Reference</th>
+          <th class="text-right">Debit</th>
+          <th class="text-right">Credit</th>
+          <th class="text-right">Balance</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% for (const row of statement.rows) { %>
+          <tr data-ledger-entry="<%= row.type %>">
+            <td><%= row.date ? helpers.displayDate(row.date) : 'Undated' %></td>
+            <td>
+              <% if (row.href) { %>
+                <a href="<%= row.href %>"><strong><%= row.documentNumber %></strong></a>
+              <% } else { %>
+                <strong><%= row.documentNumber || 'Account' %></strong>
+              <% } %>
+              <small><%= labels[row.type] || row.type %> · <%= row.description %></small>
+            </td>
+            <td><%= row.reference || '—' %></td>
+            <td class="text-right"><%= row.debitPaise ? amounts(row.debitPaise) : '—' %></td>
+            <td class="text-right"><%= row.creditPaise ? amounts(row.creditPaise) : '—' %></td>
+            <td class="text-right"><%= amounts(row.balancePaise) %></td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+  <% if (!statement.rows.length) { %>
+    <div class="empty-state">
+      <h3>No statement entries in this period</h3>
+      <p>Choose another date range or return to all recorded dates.</p>
+    </div>
+  <% } %>
+  <%- include('../partials/finance-pagination', {
+    pagination: data.ledgerPrint ? { pageCount: 1 } : statement,
+    label: 'Statement pages',
+    previousUrl: statement.page > 1 ? statementUrl({ page: statement.page - 1 }) : '',
+    nextUrl: statement.page < statement.pageCount ? statementUrl({ page: statement.page + 1 }) : ''
+  }) %>
+  <footer class="ledger-current-summary">
+    <div>
+      <span>Current outstanding</span>
+      <strong><%= amounts(statement.summary.outstandingPaise) %></strong>
+    </div>
+    <div>
+      <span>Current overdue</span>
+      <strong><%= amounts(statement.summary.overduePaise) %></strong>
+    </div>
+    <p>Current balances include all currently issued invoices for this customer, independently of the selected date range.</p>
+  </footer>
+  <% if (statement.excludedDocuments?.length) { %>
+    <section class="finance-notice">
+      <h3>Excluded from receivables</h3>
+      <p>Draft or cancelled invoices are listed separately. They do not contribute to the statement above.</p>
+      <div class="actions">
+        <% for (const document of statement.excludedDocuments) { %>
+          <a class="text-button" href="<%= document.href || helpers.url(data, 'invoices', 'preview', document.id) %>"><%= document.number || document.documentNumber %><%= document.status ? ' · ' + helpers.statusLabel(document.status) : '' %></a>
+        <% } %>
+      </div>
+    </section>
+  <% } %>
+</article>
+<script type="module" src="/js/workspace/ledger.js"></script>

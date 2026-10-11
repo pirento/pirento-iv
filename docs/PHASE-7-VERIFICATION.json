@@ -1,0 +1,45 @@
+{
+  "project": "venturecore-workspace-mvc",
+  "release": "2.5.0",
+  "phase": 7,
+  "verifiedOn": "2026-10-11",
+  "environment": {
+    "platform": "Linux",
+    "node": "24.19.0",
+    "mongodb": "7.0.14",
+    "mongodbTopology": "isolated local replica set",
+    "playwright": "1.64.0",
+    "chromium": "136.0.7103.25"
+  },
+  "results": {
+    "sourceModulesAndTemplates": 219,
+    "unit": { "passed": 90, "failed": 0, "skipped": 0 },
+    "nativeMongoDB": { "passed": 121, "failed": 0, "skipped": 0 },
+    "browser": { "passed": 9, "failed": 0, "skipped": 0, "retries": 0, "uncaughtPageErrors": 0 },
+    "readiness": { "checkedRuntimeDependencies": 9, "findings": [] }
+  },
+  "execution": {
+    "completeReleaseGatePassed": true,
+    "sourceAndFullUnitGateRerunAfterFinalLauncherRefinement": true,
+    "nodeCountsIncludeParentTestsAndSubtests": true,
+    "browserSuite": "tests/browser/workspace.spec.js",
+    "providerTransports": "controlled; password reset captured locally"
+  },
+  "directoryFixture": {
+    "contacts": 131,
+    "catalogRecords": 131,
+    "listPageSize": 50,
+    "initialEditorContacts": 20,
+    "initialEditorCatalogRecords": 20,
+    "editorPageDataBytes": 35621,
+    "basicSortedPageUsesIndex": true,
+    "substringSearchIndexCoverageClaimed": false
+  },
+  "notExecuted": [
+    "User hosting deployment",
+    "Remote GitHub Actions run",
+    "Live payment, email or GST provider accounts",
+    "Production load certification",
+    "Migration of an unprovided business database"
+  ]
+}

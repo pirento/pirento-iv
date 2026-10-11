@@ -1,0 +1,214 @@
+<%
+const isSettings = data.route.view === 'business_settings';
+const source = isSettings ? data.organization : data.organizations.find(org=>org.id===data.route.id);
+const editing = isSettings || Boolean(data.route.action);
+const defaults = {name:'',legalName:'',tradeName:'',businessConstitution:'',businessType:'division',supportEmail:'support@pirento.com',paymentGateway:'razorpay',gstRegistrations:[],gstin:'',email:'',phone:'',address:'',stateCode:'',accentColor:'#26705b',logoUrl:'',invoicePrefix:'INV',quotationPrefix:'QUO',billingProfile:'general',enableProductSelection:false,secondarySignatureLabel:'',secondarySignatureImageUrl:'',stampLabel:'',stampImageUrl:'',pan:'',cin:'',bankBranch:'',accountType:'',signatureImageUrl:'',paymentQrUrl:'',bankName:'',accountName:'',accountNumber:'',ifsc:'',terms:'',signature:'',template:'modern'};
+const form = {...defaults,...source};
+if(source) form.billingProfile=helpers.billingProfileFor(source);
+%>
+<header class="page-header">
+  <div>
+    <span class="eyebrow">BUSINESS MANAGEMENT</span>
+    <h1><%= editing ? source ? 'Business settings' : 'Add a business' : 'Your businesses' %></h1>
+    <p><%= editing ? 'Identity, document branding, GST registrations and payment details.' : 'Keep each business identity, contacts and document records organized.' %></p>
+  </div>
+  <div class="actions">
+    <% if(!editing&&data.user.role==='admin'){ %><a class="button button-primary" href="<%= helpers.url(data,'organizations','new') %>">+ Add business</a
+    ><% } else if(editing){ %><a class="button" href="<%= helpers.url(data,'organizations') %>">Back to businesses</a
+    ><% } %>
+  </div>
+</header>
+<% if(editing && data.route.id && !source){ %>
+<div class="alert alert-error">This business is unavailable.</div>
+<% } else if(editing){ %>
+<form class="card" id="organization-form" data-id="<%= source?.id || '' %>">
+  <div class="alert alert-error" data-form-error hidden role="alert"></div>
+  <div class="tabs" role="tablist" aria-label="Business settings sections">
+    <button class="active" type="button" role="tab" aria-selected="true" data-settings-tab="details">
+      Business details</button
+    ><button type="button" role="tab" aria-selected="false" data-settings-tab="design">
+      Logo &amp; document design</button
+    ><button type="button" role="tab" aria-selected="false" data-settings-tab="payment">
+      Payment details
+    </button>
+  </div>
+  <section data-settings-panel="details">
+    <h2 class="section-heading">
+      Business identity<button class="text-button" type="button" data-use-company>
+        Use Venturecore details
+      </button>
+    </h2>
+    <div class="form-grid">
+      <label class="field"
+        >Business / brand name<input
+          name="name"
+          maxlength="120"
+          value="<%= form.name %>"
+          required /></label
+      ><label class="field"
+        >Business relationship<select name="businessType">
+          <option value="division" <%= form.businessType==='division'?'selected':'' %>>Venturecore division</option>
+          <option value="independent" <%= form.businessType==='independent'?'selected':'' %>>Independent business</option>
+        </select></label
+      >
+      <label class="field"
+        >Registered legal name<input
+          name="legalName"
+          maxlength="200"
+          value="<%= form.legalName %>"
+          required /></label
+      ><label class="field"
+        >Trade name<input name="tradeName" maxlength="200" value="<%= form.tradeName %>" /></label
+      ><label class="field"
+        >Business constitution<input
+          name="businessConstitution"
+          maxlength="120"
+          value="<%= form.businessConstitution %>"
+          placeholder="Private limited / Proprietorship / Partnership" /></label
+      ><label class="field"
+        >Billing profile<select name="billingProfile">
+          <% for(const [key,profile] of Object.entries(helpers.BILLING_PROFILES)){ %>
+          <option value="<%= key %>" <%= form.billingProfile===key?'selected':'' %>><%= profile.label %></option>
+          <% } %>
+        </select></label
+      >
+      <label class="checkbox full-width"
+        ><input type="checkbox" name="enableProductSelection" <%= form.enableProductSelection?'checked':'' %> />Enable
+        business-product selection on documents</label
+      >
+      <% for(const [name,label,max,type] of [['gstin','Default GSTIN',15,'text'],['pan','PAN',10,'text'],['cin','CIN',21,'text'],['email','Business email',254,'email'],['phone','Business phone',30,'tel'],['supportEmail','Support email',254,'email']]){ %><label class="field"
+        ><%= label %><input
+          type="<%= type %>"
+          name="<%= name %>"
+          maxlength="<%= max %>"
+          value="<%= form[name] %>" /></label
+      ><% } %>
+      <label class="field full"
+        >Registered address<textarea name="address" maxlength="2000"><%= form.address %></textarea></label
+      ><label class="field"
+        >Registered state<select name="stateCode">
+          <option value="">Select state</option>
+          <% for(const [code,name] of helpers.STATES){ %>
+          <option value="<%= code %>" <%= form.stateCode===code?'selected':'' %>>
+            <%= name %> (<%= code %>)
+          </option>
+          <% } %>
+        </select></label
+      >
+    </div>
+    <hr />
+    <h2 class="section-heading">
+      Additional GST registrations<button type="button" class="button button-small" data-add-registration>
+        + Add registration
+      </button>
+    </h2>
+    <p class="inline-note">
+      All registrations must belong to this business PAN. Choose the issuing registration when creating a
+      document.
+    </p>
+    <div id="gst-registrations"><% for(const registration of form.gstRegistrations){ %><%- include('registration', {registration,helpers}) %><% } %></div>
+  </section>
+  <section data-settings-panel="design" hidden>
+    <h2 class="section-heading">Brand appearance</h2>
+    <div class="form-grid">
+      <%- include('../partials/image-field',{name:'logoUrl',label:'Business logo',value:form.logoUrl,helpers}) %>
+      <div class="stack">
+        <label class="field"
+          >Accent colour<input type="color" name="accentColor" value="<%= form.accentColor %>" /></label
+        ><label class="field"
+          >Legacy document style<select name="template">
+            <option value="modern" <%= form.template==='modern'?'selected':'' %>>Modern</option>
+            <option value="classic" <%= form.template==='classic'?'selected':'' %>>Classic</option>
+          </select></label
+        >
+        <p class="inline-note">Use Document formats to customize each print layout.</p>
+      </div>
+      <label class="field"
+        >Invoice prefix<input
+          name="invoicePrefix"
+          value="<%= form.invoicePrefix %>"
+          maxlength="4"
+          pattern="[A-Za-z0-9]{1,4}"
+          required
+        /><small>1–4 letters or digits; must be unique.</small></label
+      ><label class="field"
+        >Quotation prefix<input
+          name="quotationPrefix"
+          value="<%= form.quotationPrefix %>"
+          maxlength="4"
+          pattern="[A-Za-z0-9]{1,4}"
+          required
+      /></label>
+    </div>
+    <hr />
+    <h2 class="section-heading">Signatures &amp; stamp</h2>
+    <div class="form-grid">
+      <label class="field"
+        >Primary signature label<input
+          name="signature"
+          maxlength="200"
+          value="<%= form.signature %>"
+          placeholder="Authorized signatory" /></label
+      ><%- include('../partials/image-field',{name:'signatureImageUrl',label:'Primary signature image',value:form.signatureImageUrl,helpers}) %><label class="field"
+        >Secondary signature label<input
+          name="secondarySignatureLabel"
+          maxlength="200"
+          value="<%= form.secondarySignatureLabel %>" /></label
+      ><%- include('../partials/image-field',{name:'secondarySignatureImageUrl',label:'Secondary signature image',value:form.secondarySignatureImageUrl,helpers}) %><label class="field"
+        >Stamp label<input name="stampLabel" maxlength="200" value="<%= form.stampLabel %>" /></label
+      ><%- include('../partials/image-field',{name:'stampImageUrl',label:'Business stamp',value:form.stampImageUrl,helpers}) %><label class="field full"
+        >Default terms &amp; conditions<textarea name="terms" maxlength="10000" rows="6"><%= form.terms %></textarea>
+      </label>
+    </div>
+  </section>
+  <section data-settings-panel="payment" hidden>
+    <h2 class="section-heading">Bank account</h2>
+    <div class="form-grid">
+      <% for(const [name,label,max] of [['bankName','Bank name',150],['accountName','Account holder',200],['accountNumber','Account number',40],['ifsc','IFSC',11],['bankBranch','Branch',200],['accountType','Account type',40]]){ %><label class="field"
+        ><%= label %><input
+          name="<%= name %>"
+          maxlength="<%= max %>"
+          value="<%= form[name] %>" /></label
+      ><% } %><label class="field"
+        >Online payment gateway<select name="paymentGateway">
+          <option value="razorpay" <%= form.paymentGateway==='razorpay'?'selected':'' %>>Razorpay</option>
+          <option value="cashfree" <%= form.paymentGateway==='cashfree'?'selected':'' %>>Cashfree</option>
+          <option value="none" <%= form.paymentGateway==='none'?'selected':'' %>>None</option></select
+        ><small>Gateway credentials are configured privately by the administrator.</small></label
+      ><%- include('../partials/image-field',{name:'paymentQrUrl',label:'Payment QR image',value:form.paymentQrUrl,helpers}) %>
+    </div>
+    <p class="alert alert-info" style="margin-top:22px">
+      Independent businesses use their own payment account and email sender.
+    </p>
+  </section>
+  <div class="form-actions">
+    <a class="button" href="<%= helpers.url(data,'organizations') %>">Cancel</a
+    ><button class="button button-primary" type="submit">Save business</button>
+  </div>
+</form>
+<template id="registration-template"><%- include('registration',{registration:{id:'',label:'',gstin:'',stateCode:'',address:''},helpers}) %></template>
+<% }else{ %>
+<div class="business-grid">
+  <% for(const organization of data.organizations){ %>
+  <article class="card business-card">
+    <% if(helpers.safeImage(organization.logoUrl)){ %><img src="<%= organization.logoUrl %>" alt="" /><% }else{ %>
+    <div class="business-avatar"><%= helpers.initials(organization.name) %></div>
+    <% } %>
+    <h3><%= organization.name %></h3>
+    <p><%= organization.legalName %></p>
+    <div class="summary-line">
+      <span class="muted">Relationship</span><span><%= helpers.isIndependentBusiness(organization)?'Independent':'Division' %></span>
+    </div>
+    <div class="summary-line"><span class="muted">GSTIN</span><span><%= organization.gstin || 'Not added' %></span></div>
+    <div class="summary-line"><span class="muted">Billing</span><span><%= helpers.BILLING_PROFILES[helpers.billingProfileFor(organization)].label %></span></div>
+    <div class="actions" style="margin-top:19px">
+      <a class="button button-small button-primary" href="/workspace/<%= encodeURIComponent(organization.id) %>/overview"
+        >Open business</a
+      ><% if(data.user.role==='admin'){ %><a class="button button-small" href="<%= helpers.url(data,'organizations','edit',organization.id) %>">Edit details</a
+      ><% } %>
+    </div>
+  </article>
+  <% } %>
+</div>
+<% } %>
+<script type="module" src="/js/organizations/organizations.js"></script>

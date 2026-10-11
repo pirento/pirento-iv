@@ -1,0 +1,144 @@
+<%
+const ledger = data.ledger;
+const filters = ledger.filters;
+const amounts = value => helpers.money((value || 0) / 100);
+const query = {
+  q: filters.q,
+  active: filters.active,
+  balance: filters.balance,
+  pageSize: ledger.pageSize
+};
+const listUrl = extra => helpers.pageUrl(data, 'ledger', { ...query, ...extra });
+%>
+<link rel="stylesheet" href="/css/receivables.css" />
+<header class="page-header">
+  <div>
+    <span class="eyebrow">RECEIVABLES</span>
+    <h1>Customer ledger</h1>
+    <p>Invoice balances and receipt statements for <%= data.organization.name %>.</p>
+  </div>
+  <div class="actions">
+    <a class="button" href="<%= listUrl({ download: 'csv' }) %>" data-ledger-export download>Export all matches</a>
+    <a class="button" href="<%= helpers.url(data, 'customers') %>">Contacts</a>
+  </div>
+</header>
+<div class="metrics-grid finance-metrics">
+  <% for (const [key, label] of [
+    ['invoicedPaise', 'Invoiced'],
+    ['receivedPaise', 'Received'],
+    ['outstandingPaise', 'Outstanding'],
+    ['overduePaise', 'Overdue']
+  ]) { %>
+    <section class="metric">
+      <div class="metric-label"><%= label %></div>
+      <div class="metric-value"><%= amounts(ledger.totals[key]) %></div>
+      <div class="metric-hint">All matching customer accounts</div>
+    </section>
+  <% } %>
+</div>
+<p class="finance-basis">Balances as of <%= helpers.displayDate(ledger.businessDate) %> · Currently issued invoices and recorded receipts · INR</p>
+<% for (const notice of ledger.notices || []) { %>
+  <div class="alert alert-info"><%= notice.message || notice %></div>
+<% } %>
+<% if (ledger.unlinked?.invoiceCount) { %>
+  <section class="card finance-notice">
+    <h2>Invoices without a customer link</h2>
+    <p><strong><%= ledger.unlinked.invoiceCount %></strong> invoices have no saved customer ID. Their outstanding amount is <strong><%= amounts(ledger.unlinked.outstandingPaise) %></strong>. They are shown separately from customer accounts.</p>
+    <div class="actions">
+      <% for (const invoice of ledger.unlinked.examples || []) { %>
+        <a class="text-button" href="<%= invoice.href %>"><%= invoice.number %></a>
+      <% } %>
+    </div>
+  </section>
+<% } %>
+<section class="card">
+  <form class="finance-filters" method="get" action="<%= helpers.url(data, 'ledger') %>" data-ledger-filters>
+    <label class="field finance-search">
+      Search customer
+      <input type="search" name="q" maxlength="200" value="<%= filters.q %>" placeholder="Name, email or phone" />
+    </label>
+    <label class="field">
+      Contact status
+      <select name="active">
+        <% for (const [value, label] of [
+          ['all', 'All contacts'],
+          ['active', 'Active'],
+          ['archived', 'Archived']
+        ]) { %>
+          <option value="<%= value %>" <%= filters.active === value ? 'selected' : '' %>><%= label %></option>
+        <% } %>
+      </select>
+    </label>
+    <label class="field">
+      Balance
+      <select name="balance">
+        <% for (const [value, label] of [
+          ['all', 'All balances'],
+          ['outstanding', 'Outstanding'],
+          ['overdue', 'Overdue']
+        ]) { %>
+          <option value="<%= value %>" <%= filters.balance === value ? 'selected' : '' %>><%= label %></option>
+        <% } %>
+      </select>
+    </label>
+    <button class="button" type="submit">Apply filters</button>
+    <a class="text-button" href="<%= helpers.url(data, 'ledger') %>">Reset</a>
+  </form>
+  <div class="finance-section-heading">
+    <h2>Customer accounts</h2>
+    <span class="muted"><%= ledger.total %> matching accounts</span>
+  </div>
+  <div class="table-wrap">
+    <table class="finance-table" data-ledger-table>
+      <thead>
+        <tr>
+          <th>Customer</th>
+          <th class="text-right">Invoices</th>
+          <th class="text-right">Invoiced</th>
+          <th class="text-right">Received</th>
+          <th class="text-right">Outstanding</th>
+          <th class="text-right">Overdue</th>
+          <th>Statement</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% for (const customer of ledger.customers) { %>
+          <tr data-ledger-customer="<%= customer.id %>">
+            <td>
+              <strong><%= customer.name %></strong>
+              <small><%= customer.email || customer.phone || 'No contact details' %></small>
+              <% if (customer.active === false) { %>
+                <span class="badge">Archived</span>
+              <% } %>
+              <% if (customer.missingContact) { %>
+                <span class="badge">Saved customer reference</span>
+              <% } %>
+            </td>
+            <td class="text-right"><%= customer.invoiceCount %></td>
+            <td class="text-right"><%= amounts(customer.invoicedPaise) %></td>
+            <td class="text-right"><%= amounts(customer.receivedPaise) %></td>
+            <td class="text-right"><strong><%= amounts(customer.outstandingPaise) %></strong></td>
+            <td class="text-right"><%= amounts(customer.overduePaise) %></td>
+            <td>
+              <a class="text-button" href="<%= helpers.url(data, 'ledger', 'preview', customer.id) %>">Open statement</a>
+            </td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+  <% if (!ledger.customers.length) { %>
+    <div class="empty-state">
+      <h2>No matching customer accounts</h2>
+      <p>Adjust the filters, add a contact, or issue an invoice for a saved customer.</p>
+      <a class="button" href="<%= helpers.url(data, 'customers') %>">Open contacts</a>
+    </div>
+  <% } %>
+  <%- include('../partials/finance-pagination', {
+    pagination: ledger,
+    label: 'Customer account pages',
+    previousUrl: ledger.page > 1 ? listUrl({ page: ledger.page - 1 }) : '',
+    nextUrl: ledger.page < ledger.pageCount ? listUrl({ page: ledger.page + 1 }) : ''
+  }) %>
+</section>
+<script type="module" src="/js/workspace/ledger.js"></script>

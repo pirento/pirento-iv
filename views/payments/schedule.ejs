@@ -1,0 +1,99 @@
+<section class="payment-schedule" id="payment-schedule" aria-labelledby="payment-schedule-title">
+  <div class="payment-section-heading">
+    <div>
+      <h2 id="payment-schedule-title">Installments & EMI</h2>
+      <p>Split the full invoice into monthly, weekly or custom scheduled payments.</p>
+    </div>
+  </div>
+  <div id="payment-schedule-view">
+    <% if(doc.installmentPlan){ %><strong><%= doc.installmentPlan.name %></strong>
+    <ul>
+      <% doc.installmentPlan.installments.forEach(entry=>{ %>
+      <li><%= entry.label %> · <%= entry.dueDate %> · <%= t.money(entry.amount) %></li>
+      <% }); %>
+    </ul>
+    <% } else { %>
+    <p>No installment plan has been added.</p>
+    <% } %><button
+      type="button"
+      class="payment-secondary"
+      data-schedule-action="edit"
+      <%= doc.finalizedAt||doc.status==='cancelled'?'disabled':'' %>
+    >
+      <%= doc.installmentPlan?'Edit':'Add' %> payment plan
+    </button>
+  </div>
+  <form id="payment-schedule-form" class="payment-plan-editor" novalidate hidden>
+    <fieldset class="payment-fieldset" id="payment-schedule-fields">
+      <label class="payment-field"
+        >Payment plan name<input name="planName" value="<%= doc.installmentPlan?.name||'EMI payment plan' %>" maxlength="200" required
+      /></label>
+      <div class="payment-plan-generator">
+        <h3>Build equal installments</h3>
+        <div class="payment-plan-generator-grid">
+          <label class="payment-field"
+            >Installment count<input name="count" type="number" min="2" max="60" step="1" value="3" /></label
+          ><label class="payment-field"
+            >Frequency<select name="frequency">
+              <option value="monthly">Monthly</option>
+              <option value="weekly">Weekly</option>
+            </select></label
+          ><label class="payment-field"
+            >First installment date<input
+              name="firstDate"
+              type="date"
+              min="2000-01-01"
+              max="2199-12-31"
+              value="<%= doc.dueDate||today %>"
+          /></label>
+        </div>
+        <label class="payment-plan-check"
+          ><input type="checkbox" name="withDownPayment" />Include a down payment</label
+        >
+        <div class="payment-grid" id="schedule-down-payment" hidden>
+          <label class="payment-field"
+            >Down payment amount<input
+              name="downPayment"
+              type="number"
+              min="0.01"
+              step="0.01"
+              inputmode="decimal" /></label
+          ><label class="payment-field"
+            >Down payment date<input
+              name="downDate"
+              type="date"
+              value="<%= today %>"
+              min="2000-01-01"
+              max="2199-12-31"
+          /></label>
+        </div>
+        <p class="payment-plan-explanation">
+          Monthly dates keep the same day, using the last day for shorter months. Weekly installments are
+          seven days apart.
+        </p>
+        <div class="doc-action-row">
+          <button class="payment-secondary" type="button" data-schedule-action="generate">
+            Build equal schedule</button
+          ><button class="payment-secondary" type="button" data-schedule-action="milestones">
+            Use 70% / 20% / 10%
+          </button>
+        </div>
+      </div>
+      <h3>Review your schedule</h3>
+      <div id="payment-schedule-rows" class="payment-plan-editor-rows"></div>
+      <button type="button" class="payment-plan-add" data-schedule-action="add">
+        + Add a custom payment
+      </button>
+      <div class="payment-plan-total" id="payment-schedule-totals"></div>
+      <p class="payment-plan-explanation">
+        Schedule the full invoice amount, including payments already received. Receipts apply to the earliest
+        due installment first. The schedule adds no interest or extra fees.
+      </p>
+      <div class="payment-error" id="payment-schedule-error" role="alert" hidden></div>
+      <div class="payment-plan-editor-actions">
+        <button type="button" class="payment-secondary" data-schedule-action="cancel">Cancel</button
+        ><button type="submit" class="payment-primary">Save payment plan</button>
+      </div>
+    </fieldset>
+  </form>
+</section>

@@ -1,0 +1,68 @@
+<% const lineRoundingPolicy = data.document ? helpers.types.documentRoundingPolicy(data.document) : undefined; %>
+<article class="doc-line-card" data-line-index="<%= index %>">
+  <div class="doc-label-row">
+    <strong>Item <%= index+1 %></strong
+    ><button
+      type="button"
+      class="doc-text-button doc-delete"
+      data-remove-line="<%= index %>"
+      <%= locked?'disabled':'' %>
+    >
+      Remove
+    </button>
+  </div>
+  <fieldset class="doc-line-fieldset" <%= locked?'disabled':'' %>>
+    <div class="doc-form-grid">
+      <label class="doc-field doc-wide"
+        >Description *<textarea data-line="description" rows="2" maxlength="2500" required>
+<%= line.description %></textarea></label
+      ><label class="doc-field"
+        >HSN / SAC<input
+          data-line="hsn"
+          value="<%= line.hsn %>"
+          maxlength="8"
+          inputmode="numeric" /></label
+      ><label class="doc-field"
+        >Quantity *<input
+          data-line="quantity"
+          type="number"
+          min="0.001"
+          max="1000000"
+          step="any"
+          value="<%= line.quantity %>"
+          required /></label
+      ><label class="doc-field"
+        >Unit<input
+          data-line="unit"
+          list="doc-unit-options"
+          value="<%= line.unit || '' %>"
+          maxlength="20" /></label
+      ><% if(!isDelivery){ %><label class="doc-field"
+        >Rate (₹)<input
+          data-line="rate"
+          type="number"
+          min="0"
+          max="100000000"
+          step="0.01"
+          value="<%= line.rate %>" /></label
+      ><label class="doc-field"
+        >GST (%)<input
+          data-line="gstRate"
+          type="number"
+          min="0"
+          max="40"
+          step="any"
+          value="<%= line.gstRate %>" /></label
+      ><label class="doc-field">Amount<output data-line-amount><%= helpers.types.money(helpers.types.calculateLineAmount(line, lineRoundingPolicy)) %></output></label
+      ><% } %>
+    </div>
+    <% if(line.catalogItemId){ %>
+    <p class="doc-help">Added from the saved <%= line.itemType || 'item' %> catalog.</p>
+    <% } %> <% if(!isDelivery){ %>
+    <details class="doc-line-pricing" <%= line.pricing&&line.pricing.mode!=='standard'?'open':'' %>>
+      <summary>Pricing method · <%= line.pricing?.mode || 'standard' %></summary>
+      <div data-pricing-fields><%- include('pricing',{line,index,locked}) %></div>
+    </details>
+    <% } %>
+  </fieldset>
+</article>

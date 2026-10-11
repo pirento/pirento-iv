@@ -1,0 +1,186 @@
+<%
+const organization = data.organization;
+const route = data.route;
+const base = `/workspace/${encodeURIComponent(organization.id)}/business_products`;
+const products = (data.businessProducts || []).filter(product => product.organizationId === organization.id);
+const id = route.id || route.entityId;
+const source = products.find(product => product.id === id);
+const initials = name => String(name || '').trim().split(/\s+/).slice(0,2).map(word => word[0] || '').join('').toUpperCase() || 'BP';
+const form = source ? { ...source, ...(route.action === 'new' ? { name: `${source.name} (copy)`, code: '', active: true } : {}) } : { name:'',code:'',description:'',logoUrl:'',active:true };
+const invalid = route.action && (route.action === 'delete' || (route.action === 'edit' && !source) || (id && !source));
+%>
+<link rel="stylesheet" href="/css/management.css" />
+<div class="mg-page" id="business-products-page">
+  <div data-error class="mg-message error" role="alert" tabindex="-1" hidden></div>
+  <a class="button secondary" data-resume-document hidden>Resume document</a>
+  <% if (invalid) { %>
+  <section class="mg-card">
+    <h2><%= route.action === 'delete' ? 'Archive products from the product directory' : 'Business product not found' %></h2>
+    <p>This product may no longer be available in <%= organization.name %>.</p>
+    <a class="button secondary" href="<%= base %>" data-manager-link>Back to business products</a>
+  </section>
+  <% } else if (route.action) { %>
+  <a class="button secondary" href="<%= base %>" data-manager-link>← Back to business products</a>
+  <section class="mg-card mg-editor">
+    <header class="mg-card-heading">
+      <div>
+        <span class="mg-eyebrow">YOUR PRODUCT’S IDENTITY</span>
+        <h2><%= route.action === 'edit' ? 'Edit' : 'Add' %> business product</h2>
+        <p><%= organization.name %></p>
+      </div>
+    </header>
+    <form id="business-product-form" data-id="<%= route.action === 'edit' ? id : '' %>" data-base="<%= base %>">
+      <div class="mg-product-preview">
+        <div class="mg-logo">
+          <img
+            data-logo-preview
+            <% if (form.logoUrl) { %>src="<%= form.logoUrl %>"
+            <% } %>
+            alt="Product logo preview"
+            <%= form.logoUrl ? '' : 'hidden' %>
+          /><span data-initials <%= form.logoUrl ? 'hidden' : '' %>><%= initials(form.name) %></span>
+        </div>
+        <div>
+          <strong data-preview-name><%= form.name || 'Your business product' %></strong
+          ><small data-preview-code><%= form.code || organization.name %></small>
+        </div>
+        <span class="mg-badge" data-preview-active><%= form.active ? 'Active' : 'Archived' %></span>
+      </div>
+      <div class="mg-form-grid">
+        <label class="mg-field mg-wide"
+          >Business product name <span aria-hidden="true">*</span
+          ><input
+            name="name"
+            required
+            maxlength="200"
+            value="<%= form.name %>"
+            autofocus
+            placeholder="Enter your product line’s name"
+        /></label>
+        <label class="mg-field mg-wide"
+          >Reference code<input
+            name="code"
+            maxlength="80"
+            value="<%= form.code %>"
+            placeholder="e.g. PIRENTO-AI"
+          /><small>Optional short code to identify this business product.</small></label
+        >
+        <label class="mg-field mg-wide"
+          >Description<textarea name="description" rows="4" maxlength="2000"><%= form.description %></textarea
+          ><small data-description-count><%= form.description.length %>/2000</small></label
+        >
+        <div class="mg-field mg-wide">
+          <label for="business-product-logo">Product logo</label
+          ><input
+            id="business-product-logo"
+            name="logoFile"
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+          /><input type="hidden" name="logoUrl" value="<%= form.logoUrl %>" /><small
+            >PNG, JPG or WebP · Up to 500 KB</small
+          ><span data-upload-name><%= form.logoUrl ? 'Saved product logo' : '' %></span
+          ><button type="button" class="button secondary small" data-remove-logo <%= form.logoUrl ? '' : 'hidden' %>>
+            Remove logo
+          </button>
+        </div>
+        <label class="mg-checkbox mg-wide"
+          ><input type="checkbox" name="active" <%= form.active ? 'checked' : '' %> /><span
+            ><strong>Active business product</strong
+            ><small>Available when selecting a product for new offerings and documents.</small></span
+          ></label
+        >
+      </div>
+      <p class="mg-hint">
+        Prices, units, tax and billing rules are saved with each offering in Products & services.
+      </p>
+      <div data-error class="mg-message error" role="alert" tabindex="-1" hidden></div>
+      <footer class="mg-actions">
+        <a class="button secondary" href="<%= base %>" data-manager-link>Cancel</a
+        ><button type="submit" class="button primary">Save <%= route.action === 'edit' ? 'changes' : 'business product' %></button>
+      </footer>
+    </form>
+  </section>
+  <% } else { %>
+  <section class="mg-intro">
+    <div>
+      <span class="mg-eyebrow">ONE ECOSYSTEM. EVERY PRODUCT.</span>
+      <h2>A place for each business product.</h2>
+      <p>Organize <%= organization.name %>’s product lines, with their own identity and offerings.</p>
+      <a class="button primary" href="<%= base %>/new" data-manager-link>Add business product</a>
+    </div>
+    <div class="mg-stats">
+      <div><strong data-count="active"><%= products.filter(product => product.active).length %></strong><span>Active products</span></div>
+    </div>
+  </section>
+  <div class="mg-note">
+    <strong>Business products group related offerings.</strong>
+    <p>
+      Add their services, subscriptions and prices in Products & services, then select the business product
+      when creating a document.
+    </p>
+  </div>
+  <div class="mg-toolbar">
+    <div class="mg-tabs" aria-label="Filter business products">
+      <% for (const [key,label] of [['active','Active'],['archived','Archived'],['all','All products']]) { %><button
+        type="button"
+        data-filter="<%= key %>"
+        aria-pressed="<%= key === 'active' %>"
+      >
+        <%= label %>
+        <span data-count="<%= key %>"><%= products.filter(product => key === 'all' || product.active === (key === 'active')).length %></span></button
+      ><% } %>
+    </div>
+    <label class="mg-search"
+      ><span class="mg-sr-only">Search business products</span
+      ><input type="search" data-search placeholder="Search name or code…"
+    /></label>
+  </div>
+  <div class="mg-grid">
+    <% for (const product of products) { %>
+    <article
+      class="mg-card mg-product-card"
+      data-product-row="<%= product.id %>"
+      <%= product.active ? '' : 'hidden' %>
+    >
+      <div class="mg-card-heading">
+        <div class="mg-logo">
+          <% if (product.logoUrl) { %><img
+            src="<%= product.logoUrl %>"
+            alt="<%= product.name %> logo"
+          /><% } else { %><span><%= initials(product.name) %></span><% } %>
+        </div>
+        <span class="mg-badge" data-product-status><%= product.active ? 'Active' : 'Archived' %></span>
+      </div>
+      <h3><%= product.name %></h3>
+      <small><%= product.code || 'No reference code' %></small>
+      <p><%= product.description || 'Add a description to help your team identify this product line.' %></p>
+      <footer class="mg-row-actions">
+        <a
+          class="button secondary small"
+          href="<%= base %>/edit/<%= encodeURIComponent(product.id) %>"
+          data-manager-link
+          >Product details</a
+        ><a
+          class="button secondary small"
+          href="<%= base %>/new/<%= encodeURIComponent(product.id) %>"
+          data-manager-link
+          >Duplicate</a
+        ><button type="button" class="button secondary small" data-archive="<%= product.id %>">
+          <%= product.active ? 'Archive' : 'Restore' %>
+        </button>
+      </footer>
+    </article>
+    <% } %>
+  </div>
+  <div class="mg-empty" data-empty <%= products.some(product => product.active) ? 'hidden' : '' %>>
+    <h3>No matching business products</h3>
+    <p>Try another product name, reference code or filter, or add a business product.</p>
+    <a class="button primary" href="<%= base %>/new" data-manager-link>Add business product</a>
+  </div>
+  <p class="mg-hint">
+    Archiving removes a product from new selections. Existing offerings and saved documents retain their
+    records.
+  </p>
+  <% } %>
+</div>
+<script type="module" src="/js/management/business-products.js"></script>

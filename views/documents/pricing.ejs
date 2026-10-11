@@ -1,0 +1,66 @@
+<%
+const p = line.pricing || {};
+const mode = p.mode || 'standard';
+const pricingPolicy = data.document ? helpers.types.documentRoundingPolicy(data.document) : undefined;
+const j = p.jewellery || {
+  grossWeight: 0,
+  stoneWeight: 0,
+  purity: '',
+  makingChargeType: 'per_gram',
+  makingCharge: 0,
+  stoneAmount: 0,
+  otherCharges: 0,
+  wastagePercent: 0,
+};
+%>
+<fieldset class="pricing-fields" data-line-index="<%= index %>" <%= locked?'disabled':'' %>>
+  <label class="doc-field"
+    >Pricing method<select data-pricing="mode">
+      <% [['standard','Standard · quantity × rate'],['recurring','Recurring · units × periods × rate'],['jewellery','Jewellery · metal + making + charges']].forEach(([value,text])=>{ %>
+      <option value="<%= value %>" <%= mode===value?'selected':'' %>><%= text %></option>
+      <% }); %>
+    </select></label
+  >
+  <% if(mode==='recurring'){ %>
+  <div class="pricing-fields-grid">
+    <label
+      >Number of periods<input
+        data-pricing="periods"
+        type="number"
+        min="0.001"
+        max="1200"
+        step="any"
+        value="<%= p.periods??1 %>" /></label
+    ><label
+      >Period unit<select data-pricing="periodUnit">
+        <% ['Hour','Day','Month','Year'].forEach(unit=>{ %>
+        <option <%= p.periodUnit===unit?'selected':'' %>><%= unit %></option>
+        <% }); %>
+      </select></label
+    >
+  </div>
+  <% } %> <% if(mode==='jewellery'){ %>
+  <div class="pricing-fields-grid">
+    <% [['grossWeight','Gross weight per item (g)'],['stoneWeight','Stone weight per item (g)'],['makingCharge','Making charge'],['wastagePercent','Wastage (%)'],['stoneAmount','Stone amount per item (₹)'],['otherCharges','Other charges per item (₹)']].forEach(([key,text])=>{ %><label
+      ><%= text %><input
+        data-pricing="jewellery.<%= key %>"
+        type="number"
+        min="0"
+        step="any"
+        value="<%= j[key] %>" /></label
+    ><% }); %><label
+      >Purity / hallmark<input
+        data-pricing="jewellery.purity"
+        value="<%= j.purity %>"
+        maxlength="100" /></label
+    ><label
+      >Making charge method<select data-pricing="jewellery.makingChargeType">
+        <% [['per_gram','Per gram of net metal'],['fixed','Fixed per item'],['percent','% of metal value']].forEach(([value,text])=>{ %>
+        <option value="<%= value %>" <%= j.makingChargeType===value?'selected':'' %>><%= text %></option>
+        <% }); %>
+      </select></label
+    ><label>Net metal weight<output data-net-weight><%= helpers.types.linePriceBreakdown(line, pricingPolicy).netWeight %> g</output></label>
+  </div>
+  <% } %>
+  <p class="pricing-formula" data-pricing-summary><%= helpers.types.pricingDescription(line, pricingPolicy) || 'Quantity × rate' %></p>
+</fieldset>

@@ -1,0 +1,18 @@
+<header class="page-header">
+  <div>
+    <h1>Delete draft</h1>
+    <p><%= data.document.number %> · <%= data.document.customerSnapshot.name %></p>
+  </div>
+</header>
+<div class="card" style="max-width:700px">
+  <h2>Delete <%= data.document.number %>?</h2>
+  <p class="muted" style="margin-top:10px">
+    The draft will be removed. Its document number will not be reused.
+  </p>
+  <div class="alert alert-error" data-page-error hidden role="alert"></div>
+  <div class="form-actions">
+    <a class="button" href="<%= helpers.url(data,data.route.view) %>">Keep draft</a
+    ><button class="button button-danger" data-delete-document="<%= data.document.id %>">Delete draft</button>
+  </div>
+</div>
+<script type="module" src="/js/workspace/documents.js"></script>

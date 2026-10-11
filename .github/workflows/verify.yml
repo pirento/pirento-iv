@@ -1,0 +1,43 @@
+name: Verify source and workflows
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Start isolated MongoDB replica set
+        run: docker compose up -d --wait
+      - name: Run required verification
+        run: npm run verify:release
+        env:
+          MONGODB_TEST_URI: mongodb://127.0.0.1:27017/?replicaSet=rs0
+      - name: Preserve failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verification-diagnostics
+          path: |
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Stop test database
+        if: always()
+        run: docker compose down -v

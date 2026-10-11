@@ -1,0 +1,22 @@
+<div class="image-field" data-image-field="<%= name %>">
+  <label class="field"
+    ><%= label %><input
+      name="<%= name %>"
+      type="text"
+      value="<%= value || '' %>"
+      placeholder="https://… or upload an image"
+    /><small>PNG, JPEG or WebP, up to 500 KB.</small></label
+  ><img
+    class="image-preview"
+    src="<%= helpers.safeImage(value) ? value : '' %>"
+    alt="<%= label %> preview"
+    <%= helpers.safeImage(value) ? '' : 'hidden' %>
+  />
+  <div class="actions">
+    <input
+      type="file"
+      accept="image/png,image/jpeg,image/webp"
+      aria-label="Upload <%= label.toLowerCase() %>"
+    /><button class="text-button" type="button" data-clear-image>Remove image</button>
+  </div>
+</div>

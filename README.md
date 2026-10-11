@@ -1,176 +1,224 @@
-# Venturecore Solutions Private Limited INV
+# Venturecore Workspace
 
-A persistent invoice, quotation, proforma, shipping and catalog workspace for **Venturecore Solutions Private Limited**, with five Venturecore brands/divisions and the independent **Shri Sarraf** business:
+An invoice and business workspace using **EJS, JavaScript, Express MVC and MongoDB**.
 
-- Pirento legal
-- Pirento ecosystem
-- AT Facility
-- A T Elevator
-- INZARIO SPACE
-- Shri Sarraf — independent legal business, with Cashfree and separate seller/payment/email details
+The frontend consists of real server-rendered EJS pages and ordinary browser JavaScript. There is no React, TypeScript or Vite build. The existing invoice calculations, financial locks, organization access rules, provider adapters and saved-document behavior have been carried into this structure.
 
-Additional organizations can be created in the app. The dashboard header, sidebar and footer follow the selected organization’s name and logo; organizations without a logo display their initials. The workspace logo remains separate and appears in the Organizations overview; it is never inherited by an organization or invoice. Each has its own searchable customers, B2B buyers and vendors, products, services, saved formats, documents, numbering, GST registrations, visual identity and payment details. Venturecore divisions use Venturecore Solutions Private Limited as their legal company; Shri Sarraf uses its own legal/trade identity. Independent businesses never inherit the main company’s gateway or email credentials.
+**Hindi quick start:** Node.js 24.5+ install karein, MongoDB replica set start karein, `.example.env` mein apne database aur initial admin details bharein, phir `npm ci` aur `npm start` chalayein. `.env` banana ya file rename karna zaroori nahi hai.
 
-## Run locally
+## Current release — Phase 7, version 2.5.0
 
-Requires **Node.js 24.5+** and npm.
+This is the complete updated application, including the earlier phases. Phase 7 completes the reviewed reliability work and adds maintained browser verification to the source package.
+
+**Hindi:** Naye invoice ki decimal rounding theek hai; purane saved invoice ka agreed amount apne aap nahi badlega. Browser notification storage unavailable ho tab bhi contact/product save aur logout complete hote hain. Contacts aur catalog ab 50 records per page dikhate hain; editor 20-record search pages use karta hai aur CSV mein saare matching records milte hain. `.example.env` ko directly fill karke setup ab bhi supported hai.
+
+| Phase 7 area              | Included behavior                                                                                                                                                                                                              |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Exact decimal pricing     | Decimal half-up calculation for new financial work, with a saved rounding-policy marker. Both `0.5 × 20.15` and `1.25 × 8.06` produce ₹10.08. Historical amounts are preserved until an editable draft is financially changed. |
+| Reliable save/navigation  | Optional toast and logout storage errors cannot turn a successful server action into a reported failure. Critical draft/request recovery keeps its existing protection.                                                        |
+| Production startup        | Normal production startup and the Hostinger entry use the same environment selection and read-only database preflight before initialization.                                                                                   |
+| Release configuration     | Packaging and readiness checks reject duplicate template keys, malformed assignments and populated private settings, including values hidden behind a later blank duplicate.                                                   |
+| Contacts and catalog      | Server search, filters, 50-row pages, complete filtered CSV, 20-row editor lookups, and selected-record hydration for archived records and draft returns. Tenant and record IDs use exact comparisons.                         |
+| Reproducible verification | Included Playwright tests, strict native-test prerequisites, an isolated local replica-set runner and a GitHub Actions workflow.                                                                                               |
+
+See [Phase 7 behavior and upgrade instructions](docs/PHASE-7.md) and [current verification results](docs/VERIFICATION.md). The original Phase 5–6 checkpoint documents are retained as historical records; their old environment limitations do not describe this release.
+
+**Upgrade:** back up the existing database, preserve private configuration, stop older application/worker processes, replace the complete source and browser assets, then restart. Startup adds the two directory indexes. There is no historical-invoice repricing or destructive data migration. Production startup now deliberately refuses an unintended empty database; use `IV_ALLOW_NEW_DATABASE=true` only for an intentional first deployment and turn it off afterward.
+
+## Included Phase 4 release — 2.4.0
+
+This complete ZIP includes every earlier phase and adds account-session controls, administrator security history, shared authentication request limits, safe business transaction scopes and the remaining payment/ledger/reminder fixes.
+
+**Hindi:** **My sessions** mein apne active logins dekh kar ek session ya baaki sab sessions sign out kar sakte hain. Admin **Security activity** mein account history dekh sakta hai aur **Team access** se kisi member ke sessions end kar sakta hai. Purani receipt rounding/correction compatibility fix hai; automatic reminders ab relevant due dates ko indexes se select karte hain.
+
+| Phase 4 area                  | Result                                                                                                                                                                                                                                     |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Shared account protection     | MongoDB request counters preserve login/signup/reset limits across application instances and restarts; unavailable protection returns a controlled 503.                                                                                    |
+| Account sessions              | Own sessions, timestamps, pagination, current-session indication, individual revocation and sign-out-others with confirmation.                                                                                                             |
+| Administrator activity        | Filtered, paginated account history, safe before/after access details and selected-account session revocation.                                                                                                                             |
+| Business writes               | Fixed organization stripes allow different stripes to overlap; the exclusive fallback still protects global settings, account administration and recovery.                                                                                 |
+| Pending correctness/read work | Consistent legacy receipt/payment rounding, an exact overpayment guard, corrected overdue boundaries, parent-invoice ownership for legacy receipt voids, one receipt-history read per statement and indexed automatic-reminder candidates. |
+
+**Upgrade requirement:** stop all older application and worker processes before starting 2.4.0. Old writers cannot coordinate with the new stripe protocol. Preserve the existing database and private configuration; startup creates the additional schema. `.example.env` adds optional **`TRUST_PROXY=`**, left blank until the actual hosting proxy peers are known. No new provider credentials are required.
+
+See [Phase 4 workflows, API, upgrade and pending-work status](docs/PHASE-4.md), [Deployment](docs/DEPLOYMENT.md) and [final verification results](docs/VERIFICATION.md). The transaction/query improvements are verified with native MongoDB and controlled fixtures; production capacity and live provider/hosting setup still depend on the target environment.
+
+## Included Phase 3 changes — 2.3.0
+
+This is the complete project, including all Phase 1 and Phase 2 changes. The new **Receivables** section adds customer ledgers, payment reminders and recurring invoice schedules using the same EJS, JavaScript, Express MVC and native MongoDB architecture.
+
+**Hindi:** Customer ledger mein har contact ka received, outstanding aur overdue balance dekh sakte hain. Statement par date filter, complete CSV aur Print / Save PDF hai. Payment reminder pehle preview hota hai, phir queue hota hai; automatic reminders har business ke liye alag enable karne honge. Recurring schedule se har due date ka **draft invoice** banta hai, jise review karke issue/send karna hai.
+
+| Phase 3 area         | Result                                                                                                                                                                            |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Customer ledger      | Scoped customer balances, archived contacts, dated invoice/receipt/void entries, opening/closing balances where history permits, complete CSV and printable statements.           |
+| Payment reminders    | Invoice/installment eligibility, manual preview and queue, daily duplicate protection, delivery history and administrator-managed reminder timing per business.                   |
+| Recurring invoices   | Weekly/monthly/quarterly/yearly schedules, month-end anchors, frozen commercial inputs, current identity checks, reviewable drafts, pause/resume and occurrence/activity history. |
+| Recovery and workers | A bounded shared automation runner, transactional duplicate prevention, graceful draining, reminder opt-out and recurring pause after database restore.                           |
+
+Ledger statements use **current invoice status** and saved transaction dates. Where older records lack dated receipts, the UI explicitly marks incomplete history instead of calculating an unsupported historical balance. Automatic reminders are off by default. Recurring schedules start paused unless activation is explicitly selected; generated drafts are never automatically issued, charged or emailed.
+
+Open [Phase 3 workflow, API and upgrade notes](docs/PHASE-3.md) for exact behavior, and [verification results](docs/VERIFICATION.md) for the completed checks. New collections/indexes are created on application startup; existing invoice, receipt and provider data is retained. Phase 3 introduced no new environment variables; Phase 4 adds optional `TRUST_PROXY`. Keep private `.example.env` values when replacing source, and upgrade the server and browser assets together.
+
+## Included Phase 2 changes — 2.2.0
+
+This full release includes the Phase 1 correctness fixes and implements the next six reviewed areas: page-specific data loading, fast backup inventory, renewable email worker leases, readiness and structured diagnostics, an accessible mobile menu, and explicit local draft controls.
+
+**Hindi:** Invoice lists ab 50 records per page dikhati hain. Search aur filters poore matching data par chalte hain; CSV mein sabhi matching records aate hain. Mobile menu keyboard aur touch dono se close hota hai. **Start fresh** se naya local draft shuru kar sakte hain; pehle bheji hui save request ka result unknown ho to **Retry save** se use resolve karna zaroori hai.
+
+| Phase 2 area      | Result                                                                                                                                                                    |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Workspace loading | Each normal page loads its own dependencies. Lists use projected records; previews and editors fetch the selected full document. Overview totals still cover all records. |
+| Backup navigation | Normal pages do not read backup inventory. The Backups page reads small metadata; a download still verifies the complete snapshot and checksum.                           |
+| Email workers     | Each claim has an expiring token and heartbeat. A stale worker cannot update a newer claim. Shutdown stops new claims and drains the active delivery.                     |
+| Operations        | `/api/ready` reports database/recovery readiness, safe JSON logs carry server-generated request IDs, and accepted work gets a bounded shutdown grace period.              |
+| Mobile menu       | Escape, outside click, close button, focus management and background scroll protection are implemented.                                                                   |
+| Local drafts      | Confirmed Start fresh creates a new draft. Discard unsaved changes reloads the saved document. Unknown creation results remain protected.                                 |
+
+See [Phase 2 changes and upgrade notes](docs/PHASE-2.md) and [verification results](docs/VERIFICATION.md). Upgrade the server and browser assets together, stop all older email workers before starting this version, and refresh existing tabs. New query/lease indexes are created at startup; `.example.env` and the existing business calculation rules are retained.
+
+## Included Phase 1 fixes — 2.1.0
+
+This release fixes the reviewed customer handoff, stale document updates, duplicate creation after a lost response, receipt amount/date validation, gateway business dates, and cancellation of unattempted invoice emails.
+
+**Hindi:** Contact ab sirf usi draft mein select hoga jahan se add kiya tha. Purani copy save karne par conflict dikhega aur aapke unsaved changes screen par rahenge. Network error ke baad **Retry save** wahi request check karega. Future manual receipts aur ek paise se chhoti amounts reject hongi. Gateway receipts ki date India timezone mein hogi.
+
+Existing unversioned documents are read as revision zero until their first update. New documents expose a `version`, and full-document and installment-plan API updates must send that version. New browser drafts send a persisted `requestId`; a retry returns the same saved document. See [Phase 1 changes and upgrade notes](docs/PHASE-1.md) for the exact API contract, recovery behavior and verification scope.
+
+## Start locally
+
+Requirements:
+
+- Node.js **24.5+ (24 LTS recommended)** and npm. The one-time SQLite import command uses Node's built-in SQLite module.
+- A MongoDB **replica set**, such as MongoDB Atlas or the local Docker setup below. An ordinary standalone `mongod` is rejected because financial changes require transactions.
+- Docker with Compose only if using the included local database setup.
+
+From this project directory:
 
 ```bash
-npm ci --include=dev
-npm run dev
+npm ci
+# Skip this command if using Atlas or an existing replica set.
+docker compose up -d --wait
 ```
 
-On your own development machine, the Vite frontend runs on port `5173` and proxies `/api` to the Express server at `127.0.0.1:3001`. This is local development only; the Codex onboarding environment does not expose a user-facing localhost preview.
+Edit **`.example.env` directly** and fill these values:
 
-For the production build served locally:
+| Setting                  | What to enter                                                                                     |
+| ------------------------ | ------------------------------------------------------------------------------------------------- |
+| `MONGODB_URI`            | Your MongoDB connection string. The default matches the included local replica set.               |
+| `MONGODB_DATABASE`       | The database name, initially `venturecore_workspace`. Use a new name when importing or restoring. |
+| `INITIAL_ADMIN_EMAIL`    | An email address you control for the first administrator.                                         |
+| `INITIAL_ADMIN_NAME`     | The administrator's display name.                                                                 |
+| `INITIAL_ADMIN_PASSWORD` | A unique password of at least 12 characters.                                                      |
+
+Then run:
 
 ```bash
-npm run build
 npm start
 ```
 
-The built frontend and API run together on local port `3001`. The API binds to localhost by default. Startup honors the platform HTTPS proxy; never disable certificate verification to work around connectivity failures.
+Open **http://localhost:3001** and sign in with the administrator details. For development with server reload, use `npm run dev` instead. Browser assets are served directly; refresh the page after editing them.
 
-For a website with account login accessible to approved staff, see [Private testing deployment](PREVIEW_DEPLOYMENT.md). It requires a Node.js host with HTTPS and persistent storage. `npm run package:preview` creates an application-only upload archive, excluding private business data and credentials.
+After the first successful owner login, remove both `INITIAL_ADMIN_EMAIL` and `INITIAL_ADMIN_PASSWORD` from the local configuration or hosting settings. Changing these startup values does not reset an existing administrator's password. Staff use Signup, then an administrator approves them and assigns their organizations in **Team access**.
 
-For invented-data UI testing on temporary hosting, use the separate [Disposable synthetic preview](PREVIEW-START-HERE.md). `npm run package:synthetic-preview` creates a clearly named Hostinger ZIP and tar archives; only those artifacts change `npm start` to disposable mode. Every preview process starts a new database, shows TEST labels and blocks external integrations. The normal checkout retains its persistent application startup and full test suite.
+The application loads `.example.env` directly. Hosting environment variables override the file. Distributed credential fields are blank; fill them privately. No `.env` file or actual merchant credentials are supplied.
 
-## Code organization and pages
+## What is included
 
-The frontend is grouped by business feature under `src/features/`, with the workspace shell/navigation in `src/app/` and reusable UI/API/styles in `src/shared/`. Pure business models and calculations live in root `shared/` for both frontend and backend. Server integrations, authentication, database and document rendering have separate directories; tests are collected under `tests/`. See [Architecture](ARCHITECTURE.md) for boundaries and [Security](SECURITY.md) for implemented protections and deployment requirements.
+| Area               | Available behavior                                                                                                                                           |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Accounts           | Shared login/signup/reset limits, account approval, staff assignments, disable/reactivate, password reset, own/admin session controls and security activity. |
+| Organizations      | Five Venturecore divisions, independent Shri Sarraf, additional organizations, separate seller identities, GST registrations, banks and branding.            |
+| Contacts           | Customers, B2B buyers and vendors; search, edit, archive/restore, shipping defaults and GST lookup.                                                          |
+| Customer ledger    | Customer balances, current-status invoice/receipt/void statements, date filters, full CSV and printable reports with explicit history limitations.           |
+| Payment reminders  | Manual preview/queue, unpaid invoice/installment targets, per-business automatic timing and delivery history.                                                |
+| Recurring invoices | Weekly, monthly, quarterly and yearly schedules that create reviewable drafts, with pause/resume, duplicate protection and retained history.                 |
+| Documents          | Invoices, quotations, proformas and delivery challans; drafts, preview, print, PDF and CSV exports.                                                          |
+| Financial workflow | Financial-year numbering, invoice conversion, issued/final locks, partial receipts, payment correction and audit events.                                     |
+| Catalog            | Products/services, SKU and HSN/SAC, archive/restore, duplication, business-product selection and saved pricing.                                              |
+| Pricing            | Standard quantity/rate, recurring periods and detailed jewellery weight/making calculations.                                                                 |
+| Formats            | Fifteen built-in presets, five layouts, custom colors, columns, fonts, paper settings, logos and signature/stamp/QR areas.                                   |
+| Installments       | Equal, monthly/weekly, optional down payment and 70/20/10 schedules; receipts allocated to the earliest installment.                                         |
+| Payments and email | Business-specific Razorpay/Cashfree links, signed webhook handling, payment synchronization, Resend email, PDF attachments and retry history.                |
+| Operations         | Administrator-only verified MongoDB snapshots, scheduled backups, restore/recovery commands and SQLite import.                                               |
 
-Editors, document preview, payment/email screens and settings use full workspace pages. Page URLs support saved-record refresh/bookmarks and browser Back/Forward. Save a draft to persist entered data; an unsaved form is not a saved invoice. Confirmation actions remain on the page. Native file-picker and print dialogs still belong to the browser.
+Each organization owns its contacts, catalog, products, formats and documents. Historical documents keep saved seller, buyer, format, product, branding and pricing details. Updating a current business or contact does not silently rewrite issued documents.
 
-## Accounts, contacts, payments and email
+### First business setup
 
-The public home page provides Login and Signup. A server-provisioned administrator approves new staff and assigns organizations; public signup never grants access to existing company data. **Contacts** supports customers, vendors and B2B buyers. **Payments** includes separate Razorpay and Cashfree links according to the issuing business, and **Email** includes saved PDFs, payment links and notification history. See [Platform setup](PLATFORM_SETUP.md) for first-owner provisioning, access rules, integration settings and limits. Real payment/email activation is pending server credentials, matching merchant webhooks, verified per-business senders and hosted checks. Support defaults to `support@pirento.com` for Venturecore and `support@shrisarraf.com` for Shri Sarraf; these are contact/Reply-To settings, not proof that an outgoing sender has been verified.
+1. Open **Business settings** for the selected organization. Review legal identity, address/state, GST registrations, numbering, bank details and support contacts.
+2. Upload the organization's logo, signature and payment QR where needed. PNG, JPEG and WebP uploads are supported up to 500 KB per image. Workspace branding remains separate from invoice branding.
+3. Add contacts and products/services. Enter real prices and appropriate tax classifications; the software does not infer them from a business name.
+4. Choose a format and create a quotation, proforma, invoice or delivery challan. New organizations need a saved seller GST registration before charging GST.
+5. Save and preview the document. Issue financial documents when ready, then record receipts on the **Payments** page.
+6. Configure provider credentials only for the businesses that need online payments or email. The **Payments & email** page displays status and the relevant webhook path.
 
-## First use
+### Business rules retained
 
-1. Select an organization and open **Business settings**. Review its legal/trade name, business relationship, default GSTIN/address/state, optional additional GST registrations, PAN/CIN, support contact and bank details. Venturecore divisions and an independent business have separate seller records. Uploaded legal documents are private source data, not external verification; GSTIN and state are required before charging GST.
-2. Upload the logo, signature image and payment QR (PNG/JPEG/WebP, up to 500 KB each), then customize the color, terms and signature caption. QR and bank details are optional and can be added, replaced or removed later for each organization. New organizations start with empty seller/payment details. A Venturecore division can explicitly copy company details; choosing an independent business clears copied identity/payment defaults. Each keeps its own names, numbering and invoice logo. The supplied red/dark Venturecore logo remains the shared workspace logo on the Organizations overview; upload each organization’s own logo for its dashboard and documents. Invoice and quotation prefixes contain up to four letters/numbers and must be unique across divisions.
-3. Open **Products & services** to add offerings with a name, description, SKU, HSN/SAC, selling rate, unit and GST rate. Suggested starting points are optional editable ideas; no rates, tax classifications or customer data are invented.
-4. Open **Invoice formats** for 15 ready-to-use templates spanning business, legal, consulting, maintenance, retail, wholesale, design and dispatch. Customize five layouts (Modern, Classic, Minimal, Ledger, Sidebar), colors, columns, table style, font, margins, logo/signature/QR sizes and A4/A5/Letter portrait or landscape paper. Upload a format-specific logo or inherit the company logo. Each organization has one default format; duplicate any design to make another.
-5. In **Contacts**, save customers, B2B buyers and vendors manually or with GST lookup. A contact can have more than one role. Edit/archive/restore records without losing saved invoice history; GSTIN is optional for unregistered contacts. These are business records, separate from staff login accounts.
-6. Create a **Quotation**, **Proforma invoice**, **Invoice** or **Delivery challan**. Search the selected organization’s saved contacts by name, contact person, phone, email, GSTIN/PAN or address, and filter by customer/B2B buyer/vendor. Choose **Seller GST registration**, catalog entries or manual lines, and a saved format, then edit quantities, rates, units, GST rates, discount, place of supply, dates and notes. Adding a new contact from the editor preserves your draft.
-7. Save, **Preview**, **Print** or **Download PDF**. PDF download creates a file directly in the browser; Print opens the browser print dialog. Quotations and proformas convert into invoices once; repeating conversion returns the existing invoice. Add a delivery challan from an invoice, or create one separately.
-8. Open an invoice’s **Payments** page to record a receipt (amount, date, method, reference, notes). Partial payments reduce the balance; full payment makes the same invoice **Paid / Final** and locks editing. Manually entered receipts are not bank verification. Its Online payments section separately verifies Razorpay captured payments or Cashfree successful payments using that business’s configured merchant account. An incorrect manual receipt can be voided with a reason; its record and audit history remain, and the balance reopens.
+- Amounts are in INR. Discount, GST, financial-year numbering, rounding and pricing use the shared JavaScript business functions.
+- Quotation/proforma conversion returns the existing invoice when repeated. Delivery challans carry quantities and shipping information without financial charges.
+- Drafts can be edited financially; issued documents and invoices with receipts lock financial fields. Paid/final invoices lock editing. An incorrect manual receipt can be voided with a reason, preserving the record and history.
+- Overpayments are rejected. Repeated receipt requests and provider callbacks cannot credit the same receipt twice. A zero-value invoice requires explicit finalization.
+- An installment schedule must equal the invoice total in integer paise. It schedules existing invoice value and adds no interest or automatic debit.
+- Archived contacts and products remain available to historical documents. A format change in the format library does not change saved document snapshots.
+- Independent businesses do not inherit Venturecore merchant or outgoing-email credentials. Manual receipts record operator input; they do not verify a bank transaction.
 
-9. In **Business settings**, choose the appropriate billing profile. Jewellery items support weight, metal rate and making charges; recurring services multiply units by periods. A draft document can use a custom logo, primary and secondary signature names/images, and a stamp image or blank stamping area. These document-level changes leave organization defaults unchanged.
-10. In **Payments**, add an installment/EMI schedule with monthly or weekly due dates, optional down payment and editable installment amounts. The plan must equal the full invoice total. Existing and new receipts apply to the earliest due installment first; the schedule shows received, remaining and overdue amounts. Final invoices lock schedule editing.
+## MVC structure
 
-CSV export is available from document and catalog lists; invoice exports include received amounts, balance and finalization date. Search and filters apply to exports. Contacts of every role, catalogs, formats and documents belong to the selected organization.
+| Location                 | Responsibility                                                            |
+| ------------------------ | ------------------------------------------------------------------------- |
+| `server.js`              | Read configuration, start HTTP/background workers and shut down cleanly.  |
+| `src/app.js`             | Assemble the API and EJS application.                                     |
+| `src/config/`            | Environment, MongoDB connection/indexes and business defaults.            |
+| `src/models/`            | Native MongoDB repositories and first-use seeds.                          |
+| `src/controllers/api/`   | HTTP controllers grouped by business feature.                             |
+| `src/controllers/pages/` | Authorized page data, view selection and safe view helpers.               |
+| `src/routes/`            | API paths and EJS page routes.                                            |
+| `src/services/`          | Business rules, authentication, payments, email, GST, PDF and operations. |
+| `views/`                 | EJS layouts, pages and partials.                                          |
+| `public/`                | Browser JavaScript, CSS and bundled fonts.                                |
+| `shared/`                | Reusable calculations, formats, business identity and PDF definitions.    |
+| `scripts/`               | Source checks, database backup/recovery and SQLite import.                |
+| `tests/`                 | Render/business checks and isolated MongoDB integration tests.            |
 
-Document lists show 25 records per page with Previous/Next controls and server-side search, status and business-product filters. Dashboard totals include the whole selected organization, independent of the current page. Saved document links resolve directly even when the record is outside the current page. CSV downloads stream all matching records in bounded batches. The legacy `/api/documents` array is capped at 100 records per request and includes `X-Total-Count`, `X-Page` and `X-Page-Size`; API clients should use `/api/documents/page` for the pagination envelope or request pages explicitly. JSON-backed filters and summaries can still require database scans, so pagination is not a claim of unlimited scale.
+The requested “MVS” structure is implemented as conventional **Model–View–Controller (MVC)** with a separate service layer. See [Architecture](docs/ARCHITECTURE.md) for the boundaries and database design.
 
-## Catalog and formats
+## Commands
 
-- Add products and services, edit or duplicate them, search by name/SKU/HSN, and archive or restore old offerings. A nonempty SKU must be unique within an organization, including archived entries.
-- Catalog selections copy their descriptions, HSN/SAC, unit, price and GST into document lines. You can negotiate prices on draft documents. Catalog updates never rewrite previously saved documents.
-- Archived items are hidden from new-document pickers. Existing documents retain their saved lines, including archived catalog references.
-- Create multiple named formats and duplicate a design as a starting point. Each organization always has exactly one default. Set another default before deleting the current one; at least one format must remain.
-- Each document stores its chosen format. Editing or deleting a format in the library does not change existing documents. Choose a different format while editing a document to apply another saved design explicitly; issued financial fields remain locked.
-- Downloaded PDFs contain selectable text, INR amounts, optional amounts in Indian words, multipage tables with repeated headers and page numbers. PDF generation is local; business data is not sent to a PDF conversion service. PDF code and fonts load only when downloading.
-- For reliable logos in downloaded PDFs, upload a PNG/JPEG/WebP in Brand settings. An external HTTPS logo can be omitted with a visible warning if its host blocks browser access. Browser printing and PDF download use the stored paper size and orientation. Uploaded QR/signature images keep their original proportions.
+| Command                                                                    | Purpose                                                                                                                      |
+| -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `npm start`                                                                | Start the persistent EJS/API server.                                                                                         |
+| `npm run start:hostinger`                                                  | Start with production and existing-database checks; explicit first-launch opt-in is supported.                               |
+| `npm run start:synthetic-preview`                                          | Start the original disposable testing mode using a separate MongoDB URI.                                                     |
+| `npm run check:deployment`                                                 | Check hosting configuration and inspect MongoDB read-only.                                                                   |
+| `npm run package:preview`                                                  | Produce application-only ZIP/tar archives with a blank configuration template.                                               |
+| `npm run package:synthetic-preview`                                        | Produce a separate archive whose start command selects disposable preview.                                                   |
+| `npm run dev`                                                              | Start with Node's file watcher.                                                                                              |
+| `npm run build` / `npm run check`                                          | Check JavaScript syntax, compile all EJS templates and reject leftover TypeScript/JSX files. No frontend bundle is required. |
+| `npm test`                                                                 | Run the database-independent template/behavior tests.                                                                        |
+| `npm run test:integration`                                                 | Require a dedicated `MONGODB_TEST_URI` and run every native suite; missing setup or skipped tests fail the gate.             |
+| `npm run test:integration:optional`                                        | Explicit developer-only allowance for missing test configuration; reports that database tests did not run.                   |
+| `npm run test:browser:install`                                             | Install Playwright Chromium for verification; not required to run the application.                                           |
+| `npm run test:browser`                                                     | Run included browser workflows against a dedicated test replica set.                                                         |
+| `npm run verify:release`                                                   | Run source, unit, native database, browser and readiness gates in sequence.                                                  |
+| `npm run verify:local`                                                     | Create an isolated local test replica set using an installed `mongod`, run release verification, then remove test data.      |
+| `npm run format` / `npm run format:check`                                  | Format or check the JavaScript, styles, JSON and documentation.                                                              |
+| `npm run db:backup`                                                        | Create a verified MongoDB Extended JSON snapshot.                                                                            |
+| `npm run db:restore -- --file=... --manifest=... --database=...`           | Restore into a new empty database and place it on recovery hold.                                                             |
+| `npm run db:resume -- --database=... --acknowledge-reconciled`             | Release the startup hold after an operator reconciles accounts, payments and email.                                          |
+| `npm run db:import-sqlite -- --source=... --database=... --confirm-import` | Import the original schema-v5 SQLite database into a new MongoDB database.                                                   |
 
-## Business products and industry billing
+## Detailed guides
 
-Pirento ecosystem includes the ten business products provided by the user: **PIRENTO legal, PIRENTO vault, Pirento One, Pirento Capital, Pirento Blank, Pirento AI, Pirento Intern, Pirento Green, Giftox, and Bharat ID BY PIRENTO**. This is a product selector within Pirento ecosystem; the separate Pirento legal organization remains its own division.
+- [Architecture and feature boundaries](docs/ARCHITECTURE.md)
+- [MongoDB migration and recovery](docs/MIGRATION.md)
+- [Deployment and provider configuration](docs/DEPLOYMENT.md)
+- [Verification results and how to run tests](docs/VERIFICATION.md)
+- [Phase 7 decimal pricing, directory queries, startup and release verification](docs/PHASE-7.md)
+- [Phase 4 account security, transaction scopes and pending fixes](docs/PHASE-4.md)
+- [Phase 3 customer ledger, reminders and recurring invoice schedules](docs/PHASE-3.md)
+- [Phase 2 performance, worker, operations and usability changes](docs/PHASE-2.md)
+- [Phase 1 fixes, API changes and upgrade notes](docs/PHASE-1.md)
+- [Optional disposable synthetic preview](docs/SYNTHETIC-PREVIEW.md)
 
-Use **Business products** to add/edit product names, descriptions, logos or archive a product. Catalog offerings may be shared across the division or linked to one product. Select a product when creating a document; only that product’s offerings and shared offerings appear. Product/customer/company/pricing details are saved as snapshots. Renaming a product does not rewrite an existing document. Switching an unfinished document to a product with incompatible lines requires an explicit decision to remove those lines.
-
-Billing profiles suggest appropriate units for legal work (hour/case/draft), facility services (person/shift/month), elevators (lift/visit/year), space/interiors (area/seat/room), jewellery and ecosystem subscriptions (license/user/period). Users enter actual rates and GST classifications; no market rates are guessed.
-
-- **Standard:** quantity × rate per unit.
-- **Recurring:** quantity × number of periods × rate per unit per period. For example, four people over two months at a per-person monthly rate.
-- **Jewellery:** quantity is the number of identical items. Gross and stone weight are entered **per item**, in grams; net metal weight is gross minus stone weight. The rate is per gram of net metal at the entered purity. Making may be fixed per item, per gram, or a percentage of metal value. Optional wastage is a percentage of metal value; stone value and other charges are per item. Each component is rounded to paise, then the document discount and chosen GST rate apply to the complete line amount. Purity is descriptive; it does not silently adjust the entered rate. Use separate lines when a component needs a different tax treatment.
-
-The invoice shows the pricing breakdown, not just a hidden calculated total. Delivery challans retain quantities without carrying financial pricing. Original PNG/JPEG images are embedded without resizing; WebP is encoded to PNG only for PDF compatibility, while original uploads stay unchanged.
-
-## Installments, signing and branding
-
-The EMI feature schedules amounts already on the invoice; it is not a lender, interest calculator, automatic debit or payment gateway. No interest or late fee is silently added. Plans include any money already received and must sum to the invoice total in integer paise. Monthly generation uses the anchor day (31 January → 28 February → 31 March), and paise remainders are distributed exactly. Payments reduce the oldest due installments first; a reasoned void recomputes their balances. Schedule changes and removal are recorded in the invoice activity history. For invoices with a plan, overdue indicators follow installment dates and the printed final due date is the last installment date.
-
-Use **Dashboard branding → Edit organization logo**, or **Business settings → Logo & invoice design**, to upload or replace the selected organization’s logo. Saving updates that organization’s dashboard branding immediately, and the saved name/logo returns after refresh. Other organizations keep their own branding. The separate workspace logo, optional business-product logo, saved-format logo and draft-document override remain independent settings. A document’s explicit custom/hidden logo choice takes priority; otherwise it uses the format, saved business product or saved organization logo. The workspace logo is never an invoice fallback. To use a newly updated organization logo on an existing draft, use **Use current organization logo** in its branding section. Issued/final documents retain their saved identity.
-
-Secondary signatory and stamp areas can contain uploaded images or stay empty for signing/stamping a printed copy. Captions can include the authorized person’s name/designation. Template toggles and dimensions control their appearance without cropping the uploaded image.
-
-## Existing workspace migration
-
-Database schema version 2 corrects the five original division names and legal company name, adds Shri Sarraf, and creates a Standard invoice format for each organization. Existing organization IDs, prefixes, customers and financial records are preserved. Saved historical issuer/customer details and amounts remain intact; migration records their legacy format before changing live company settings. The migration runs once and respects subsequent user edits.
-
-Schema version 3 adds proformas and delivery challans, payment records and document events, and fills missing built-in templates up to 15 per organization. Existing formats, customizations and historical document snapshots are preserved. Legacy invoices already marked paid receive an explicitly identified legacy receipt rather than losing their recorded paid status.
-
-Schema version 4 adds independent workspace settings, organization billing profiles and the ecosystem business-product hierarchy. It preserves old settings, catalog links and document snapshots.
-
-The business identity upgrade separates Shri Sarraf from the Venturecore defaults, supports organization-owned additional GST registrations and records the selected seller registration in draft/document snapshots. Issued financial and payment identities remain historical snapshots; adding an organization or changing current settings does not move its invoices to another merchant. Per-business credentials and notification profiles are separate from document data.
-
-The installed workspace was backed up with SQLite's online backup API before the migration. For future upgrades, back up your own data first.
-
-## Document behavior
-
-- Currency is INR. Amounts are rounded to two decimal places. GST is calculated after the percentage discount. The chosen seller GST registration supplies the issuer state/address/GSTIN; only registrations saved on the selected business are available. Matching supplier state and place of supply produces CGST/SGST; different states produce IGST.
-- Numbers include prefix, Indian financial year and sequence, e.g. `P2EI/2627/0001`. Numbers are assigned on draft save, remain within 16 characters and are not reused after deletion.
-- Saved documents contain a snapshot of customer and issuer details. Editing a customer or organization does not silently change earlier documents.
-- A financial edit to a draft refreshes its snapshots from the current customer and organization records. Metadata-only edits keep the stored snapshots and totals.
-- Once issued (non-draft), or when an invoice has active payments, financial fields are locked. Issued documents cannot return to draft. Paid / Final invoices lock all edits; payment corrections are recorded separately with a reason and audit history.
-- Quotation/proforma conversion uses the current India date and invoice financial year, preserves quoted amounts/details, and carries forward the original issue-to-due interval. The source document is marked accepted and locked. Custom quotation titles are preserved; the default title becomes Invoice.
-- Delivery challans record quantities, recipient, destination, carrier, tracking reference, vehicle and dispatch/delivery dates without prices or taxes. Track draft, dispatched, delivered and cancelled statuses. Shipping details can also appear on regular financial documents.
-- New proforma and delivery numbers use the invoice prefix with `P`/`D` before their sequence, such as `P2EI/2627/P0001` or `P2EI/2627/D0001`.
-- Receipt amounts use integer paise. Overpayments are rejected; request IDs make retries idempotent. Finalizing a zero-value invoice requires the explicit finalize action.
-- Manual receipt dates must be today or earlier in India, and the server enforces this before changing financial or email records. Authenticated Razorpay/Cashfree responses with a future India calendar date enter payment review rather than crediting or finalizing the invoice. Already recorded verified-payment retries retain their original date and receipt.
-- Only unlinked drafts without payments can be deleted. Customers referenced by saved documents cannot be deleted.
-
-## GST fetching
-
-By default, **Fetch details** uses the GST public portal with a **CAPTCHA completed by the person using the app**. CAPTCHA cookies remain on the server; opaque challenges expire after three minutes and are single use. Lookup fills the registered name, address, state and GSTIN. It does not promise phone or email data. Review retrieved details before saving.
-
-For **Sandbox GST Search**, set `GST_PROVIDER=sandbox`, `SANDBOX_ENVIRONMENT=test`, `SANDBOX_API_KEY` and `SANDBOX_API_SECRET` in secure server settings, then restart the app. Use the matching test key/secret from Sandbox Console → Settings → API Keys. The application obtains and renews a server-only access token automatically; do not paste a token into the app or expose credentials through `VITE_` variables. **Payments & email** shows the GST provider, environment and whether credentials are present, without revealing their values. A configuration badge does not verify the provider account.
-
-Sandbox test APIs return documented example/mock records only, not actual customer verification. Use matching production credentials and `SANDBOX_ENVIRONMENT=production` for real taxpayer details after checking the account plan. The contact editor clearly labels test responses and requires saving the reviewed form; fetching never creates a customer automatically or changes an organization's seller GST. Do not copy mock customer details into business invoices. Sandbox lookup is shared across the workspace's organizations and is independent of their separate payment/email accounts.
-
-The adapter follows Sandbox's official [Authenticate](https://developer.sandbox.co.in/api-reference/authenticate) and [Search GSTIN](https://developer.sandbox.co.in/api-reference/gst/compliance/endpoints/public/search_gstin) contracts: `POST /authenticate` with `x-api-key`/`x-api-secret`, then `POST /gst/compliance/public/gstin/search` with a raw access token and API key. Only the fixed `api.sandbox.co.in` and `test-api.sandbox.co.in` hosts are used. Authentication tokens stay in memory; responses are bounded and validated against the requested GSTIN. Successful results are cached for up to five minutes, simultaneous identical lookups are coalesced, and request limits reduce accidental repeated billable requests. Lookup failures are not automatically retried. Cancelled GST registrations remain labelled with the returned status. Manual entry remains available when the provider is unavailable.
-
-**Live Sandbox status:** the adapter and isolated tests do not establish a live connection. The user's credentials are currently held privately and have not been configured in this environment. Secure key/secret entry, outbound API access and a successful authenticated query remain necessary.
-
-The supplied [reference repository](https://github.com/sivunq/fetch-GST-details-without-using-any-paid-API/tree/25df28e76ce285210292f9321840666f10c0e487) describes this CAPTCHA/cookie flow. It is an incomplete set of snippets without a license. This implementation is independently written; none of its source was copied, and no CAPTCHA bypass or solver is used.
-
-**Live portal status:** the cloud environment blocked `services.gst.gov.in` with a proxy CONNECT 403 during implementation. The environment draft adds that host, but the draft must be reviewed, saved and published before the new policy applies. Live lookup remains unverified until a real CAPTCHA and taxpayer lookup succeed after activation. Portal endpoint behavior may change. If fetching fails, the app shows an error and allows manual entry; it never fabricates taxpayer data.
-
-Another normalized provider can replace the portal flow. Keep `GST_PROVIDER` unset for legacy URL-based selection, or set it to `generic`. Copy `.env.example` to `.env` and configure:
-
-```dotenv
-GST_LOOKUP_URL=https://your-provider.example/lookup/{gstin}
-GST_API_KEY=your-server-side-bearer-key
-```
-
-This is a generic integration contract, not a preconfigured commercial service. The server substitutes a validated GSTIN, sends the optional key as a Bearer token, and expects:
-
-```json
-{
-  "gstin": "the requested valid GSTIN",
-  "name": "Registered legal name",
-  "address": "Registered address",
-  "stateCode": "27",
-  "status": "Active"
-}
-```
-
-`status` is optional; a `{ "data": { ... } }` wrapper is supported. A provider with another schema/authentication method needs an adapter. Credentials are server-only; do not commit `.env` or put keys in a `VITE_` variable. Provider hostnames also need outbound access.
-
-## Persistence and verification
-
-SQLite data is stored in `.data/workspace.sqlite`, excluded from Git. User-supplied original QR/signature files and previous import assets are preserved privately in `.data/company-assets/`; the current dashboard logo is in `.data/workspace-assets/`. The old company-import JSON is historical input and must not be replayed: it predates independent organization logos and Shri Sarraf’s separate legal/payment identity. Uploaded certificates stay private; their GST-verification QR is not a payment QR. Company settings and document snapshots store their image data. These personal assets and bank details are not source fixtures or public build assets. Override with `DATABASE_PATH`.
-
-Administrators have a full **Database backups** page with manual snapshots, completed backup history and authenticated SQLite/manifest downloads. Backups cover the whole workspace; staff cannot list or download them. Set `BACKUP_ENABLED=true`, `DATABASE_BACKUP_DIR` to a private persistent directory, `BACKUP_INTERVAL_MINUTES=1440` and `BACKUP_RETENTION_COUNT=7` for automatic verified snapshots. The server checks SHA-256, SQLite integrity and foreign keys; unsafe snapshots stop retention cleanup. One application/backup writer owns the directory. Local snapshots are not offsite backups and do not include original attachments or server secrets.
-
-`npm run db:backup` takes a consistent online snapshot; `db:restore` creates a new private database without overwriting existing files. Restored databases revoke sessions/reset tokens, hold queued emails and refuse server startup until account/payment/email reconciliation is explicitly acknowledged with `db:resume`. Acknowledgement does not verify provider history. See [Database operations](DATABASE_OPERATIONS.md) for storage, both download files, recovery and cutover. If copying files instead, stop the server and copy the complete data directory including WAL/SHM files. `npm run check:deployment` reports safe configuration blockers and optional integrations; actual hosting persistence and live APIs still require verification.
-
-```bash
-npm test
-npm run build
-```
-
-Tests cover tax rounding, validation, saved data, organization separation, numbering, conversion, snapshots, financial locks, migration, catalog archival/SKU rules, format defaults, payment totals/idempotency/final locks/reversals, shipping, proforma conversion, long service descriptions, Indian amount words and real multipage PDF generation, plus GST provider/CAPTCHA handling and mutation protections. Use a separate temporary `DATABASE_PATH` for browser tests to keep test records out of business data.
-
-All business APIs require account sessions and enforce assigned organization access. Production requires an HTTPS public origin. Razorpay, Cashfree and transactional email integrations remain inactive for a business until its server credentials, matching webhook registration and verified sender are configured. Global Venturecore settings do not activate Shri Sarraf. Shared workspace email settings still handle password resets. Provider tests use simulated responses and do not establish live payment or email delivery readiness. E-invoice/IRN integration, accounting filing, supplier bills, automated refunds and email delivery/bounce tracking are not implemented. Configure and validate the hosted deployment before using it for live business.
+The supplied source archive contained no live business database. Import tooling is included, but no unprovided customer database or external provider account has been migrated or activated. Live payment, email and GST checks require your credentials and the target hosting environment.
