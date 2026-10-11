@@ -1,28 +1,22 @@
 import { createApiControllers } from '../controllers/api/index.js';
 import { registerApiRoutes } from '../routes/api.js';
 import { createWorkspaceService } from './workspace-service.js';
-import { HttpError, createErrorReporter, createRequestDiagnostics } from '../middleware/errors.js';
+import { createErrorReporter, createRequestDiagnostics } from '../middleware/errors.js';
+import { createApiErrorHandler } from '../middleware/api-errors.js';
 export { HttpError } from '../middleware/errors.js';
 import express from 'express';
 import { createHash } from 'node:crypto';
 import { createAuth } from './auth/auth.js';
 import { createWorkspacePageData } from './pages/workspace-data.js';
-import { createMailer, EmailQueueError } from './integrations/email/mailer.js';
-import { OnlinePaymentError } from './integrations/payments/online-payments.js';
+import { createMailer } from './integrations/email/mailer.js';
 import { createPaymentGateways } from './integrations/payments/payment-gateways.js';
 import { renderInvoiceAttachment } from './documents/invoice-pdf.js';
 import { resolve, relative, isAbsolute, sep } from 'node:path';
-import { z } from 'zod';
 import { initDb } from '../config/database.js';
 import { configureTrustedProxy } from '../config/trusted-proxy.js';
 import { paymentSchema } from './validation/validation.js';
-import { createGstPortal, PortalError } from './integrations/gst/gst-portal.js';
-import { createSandboxGst, SandboxGstError } from './integrations/gst/sandbox-gst.js';
-import {
-  createDatabaseBackupService,
-  parseDatabaseBackupConfig,
-  DatabaseBackupError,
-} from './operations/database-backup.js';
+import { createGstIntegration } from './integrations/gst/gst-config.js';
+import { createDatabaseBackupService, parseDatabaseBackupConfig } from './operations/database-backup.js';
 import { createBackupManager } from './operations/backup-scheduler.js';
 import { assertDatabaseRecoveryReviewed } from './operations/recovery.js';
 import { createLogger } from './operations/logger.js';
@@ -31,16 +25,6 @@ import { createAutomationRunner } from './operations/automation-runner.js';
 import { createCustomerLedger } from './ledger/customer-ledger.js';
 import { createPaymentReminders } from './integrations/email/payment-reminders.js';
 import { createRecurringInvoices } from './recurring/recurring-invoices.js';
-function configuredLookupUrl(template) {
-  if (!template || !template.includes('{gstin}')) return undefined;
-  try {
-    const url = new URL(template.replaceAll('{gstin}', '27AAACR5055K1Z7'));
-    if (url.protocol !== 'https:' || url.username || url.password) return undefined;
-    return template;
-  } catch {
-    return undefined;
-  }
-}
 export async function createApp(options = {}) {
   const environment = options.environment ?? process.env;
   const db =
@@ -70,10 +54,7 @@ async function initializeApplication(options, environment, db) {
   app.locals.requestDiagnostics = requestDiagnostics;
   app.locals.reportError = reportError;
   app.use(requestDiagnostics);
-  const lookupUrl = configuredLookupUrl(options.gstLookupUrl ?? environment.GST_LOOKUP_URL);
-  const apiKey = options.gstApiKey ?? environment.GST_API_KEY;
   const fetcher = options.fetch ?? globalThis.fetch;
-  const portal = createGstPortal(fetcher);
   const now = options.now ?? (() => new Date());
   const backupConfig = parseDatabaseBackupConfig(environment, undefined);
   for (const root of ['public', 'shared', 'src', 'views', 'scripts'].map((name) => resolve(name))) {
@@ -93,25 +74,13 @@ async function initializeApplication(options, environment, db) {
     now,
     logger,
   });
-  const requestedGstProvider = environment.GST_PROVIDER?.trim().toLowerCase();
-  if (requestedGstProvider && !['portal', 'generic', 'sandbox'].includes(requestedGstProvider))
-    throw new Error('GST_PROVIDER must be portal, generic or sandbox.');
-  const gstProvider = requestedGstProvider || (lookupUrl ? 'generic' : 'portal');
-  const sandboxGst = createSandboxGst({
+  const { portal, sandboxGst, gstProvider, gstStatus, lookupUrl, apiKey } = createGstIntegration({
     environment,
-    fetch: fetcher,
-    now: () => now().getTime(),
+    fetcher,
+    now,
+    lookupUrl: options.gstLookupUrl,
+    apiKey: options.gstApiKey,
   });
-  const gstStatus = () =>
-    gstProvider === 'sandbox'
-      ? sandboxGst.status()
-      : {
-          provider: gstProvider,
-          mode: gstProvider === 'generic' ? 'custom' : 'captcha',
-          configured: gstProvider === 'generic' && Boolean(lookupUrl),
-          keyConfigured: gstProvider === 'generic' && Boolean(apiKey),
-          secretConfigured: false,
-        };
   let mailer, online;
   const workspace = createWorkspaceService({
     db,
@@ -123,37 +92,7 @@ async function initializeApplication(options, environment, db) {
       return online;
     },
   });
-  const {
-    getOrganization,
-    getCustomer,
-    getDocument,
-    getPayment,
-    activePaidPaise,
-    addEvent,
-    paymentDetails,
-    updatePaymentBalance,
-    getCatalogItem,
-    getBusinessProduct,
-    selectBusinessProduct,
-    assertProductCodeAvailable,
-    validateInstallmentTotal,
-    recordPlanChange,
-    getFormat,
-    selectFormat,
-    assertSkuAvailable,
-    validateCatalogReferences,
-    saveFormat,
-    scopedOrganization,
-    assertPrefixesAvailable,
-    validateTax,
-    nextNumber,
-    saveDocument,
-    sellerRegistration,
-    newDocument,
-    emailIssuedDocument,
-    recordPayment,
-    fiscalYear,
-  } = workspace;
+  const { getOrganization, getDocument, activePaidPaise, paymentDetails, recordPayment } = workspace;
   mailer = createMailer(db, {
     env: environment,
     fetch: options.emailFetch,
@@ -284,59 +223,7 @@ async function initializeApplication(options, environment, db) {
       : ledger.exportCustomers(user, organizationId, route.query);
   app.locals.getDocument = getDocument;
   app.locals.paymentDetails = paymentDetails;
-  const errorHandler = (error, req, res, _next) => {
-    const sendError = (status, payload) => {
-      reportError(error, req, status);
-      if (res.headersSent) return res.destroy();
-      res.status(status).json({ ...payload, ...(status >= 500 ? { requestId: req.requestId } : {}) });
-    };
-    if (error instanceof z.ZodError) {
-      sendError(400, {
-        error: error.issues
-          .map(
-            (issue) =>
-              `${issue.path.join('.') || 'Input'}: ${issue.code === 'invalid_enum_value' ? 'Choose one of the supported values.' : issue.message}`,
-          )
-          .join(' '),
-      });
-    } else if (
-      error instanceof HttpError ||
-      error instanceof PortalError ||
-      error instanceof SandboxGstError ||
-      error instanceof EmailQueueError ||
-      error instanceof OnlinePaymentError
-    ) {
-      sendError(error.status, {
-        error: error.status === 500 ? 'Unable to complete the request. Please try again.' : error.message,
-        ...(error instanceof HttpError && error.code ? { code: error.code } : {}),
-        ...(error instanceof HttpError && error.document ? { document: error.document } : {}),
-      });
-    } else if (error instanceof DatabaseBackupError) {
-      sendError(error.code === 'not_found' ? 404 : 503, {
-        error: error.message,
-      });
-    } else if (error?.code === 11000) {
-      sendError(409, {
-        error: 'A record with these unique details already exists. Refresh the workspace before retrying.',
-      });
-    } else if (error instanceof URIError) {
-      sendError(400, {
-        error: 'The request URL contains an invalid identifier.',
-      });
-    } else if (error instanceof SyntaxError && 'body' in error) {
-      sendError(400, {
-        error: 'Request body must contain valid JSON.',
-      });
-    } else if (error && error.type === 'entity.too.large') {
-      sendError(413, {
-        error: 'Request is too large.',
-      });
-    } else {
-      sendError(500, {
-        error: 'Unable to complete the request. Please try again.',
-      });
-    }
-  };
+  const errorHandler = createApiErrorHandler(reportError);
   app.locals.errorHandler = errorHandler;
   const controllerContext = {
     environment,
@@ -359,35 +246,8 @@ async function initializeApplication(options, environment, db) {
     lookupUrl,
     apiKey,
     fetcher,
-    getOrganization,
-    getCustomer,
-    getDocument,
-    getPayment,
-    activePaidPaise,
-    addEvent,
-    paymentDetails,
-    updatePaymentBalance,
-    getCatalogItem,
-    getBusinessProduct,
-    selectBusinessProduct,
-    assertProductCodeAvailable,
-    validateInstallmentTotal,
-    recordPlanChange,
-    getFormat,
-    selectFormat,
-    assertSkuAvailable,
-    validateCatalogReferences,
-    saveFormat,
-    scopedOrganization,
-    assertPrefixesAvailable,
-    validateTax,
-    nextNumber,
-    saveDocument,
-    sellerRegistration,
-    newDocument,
-    emailIssuedDocument,
-    recordPayment,
-    fiscalYear,
+    // Controllers destructure the workspace helpers they need (getDocument, saveDocument, ...).
+    ...workspace,
   };
   const controllers = createApiControllers(controllerContext);
   registerApiRoutes(app, {
