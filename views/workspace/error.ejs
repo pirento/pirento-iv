@@ -1,0 +1,7 @@
+<section class="empty-state error-state">
+  <span class="eyebrow"><%= data.status || 404 %></span>
+  <h1><%= data.pageTitle %></h1>
+  <p><%= data.message %></p>
+  <% if (data.requestId) { %><p class="muted">Support reference: <code><%= data.requestId %></code></p><% } %>
+  <a class="button button-primary" href="/">Return to workspace</a>
+</section>

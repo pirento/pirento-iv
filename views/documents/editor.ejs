@@ -1,0 +1,540 @@
+<%
+const t = helpers.types;
+const org = data.organization;
+const existing = data.document;
+const kind =
+  existing?.kind ||
+  { invoices: 'invoice', quotations: 'quotation', proformas: 'proforma', shipping: 'delivery_note' }[
+    data.route.view
+  ];
+const isDelivery = kind === 'delivery_note';
+const label = t.DOCUMENT_LABELS[kind].toLowerCase();
+const finalized = Boolean(existing?.finalizedAt || existing?.convertedInvoiceId);
+const hasPayments = Boolean(existing && kind === 'invoice' && t.paidAmount(existing) > 0);
+const locked = finalized || hasPayments || Boolean(existing && existing.status !== 'draft');
+const formats = (data.formats || []).filter((item) => item.organizationId === org.id);
+const products = (data.businessProducts || []).filter(
+  (item) => item.organizationId === org.id && item.active,
+);
+const date = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Kolkata',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+}).format(new Date());
+const due = new Date(`${date}T12:00:00Z`);
+due.setUTCDate(due.getUTCDate() + 30);
+const form = {
+  customerId: '',
+  status: 'draft',
+  issueDate: date,
+  dueDate: isDelivery ? '' : due.toISOString().slice(0, 10),
+  title: t.DOCUMENT_LABELS[kind],
+  discountPercent: 0,
+  placeOfSupply: '',
+  notes: '',
+  terms: isDelivery ? '' : org.terms,
+  formatId: (formats.find((f) => f.isDefault) || formats[0])?.id,
+  ...existing,
+};
+const branding = { ...t.defaultDocumentBranding(existing?.organizationSnapshot || org), ...form.branding };
+const shipping = { ...t.blankShipping(), ...form.shipping };
+const seller = existing?.organizationSnapshot || org;
+const statuses =
+  hasPayments || ['paid', 'partially_paid'].includes(form.status)
+    ? [form.status]
+    : (isDelivery
+        ? ['draft', 'dispatched', 'delivered', 'cancelled']
+        : kind === 'invoice'
+          ? ['draft', 'sent', 'cancelled']
+          : ['draft', 'sent', 'accepted', 'declined', 'cancelled']
+      ).filter((value) => value !== 'draft' || !existing || existing.status === 'draft');
+const baseUrl = `/workspace/${encodeURIComponent(org.id)}/${data.route.view}`;
+%>
+<section class="workspace-page doc-editor-page doc-editor" aria-labelledby="doc-editor-heading">
+  <header class="doc-page-header">
+    <div class="doc-page-heading">
+      <div>
+        <h1 id="doc-editor-heading"><%= finalized ? 'View' : existing ? 'Edit' : 'Create' %> <%= label %></h1>
+        <p><%= org.name %> · <%= existing?.number || 'Number assigned when saved' %></p>
+      </div>
+    </div>
+    <a class="doc-button doc-button-secondary" href="<%= baseUrl %>">Back</a>
+  </header>
+  <noscript
+    ><p class="doc-tax-note">Enable JavaScript to calculate line totals and save this document.</p></noscript
+  >
+  <% if (!finalized) { %>
+  <section class="doc-draft-tools" aria-label="Local draft">
+    <p id="doc-draft-status">Unsaved entries are kept in this browser tab.</p>
+    <button class="doc-button doc-button-secondary" type="button" data-reset-draft aria-describedby="doc-draft-status">
+      <%= existing ? 'Discard unsaved changes' : 'Start fresh draft' %>
+    </button>
+  </section>
+  <dialog class="doc-reset-dialog" id="doc-reset-dialog" aria-labelledby="doc-reset-title" aria-describedby="doc-reset-copy">
+    <h2 id="doc-reset-title"></h2>
+    <p id="doc-reset-copy"></p>
+    <p class="doc-field-error" data-reset-error role="alert" hidden></p>
+    <div class="doc-action-row">
+      <button class="doc-button doc-button-secondary" type="button" data-reset-cancel autofocus>Keep this draft</button>
+      <button class="doc-button doc-button-primary" type="button" data-reset-confirm>Discard and start fresh</button>
+      <button class="doc-button doc-button-primary" type="button" data-reset-retry hidden>Retry saved request</button>
+      <a class="doc-button doc-button-secondary" data-reset-latest target="_blank" rel="noopener" hidden>Open saved document</a>
+    </div>
+  </dialog>
+  <% } %>
+  <form id="document-editor-form" novalidate>
+    <fieldset class="doc-content-fieldset" <%= finalized ? 'disabled' : '' %>>
+      <div class="doc-editor-content">
+        <% if (finalized) { %>
+        <p class="doc-tax-note">This document is finalized or converted. All document details are locked.</p>
+        <% } else if (locked) { %>
+        <p class="doc-tax-note">
+          This document has been issued<%= hasPayments ? ' and has received payments' : '' %>. Customer, issue date, line items, branding and
+          tax details are locked. You can update its format, shipping, due date, title, notes and
+          terms<%= hasPayments ? '.' : ' and permitted status.' %>
+        </p>
+        <% } %> <% if (isDelivery) { %>
+        <p class="doc-delivery-note">
+          Delivery challans record items, quantities and shipping details. Prices and taxes are excluded.
+        </p>
+        <% } %>
+        <section class="doc-section" id="doc-product-section" <%= !((org.enableProductSelection ?? helpers.billingProfileFor(org) === 'ecosystem') || form.businessProductId) ? 'hidden' : '' %>>
+          <h2 class="doc-section-heading">Business product</h2>
+          <label class="doc-field"
+            >Product or service division<select name="businessProductId" <%= locked ? 'disabled' : '' %>>
+              <option value="">Select a business product</option>
+              <% products.forEach(product=>{ %>
+              <option value="<%= product.id %>" <%= form.businessProductId===product.id?'selected':'' %>><%= product.name %></option>
+              <% }); %><% if(form.businessProductId&&!products.some(p=>p.id===form.businessProductId)){ %>
+              <option selected value="<%= form.businessProductId %>">
+                <%= existing?.businessProductSnapshot?.name || 'Saved business product' %> · Saved selection
+              </option>
+              <% } %>
+            </select></label
+          >
+          <p class="doc-help" id="doc-product-hint">
+            The catalog includes this product’s items and shared organization services.
+          </p>
+          <p class="doc-field-error" data-error-for="businessProductId" hidden></p>
+          <div id="doc-product-change" class="doc-tax-note" hidden>
+            <strong>Some line items belong to another product.</strong>
+            <p id="doc-product-change-copy"></p>
+            <div class="doc-action-row">
+              <button class="doc-button doc-button-secondary" type="button" data-action="keep-product">
+                Keep current product</button
+              ><button class="doc-button doc-button-primary" type="button" data-action="confirm-product">
+                Switch and remove incompatible lines
+              </button>
+            </div>
+          </div>
+        </section>
+        <section class="doc-seller-registration" aria-label="Seller identity and GST">
+          <div class="doc-seller-identity" id="doc-seller">
+            <span class="doc-seller-caption">SELLER / BUSINESS</span><strong><%= seller.legalName || seller.name %></strong>
+            <p><%= seller.address || 'Add a billing address in organization settings.' %></p>
+            <small><%= seller.gstin ? `GSTIN: ${seller.gstin}` : 'No GST registration selected' %></small>
+          </div>
+          <div>
+            <label class="doc-field"
+              >Seller GST registration<select name="gstRegistrationId" <%= locked ? 'disabled' : '' %>>
+                <option value="">Default<%= org.gstin ? ` · ${org.gstin}` : ' · GSTIN not set' %></option>
+                <% (org.gstRegistrations||[]).forEach(registration=>{ %>
+                <option value="<%= registration.id %>" <%= form.gstRegistrationId===registration.id?'selected':'' %>>
+                  <%= registration.label %> · <%= registration.gstin %>
+                </option>
+                <% }); %><% if(form.gstRegistrationId&&!(org.gstRegistrations||[]).some(r=>r.id===form.gstRegistrationId)){ %>
+                <option selected value="<%= form.gstRegistrationId %>">
+                  Saved registration · <%= seller.gstin || 'Unavailable' %>
+                </option>
+                <% } %>
+              </select></label
+            >
+            <p class="doc-help">
+              Seller state and place of supply determine CGST / SGST or IGST. Saved identity remains on issued
+              documents.
+            </p>
+            <p class="doc-field-error" data-error-for="gstRegistrationId" hidden></p>
+          </div>
+        </section>
+        <section class="doc-section">
+          <h2 class="doc-section-heading">1. Contact & document details</h2>
+          <div class="doc-details-grid">
+            <div class="doc-customer-picker">
+              <div class="doc-label-row">
+                <label for="doc-customer"><%= isDelivery ? 'Deliver to' : 'Bill to' %> *</label
+                ><a
+                  class="doc-text-button"
+                  href="/workspace/<%= encodeURIComponent(org.id) %>/customers/new"
+                  data-manager-link
+                  >New contact</a
+                >
+              </div>
+              <div class="doc-contact-role-filters" role="group" aria-label="Contact roles">
+                <% [['all','All'],['customer','Customers'],['b2b_buyer','B2B buyers'],['vendor','Vendors']].forEach(([role,text])=>{ %><button
+                  type="button"
+                  data-contact-role="<%= role %>"
+                  aria-pressed="<%= role==='all' %>"
+                  <%= locked?'disabled':'' %>
+                >
+                  <%= text %></button
+                ><% }); %>
+              </div>
+              <input
+                class="doc-search-input"
+                id="doc-contact-search"
+                type="search"
+                maxlength="200"
+                aria-label="Search saved contacts"
+                placeholder="Name, phone, email, GSTIN or PAN"
+                <%= locked?'disabled':'' %>
+              />
+              <select id="doc-customer" name="customerId" <%= locked?'disabled':'' %>>
+                <option value="">Select a saved contact</option>
+                <% (data.customers||[]).filter(c=>c.organizationId===org.id).forEach(customer=>{ %>
+                <option value="<%= customer.id %>" <%= form.customerId===customer.id?'selected':'' %>>
+                  <%= customer.name %><%= customer.active===false?' · Archived':'' %>
+                </option>
+                <% }); %><% if(existing&&!(data.customers||[]).some(c=>c.id===form.customerId)){ %>
+                <option selected value="<%= form.customerId %>">
+                  <%= existing.customerSnapshot.name %> · Saved contact
+                </option>
+                <% } %>
+              </select>
+              <% if (!locked) { %>
+              <div class="doc-picker-navigation">
+                <button type="button" class="doc-text-button" id="doc-contact-previous" disabled>Previous contacts</button>
+                <button type="button" class="doc-text-button" id="doc-contact-next" <%= data.lookupPages?.customers.hasMore ? '' : 'disabled' %>>Next contacts</button>
+                <button type="button" class="doc-text-button" id="doc-contact-retry" hidden>Retry search</button>
+              </div>
+              <p class="doc-help" id="doc-contact-status" role="status">Search all saved contacts. Results are shown 20 at a time.</p>
+              <% } %>
+              <p class="doc-field-error" data-error-for="customerId" hidden></p>
+              <div id="doc-customer-card" class="doc-customer-card" <%= existing?'':'hidden' %>>
+                <% if(existing){ %>
+                <div>
+                  <strong><%= existing.customerSnapshot.name %></strong>
+                  <p><%= existing.customerSnapshot.address %></p>
+                  <small><%= existing.customerSnapshot.email %> · <%= existing.customerSnapshot.phone %></small>
+                </div>
+                <% } %>
+              </div>
+            </div>
+            <div class="doc-meta-fields">
+              <label class="doc-field doc-wide"
+                >Document title *<input
+                  name="title"
+                  value="<%= form.title %>"
+                  maxlength="200"
+                  required /><span class="doc-field-error" data-error-for="title" hidden></span
+              ></label>
+              <label class="doc-field"
+                >Issue date *<input
+                  name="issueDate"
+                  type="date"
+                  value="<%= form.issueDate %>"
+                  min="2000-01-01"
+                  max="2199-12-31"
+                  required
+                  <%= locked?'disabled':'' %> /><span
+                  class="doc-field-error"
+                  data-error-for="issueDate"
+                  hidden
+                ></span
+              ></label>
+              <% if(!isDelivery){ %><label class="doc-field"
+                ><%= kind==='invoice'?'Due date':'Valid until' %><input
+                  name="dueDate"
+                  type="date"
+                  value="<%= form.dueDate %>"
+                  min="<%= form.issueDate %>"
+                  max="2199-12-31" /><span
+                  class="doc-field-error"
+                  data-error-for="dueDate"
+                  hidden
+                ></span></label
+              ><% } %>
+              <label class="doc-field"
+                >Status<select name="status" <%= hasPayments||['paid','partially_paid'].includes(form.status)?'disabled':'' %>>
+                  <% statuses.forEach(status=>{ %>
+                  <option value="<%= status %>" <%= form.status===status?'selected':'' %>>
+                    <%= t.STATUS_LABELS[status] %>
+                  </option>
+                  <% }); %></select
+                ><% if(kind==='invoice'){ %><small class="doc-help"
+                  >Record receipts from Payments to update payment status.</small
+                ><% } %></label
+              >
+              <% if(!isDelivery){ %><label class="doc-field"
+                >Place of supply<select name="placeOfSupply" <%= locked?'disabled':'' %>>
+                  <option value="">Select state</option>
+                  <% t.STATES.forEach(([code,name])=>{ %>
+                  <option value="<%= code %>" <%= form.placeOfSupply===code?'selected':'' %>>
+                    <%= name %> (<%= code %>)
+                  </option>
+                  <% }); %></select
+                ><span class="doc-field-error" data-error-for="placeOfSupply" hidden></span></label
+              ><% } %>
+            </div>
+          </div>
+        </section>
+        <section class="doc-section" aria-label="Document format">
+          <div class="doc-label-row">
+            <h2 class="doc-section-heading">Document format</h2>
+            <a class="doc-text-button" data-manager-link href="/workspace/<%= encodeURIComponent(org.id) %>/formats/new"
+              >Create a format</a
+            >
+          </div>
+          <label class="doc-field"
+            >Saved format<select name="formatId">
+              <option value="">Division default</option>
+              <% formats.forEach(format=>{ %>
+              <option value="<%= format.id %>" <%= form.formatId===format.id?'selected':'' %>>
+                <%= format.name %><%= format.isDefault?' · Default':'' %><%= existing?.formatSnapshot&&format.id===existing.formatId?' · Saved version':'' %>
+              </option>
+              <% }); %><% if(existing?.formatSnapshot&&existing.formatId&&!formats.some(f=>f.id===existing.formatId)){ %>
+              <option selected value="<%= existing.formatId %>"><%= existing.formatSnapshot.name %> · Saved version</option>
+              <% } %>
+            </select></label
+          >
+          <p class="doc-help" id="doc-format-details">
+            The chosen format is used for preview, print and PDF.
+          </p>
+        </section>
+        <details class="doc-branding-panel" id="doc-branding">
+          <summary>Document logo, signatures & stamp</summary>
+          <fieldset class="doc-branding-fields" <%= locked?'disabled':'' %>>
+            <div class="doc-form-grid">
+              <label class="doc-field"
+                >Document logo<select data-branding="logoMode">
+                  <% [['inherit','Use saved format / organization logo'],['custom','Use a custom document logo'],['none','No logo']].forEach(([value,text])=>{ %>
+                  <option value="<%= value %>" <%= branding.logoMode===value?'selected':'' %>>
+                    <%= text %>
+                  </option>
+                  <% }); %>
+                </select></label
+              ><button
+                type="button"
+                class="doc-button doc-button-secondary"
+                data-action="copy-logo"
+                <%= !org.logoUrl?'disabled':'' %>
+              >
+                Copy current organization logo
+              </button>
+            </div>
+            <div id="doc-inherited-logo" class="doc-image-preview"></div>
+            <div class="doc-branding-image-grid">
+              <% [['logoUrl','Document logo'],['primarySignatureImageUrl','Primary signature'],['secondarySignatureImageUrl','Secondary signature'],['stampImageUrl','Company stamp']].forEach(([key,text])=>{ const labelKey = key==='primarySignatureImageUrl'?'primarySignatureLabel':key==='secondarySignatureImageUrl'?'secondarySignatureLabel':key==='stampImageUrl'?'stampLabel':null; %>
+              <section data-brand-section="<%= key %>">
+                <h3><%= text %></h3>
+                <% if(key==='secondarySignatureImageUrl'||key==='stampImageUrl'){const toggle=key==='stampImageUrl'?'showStamp':'showSecondarySignature';%><label class="doc-checkbox"
+                  ><input type="checkbox" data-branding="<%= toggle %>" <%= branding[toggle]?'checked':'' %> />
+                  Show <%= text.toLowerCase() %></label
+                ><% } %><% if(labelKey){ %><label class="doc-field"
+                  >Caption<input
+                    data-branding="<%= labelKey %>"
+                    value="<%= branding[labelKey] %>"
+                    maxlength="200" /></label
+                ><% } %>
+                <div class="doc-image-preview" data-brand-preview="<%= key %>">
+                  <% if(branding[key]){ %><img
+                    src="<%= branding[key] %>"
+                    alt="<%= text %>"
+                  /><% } %>
+                </div>
+                <label class="doc-field"
+                  >Upload PNG, JPG or WebP · Up to 500 KB<input
+                    type="file"
+                    data-brand-upload="<%= key %>"
+                    accept="image/png,image/jpeg,image/webp" /></label
+                ><button type="button" class="doc-text-button" data-remove-brand="<%= key %>">
+                  Remove image
+                </button>
+              </section>
+              <% }); %>
+            </div>
+            <p class="doc-help">
+              The saved format’s visibility controls also apply to signatures and stamps.
+            </p>
+          </fieldset>
+          <p class="doc-field-error" data-error-for="branding" hidden></p>
+        </details>
+        <section class="doc-section">
+          <h2 class="doc-section-heading">2. Items & services</h2>
+          <p class="doc-help" id="doc-billing-hint"></p>
+          <% if(!locked){ %>
+          <div class="doc-catalog-picker">
+            <div class="doc-label-row">
+              <strong>Add from <%= org.name %></strong
+              ><a class="doc-text-button" data-manager-link href="/workspace/<%= encodeURIComponent(org.id) %>/catalog"
+                >Manage catalog</a
+              >
+            </div>
+            <div class="doc-form-grid">
+              <label class="doc-field"
+                >Search products & services<input
+                  id="doc-catalog-search"
+                  type="search"
+                  maxlength="200"
+                  placeholder="Name, SKU or HSN" /></label
+              ><label class="doc-field"
+                >Item type<select id="doc-catalog-type">
+                  <option value="all">All</option>
+                  <option value="product">Products</option>
+                  <option value="service">Services</option>
+                </select></label
+              >
+            </div>
+            <div id="doc-catalog-results" class="doc-catalog-cards">
+              <% (data.catalog||[]).filter(i=>i.organizationId===org.id&&i.active&&(!i.businessProductId||i.businessProductId===form.businessProductId)).slice(0,20).forEach(item=>{ %><button
+                type="button"
+                class="doc-catalog-choice"
+                data-catalog-id="<%= item.id %>"
+              >
+                <strong><%= item.name %></strong
+                ><span><%= item.sku || item.hsn || item.type %></span><% if(!isDelivery){ %><b
+                  ><%= t.money(item.rate) %> / <%= item.unit %></b
+                ><% } %><span>Add to document</span></button
+              ><% }); %>
+            </div>
+            <div class="doc-picker-navigation">
+              <button type="button" class="doc-text-button" id="doc-catalog-previous" disabled>Previous items</button>
+              <button type="button" class="doc-text-button" id="doc-catalog-next" <%= data.lookupPages?.catalog.hasMore ? '' : 'disabled' %>>Next items</button>
+              <button type="button" class="doc-text-button" id="doc-catalog-retry" hidden>Retry search</button>
+            </div>
+            <p class="doc-help" id="doc-catalog-status" role="status">Search all available catalog items. Results are shown 20 at a time.</p>
+            <p class="doc-help" id="doc-catalog-feedback" role="status"></p>
+          </div>
+          <% } %>
+          <datalist id="doc-unit-options">
+            <% t.CATALOG_UNITS.forEach(unit=>{ %>
+            <option value="<%= unit %>"></option>
+            <% }); %>
+          </datalist>
+          <div id="doc-lines"><% (form.items||[{description:'',hsn:'',quantity:1,rate:0,gstRate:0,unit:'Nos'}]).forEach((line,index)=>{ %><%- include('line',{line,index,locked,isDelivery}) %><% }); %></div>
+          <p class="doc-field-error" data-error-for="items" hidden></p>
+          <button type="button" class="doc-add-item" data-action="add-line" <%= locked?'disabled':'' %>>
+            + Add line item
+          </button>
+        </section>
+        <details class="doc-shipping-section" id="doc-shipping" <%= isDelivery||Object.values(shipping).some(Boolean)?'open':'' %>>
+          <summary class="doc-section-heading">Shipping & delivery <small>Optional</small></summary>
+          <button type="button" class="doc-text-button" data-action="copy-shipping">
+            Copy customer details
+          </button>
+          <div class="doc-form-grid">
+            <% [['recipientName','Recipient name','text',200],['phone','Recipient phone','tel',30],['address','Shipping address','textarea',2000],['stateCode','Shipping state','state',2],['reference','Order / delivery reference','text',200],['carrier','Carrier / transporter','text',200],['trackingNumber','Tracking / LR number','text',200],['vehicleNumber','Vehicle number','text',40],['dispatchDate','Dispatch date','date',10],['deliveryDate','Delivery date','date',10],['notes','Delivery instructions','textarea',2000]].forEach(([key,text,type,max])=>{ %><label class="doc-field <%= type==='textarea'?'doc-wide':'' %>"
+              ><%= text %><% if(type==='textarea'){ %><textarea
+                data-shipping="<%= key %>"
+                maxlength="<%= max %>"
+                rows="2"
+              >
+<%= shipping[key] %></textarea
+              ><% } else if(type==='state'){ %><select data-shipping="<%= key %>">
+                <option value="">Select state</option>
+                <% t.STATES.forEach(([code,name])=>{ %>
+                <option value="<%= code %>" <%= shipping[key]===code?'selected':'' %>>
+                  <%= name %> (<%= code %>)
+                </option>
+                <% }); %></select
+              ><% } else { %><input
+                data-shipping="<%= key %>"
+                type="<%= type %>"
+                maxlength="<%= max %>"
+                value="<%= shipping[key] %>"
+                <%= type==='date'?'min="2000-01-01" max="2199-12-31"':'' %>
+              /><% } %></label
+            ><% }); %>
+          </div>
+          <p class="doc-field-error" data-error-for="shipping" hidden></p>
+        </details>
+        <section id="doc-existing-plan" class="doc-section" <%= form.installmentPlan&&!isDelivery?'':'hidden' %>>
+          <h2 class="doc-section-heading">Saved installment plan</h2>
+          <div id="doc-plan-summary">
+            <% if(form.installmentPlan){ %><strong><%= form.installmentPlan.name %></strong>
+            <ul>
+              <% form.installmentPlan.installments.forEach(entry=>{ %>
+              <li><%= entry.label %> · <%= entry.dueDate %> · <%= t.money(entry.amount) %></li>
+              <% }); %>
+            </ul>
+            <% } %>
+          </div>
+          <button type="button" class="doc-text-button" data-action="clear-plan" <%= locked?'disabled':'' %>>
+            Clear plan
+          </button>
+          <p class="doc-help">Manage schedule and receipts from Payments.</p>
+          <p class="doc-field-error" data-error-for="installmentPlan" hidden></p>
+        </section>
+        <section class="doc-bottom-grid <%= isDelivery?'doc-delivery-bottom':'' %>">
+          <div class="doc-notes">
+            <label class="doc-field"
+              >Customer note<textarea name="notes" rows="3" maxlength="5000">
+<%= form.notes %></textarea></label
+            ><label class="doc-field"
+              >Terms & conditions<textarea name="terms" rows="3" maxlength="5000">
+<%= form.terms %></textarea>
+            </label>
+            <p class="doc-help" id="doc-snapshot-note">
+              Seller, contact, product and format snapshots are retained on saved documents.
+            </p>
+          </div>
+          <% if(!isDelivery){ %>
+          <div class="doc-totals-card">
+            <div><span>Subtotal</span><strong data-total="subtotal"><%= t.money(existing?.totals.subtotal||0) %></strong></div>
+            <div class="doc-discount-row">
+              <label
+                >Discount (%)<input
+                  name="discountPercent"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  value="<%= form.discountPercent %>"
+                  <%= locked?'disabled':'' %> /></label
+              ><span data-total="discount"><%= t.money(existing?.totals.discount||0) %></span>
+            </div>
+            <p class="doc-field-error" data-error-for="discountPercent" hidden></p>
+            <% [['taxable','Taxable amount'],['cgst','CGST'],['sgst','SGST / UTGST'],['igst','IGST']].forEach(([key,text])=>{ %>
+            <div>
+              <span><%= text %></span
+              ><span data-total="<%= key %>"><%= t.money(existing?.totals[key]||0) %></span>
+            </div>
+            <% }); %>
+          </div>
+          <% } %>
+        </section>
+        <% if(!isDelivery){ %>
+        <div class="doc-total-banner">
+          <span>Total <%= label %> value <small>INR · inclusive of applicable taxes</small></span
+          ><strong data-total="total"><%= t.money(existing?.totals.total||0) %></strong>
+        </div>
+        <% } %>
+      </div>
+    </fieldset>
+    <section id="doc-save-conflict" class="doc-tax-note" hidden aria-label="Review conflicting changes">
+      <p>The saved version opens in a new tab. Keep this tab open while you compare your entries.</p>
+      <div class="doc-action-row">
+        <a class="doc-button doc-button-secondary" data-open-latest target="_blank" rel="noopener">
+          Open latest saved version
+        </a>
+        <button class="doc-button doc-button-secondary" type="button" data-download-unsaved>
+          Download unsaved copy
+        </button>
+      </div>
+    </section>
+    <footer class="doc-page-footer">
+      <p id="doc-editor-feedback" class="doc-save-error" role="alert" tabindex="-1"></p>
+      <div>
+        <a href="<%= baseUrl %>" class="doc-button doc-button-secondary">Back</a
+        ><% if(!finalized){ %><button
+          id="doc-save-button"
+          type="submit"
+          class="doc-button doc-button-primary"
+        >
+          Save <%= label %></button
+        ><% } %>
+      </div>
+    </footer>
+  </form>
+</section>
+<script type="module" src="/js/documents/editor.js"></script>

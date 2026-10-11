@@ -1,0 +1,32 @@
+.document-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 18px;
+}
+.document-pagination > div {
+  flex: 1;
+}
+.document-pagination > div:last-child {
+  text-align: right;
+}
+[data-document-list-filters] input {
+  min-width: 180px;
+}
+@media (max-width: 640px) {
+  [data-document-list-filters] {
+    flex-wrap: wrap;
+  }
+  [data-document-list-filters] input {
+    flex-basis: 100%;
+    min-width: 0;
+  }
+  [data-document-count] {
+    flex-basis: 100%;
+  }
+  .document-pagination {
+    font-size: 12px;
+    gap: 8px;
+  }
+}

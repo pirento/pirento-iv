@@ -1,0 +1,31 @@
+<div class="registration-card" data-registration-id="<%= registration.id %>">
+  <div class="form-grid">
+    <label class="field"
+      >Registration label<input
+        data-registration-field="label"
+        maxlength="120"
+        value="<%= registration.label %>"
+        required /></label
+    ><label class="field"
+      >GSTIN<input
+        data-registration-field="gstin"
+        maxlength="15"
+        value="<%= registration.gstin %>"
+        required /></label
+    ><label class="field"
+      >State<select data-registration-field="stateCode" required>
+        <option value="">Select state</option>
+        <% for(const [code,name] of helpers.STATES){ %>
+        <option value="<%= code %>" <%= registration.stateCode===code?'selected':'' %>>
+          <%= name %> (<%= code %>)
+        </option>
+        <% } %>
+      </select></label
+    ><label class="field"
+      >Registered address<textarea data-registration-field="address" maxlength="2000"><%= registration.address %></textarea>
+    </label>
+  </div>
+  <div class="actions end" style="margin-top:10px">
+    <button class="text-button danger" type="button" data-remove-registration>Remove registration</button>
+  </div>
+</div>

@@ -1,9 +1,10 @@
 node_modules/
-dist/
-release/
 .data/
-.env
-.env.*
 package-lock.json
-*.log
-*.tsbuildinfo
+public/fonts/
+views/
+.example.env
+release/
+.preview-data/
+test-results/
+playwright-report/

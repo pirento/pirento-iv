@@ -1,0 +1,107 @@
+<%
+const f = { ...helpers.defaultFormatFor(organization), ...format };
+const colors = helpers.documentColors(f.accentColor);
+const logo = f.logoUrl || organization.logoUrl || '';
+const initials = organization.name.trim().split(/\s+/).slice(0,2).map(word => word[0]).join('').toUpperCase();
+const style = `--fmt-accent:${colors.accent};--fmt-on-accent:${colors.onAccent};--fmt-accent-text:${colors.accentText};--fmt-body-font:${(f.fontSize ?? 9) * 0.75}px;--fmt-brand-font:${(f.fontSize ?? 9) * 1.25}px;--fmt-heading-font:${(f.fontSize ?? 9) * 1.45}px;--fmt-paper-margin:${(f.pageMargin ?? 14) * 1.6}px;--fmt-logo-size:${(f.logoWidth ?? 72) * 0.58}px;--fmt-signature-size:${(f.signatureWidth ?? 140) * 0.55}px;--fmt-stamp-size:${(f.stampWidth ?? 110) * 0.55}px;--fmt-qr-size:${(f.paymentQrWidth ?? 110) * 0.55}px`;
+%>
+<div
+  class="fmt-sample fmt-sample-<%= f.layout %> fmt-density-<%= f.density %> fmt-table-<%= f.tableStyle || 'ruled' %> fmt-paper-<%= (f.pageSize || 'A4').toLowerCase() %> fmt-paper-<%= f.orientation || 'portrait' %> <%= small ? 'fmt-sample-small' : '' %>"
+  style="<%= style %>"
+  data-format-sample
+  aria-label="Sample invoice preview"
+>
+  <div class="fmt-sample-heading">
+    <div class="fmt-sample-brand">
+      <span data-sample-show="showLogo" <%= f.showLogo ? '' : 'hidden' %>
+        ><img
+          data-sample-logo
+          <% if (logo) { %>src="<%= logo %>"
+          <% } %>
+          alt="Organization logo preview"
+          <%= logo ? '' : 'hidden' %>
+        /><span class="fmt-sample-monogram" data-sample-monogram <%= logo ? 'hidden' : '' %>
+          ><%= initials %></span
+        ></span
+      >
+      <div>
+        <strong><%= organization.name %></strong><span><%= helpers.isIndependentBusiness(organization) ? 'Independent business' : 'A division of' %></span>
+        <p><%= organization.legalName %></p>
+      </div>
+    </div>
+    <div class="fmt-sample-title"><strong>INVOICE</strong><span><%= organization.invoicePrefix %>/SAMPLE</span></div>
+  </div>
+  <div class="fmt-sample-customer">
+    <div><small>BILL TO</small><strong>Customer name</strong><span>Customer address</span></div>
+    <div>
+      <small>DOCUMENT DETAILS</small><span>Invoice date · DD/MM/YYYY</span><span>Due date · DD/MM/YYYY</span>
+    </div>
+  </div>
+  <table class="fmt-sample-table">
+    <thead>
+      <tr>
+        <th>Description</th>
+        <th data-sample-show="showHsn" <%= f.showHsn ? '' : 'hidden' %>>HSN/SAC</th>
+        <th>Qty</th>
+        <th data-sample-show="showUnit" <%= f.showUnit ? '' : 'hidden' %>>Unit</th>
+        <th>Rate</th>
+        <th data-sample-show="showGstRate" <%= f.showGstRate ? '' : 'hidden' %>>GST</th>
+        <th>Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% for (const item of [['Sample service','Service','1,000.00','18%'],['Sample product','Nos','500.00','12%']]) { %>
+      <tr>
+        <td><%= item[0] %></td>
+        <td data-sample-show="showHsn" <%= f.showHsn ? '' : 'hidden' %>>—</td>
+        <td>1</td>
+        <td data-sample-show="showUnit" <%= f.showUnit ? '' : 'hidden' %>><%= item[1] %></td>
+        <td><%= item[2] %></td>
+        <td data-sample-show="showGstRate" <%= f.showGstRate ? '' : 'hidden' %>><%= item[3] %></td>
+        <td><%= item[2] %></td>
+      </tr>
+      <% } %>
+    </tbody>
+  </table>
+  <div class="fmt-sample-summary">
+    <div><span>Subtotal</span><span>₹1,500.00</span></div>
+    <div><span>CGST + SGST</span><span>₹240.00</span></div>
+    <div class="fmt-sample-total"><strong>Total amount</strong><strong>₹1,740.00</strong></div>
+  </div>
+  <p class="fmt-sample-words" data-sample-show="showAmountInWords" <%= f.showAmountInWords ? '' : 'hidden' %>>
+    <strong>Amount in words</strong>One thousand seven hundred forty rupees only.
+  </p>
+  <div class="fmt-sample-bottom">
+    <div class="fmt-sample-bank" data-sample-show="showBankDetails" <%= f.showBankDetails ? '' : 'hidden' %>>
+      <small>PAYMENT DETAILS</small><span><%= organization.bankName || 'Your bank name' %></span
+      ><span>Account details from business settings</span>
+    </div>
+    <figure class="fmt-sample-qr" data-sample-show="showPaymentQr" <%= f.showPaymentQr ? '' : 'hidden' %>>
+      <% if (organization.paymentQrUrl) { %><img src="<%= organization.paymentQrUrl %>" alt="Payment QR preview" />
+      <figcaption>Scan to pay</figcaption>
+      <% } else { %><span class="fmt-sample-qr-placeholder">Add payment QR in business settings</span
+      ><% } %>
+    </figure>
+    <div class="fmt-sample-signature" data-sample-show="showSignature" <%= f.showSignature ? '' : 'hidden' %>>
+      <% if (organization.signatureImageUrl) { %><img
+        src="<%= organization.signatureImageUrl %>"
+        alt="Signature preview"
+      /><% } %><span><%= organization.signature || 'Authorized signatory' %></span>
+    </div>
+  </div>
+  <div class="fmt-sample-authorizations">
+    <div class="fmt-signoff-box" data-sample-show="showSecondarySignature" <%= f.showSecondarySignature ? '' : 'hidden' %>>
+      <% if (organization.secondarySignatureImageUrl) { %><img
+        src="<%= organization.secondarySignatureImageUrl %>"
+        alt="Secondary signature preview"
+      /><% } %><span><%= organization.secondarySignatureLabel || 'Secondary authorized signatory' %></span>
+    </div>
+    <div class="fmt-signoff-box fmt-stamp-box" data-sample-show="showStamp" <%= f.showStamp ? '' : 'hidden' %>>
+      <% if (organization.stampImageUrl) { %><img
+        src="<%= organization.stampImageUrl %>"
+        alt="Stamp preview"
+      /><% } %><span><%= organization.stampLabel || 'Company stamp' %></span>
+    </div>
+  </div>
+  <p class="fmt-sample-footer" data-sample-footer <%= f.footerText ? '' : 'hidden' %>><%= f.footerText %></p>
+</div>

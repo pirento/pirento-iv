@@ -1,0 +1,15 @@
+<% if (pagination.pageCount > 1) { %>
+  <nav class="record-pagination no-print" aria-label="<%= label %>">
+    <div>
+      <% if (previousUrl) { %>
+        <a class="button" href="<%= previousUrl %>" rel="prev">← Previous</a>
+      <% } %>
+    </div>
+    <span class="muted">Page <%= pagination.page %> of <%= pagination.pageCount %></span>
+    <div>
+      <% if (nextUrl) { %>
+        <a class="button" href="<%= nextUrl %>" rel="next">Next →</a>
+      <% } %>
+    </div>
+  </nav>
+<% } %>

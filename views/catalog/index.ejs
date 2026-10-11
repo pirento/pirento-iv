@@ -1,0 +1,292 @@
+<%
+const organization = data.organization;
+const route = data.route;
+const base = `/workspace/${encodeURIComponent(organization.id)}/catalog`;
+const items = (data.catalog || []).filter(item => item.organizationId === organization.id);
+const directory = data.directory;
+const products = (data.businessProducts || []).filter(product => product.organizationId === organization.id);
+const productName = id => products.find(product => product.id === id)?.name || (id ? 'Archived business product' : 'Shared offering');
+const id = route.id || route.entityId;
+const source = items.find(item => item.id === id);
+const profile = helpers.billingProfileFor(organization);
+const billingProfile = helpers.BILLING_PROFILES[profile];
+const suggestionsByProfile = {
+  legal: [['Legal consultation','service','Hour'],['Agreement drafting','service','Draft'],['Legal retainer','service','Case','Month']],
+  facility: [['Facility staffing','service','Person','Month'],['Housekeeping service','service','Shift','Day'],['Cleaning supplies','product','Unit']],
+  elevator: [['Elevator maintenance','service','Lift','Year'],['Repair visit','service','Visit'],['Elevator spare part','product','Piece']],
+  space: [['Space planning','service','Sq ft'],['Workspace subscription','service','Seat','Month'],['Workspace furniture','product','Unit']],
+  jewellery: [['Jewellery item','product','Piece','jewellery'],['Repair & polishing','service','Service'],['Custom design','service','Project']],
+  ecosystem: [['Software subscription','service','User','Month'],['Product setup','service','Project'],['Product license','product','License']],
+  general: [['Business consultation','service','Hour'],['Project coordination','service','Project'],['Product package','product','Set']],
+};
+const suggestions = suggestionsByProfile[profile] || suggestionsByProfile.general;
+const suggestion = suggestions.find(entry => entry[0] === route.suggestion);
+const initialType = route.itemType || 'service';
+const initialUnit = initialType === 'product' ? (profile === 'jewellery' ? 'Piece' : profile === 'ecosystem' ? 'License' : 'Nos') : billingProfile.units[0];
+let form = { organizationId: organization.id, type: initialType, name: '', description: '', sku: '', hsn: '', unit: initialUnit, rate: '', gstRate: '', active: true, businessProductId: route.businessProductId || '', pricing: profile === 'jewellery' && initialType === 'product' ? helpers.emptyJewelleryPricing() : undefined };
+if (suggestion) form = { ...form, name: suggestion[0], type: suggestion[1], unit: suggestion[2], pricing: suggestion[3] === 'jewellery' ? helpers.emptyJewelleryPricing() : suggestion[3] ? { mode:'recurring',periods:1,periodUnit:suggestion[3] } : undefined };
+if (source) form = { ...source, ...(route.action === 'new' ? { name: `${source.name} (copy)`, sku: '', active: true } : {}) };
+const invalid = route.action && (route.action === 'delete' || (route.action === 'edit' && !source) || (id && !source));
+%>
+<link rel="stylesheet" href="/css/management.css" />
+<div class="mg-page" id="catalog-page">
+  <div data-error class="mg-message error" role="alert" tabindex="-1" hidden></div>
+  <a class="button secondary" data-resume-document hidden>Resume document</a>
+  <% if (invalid) { %>
+  <section class="mg-card">
+    <h2><%= route.action === 'delete' ? 'Archive items from your catalog' : 'Catalog item not found' %></h2>
+    <p>This item may no longer be available in <%= organization.name %>.</p>
+    <a class="button secondary" href="<%= base %>" data-manager-link
+      >Back to products & services</a
+    >
+  </section>
+  <% } else if (route.action) { %>
+  <a class="button secondary" href="<%= base %>" data-manager-link
+    >← Back to products & services</a
+  >
+  <section class="mg-card mg-editor">
+    <header class="mg-card-heading">
+      <div>
+        <span class="mg-eyebrow">YOUR OFFERINGS, ORGANIZED</span>
+        <h2><%= route.action === 'edit' ? 'Edit' : 'Add' %> <%= form.type %></h2>
+        <p>Save to <%= organization.name %>’s catalog.</p>
+      </div>
+    </header>
+    <form
+      id="catalog-form"
+      data-id="<%= route.action === 'edit' ? id : '' %>"
+      data-active="<%= form.active %>"
+      data-base="<%= base %>"
+    >
+      <fieldset class="mg-fieldset">
+        <div class="mg-type-picker">
+          <% for (const type of ['service','product']) { %><label
+            ><input type="radio" name="type" value="<%= type %>" <%= form.type === type ? 'checked' : '' %> /><span
+              ><strong><%= type === 'service' ? 'Service' : 'Product' %></strong><small><%= type === 'service' ? 'Work, expertise or a recurring service' : 'A physical or digital item' %></small></span
+            ></label
+          ><% } %>
+        </div>
+        <div class="mg-form-grid">
+          <label class="mg-field mg-wide"
+            >Name <span aria-hidden="true">*</span
+            ><input name="name" required maxlength="200" value="<%= form.name %>" autofocus
+          /></label>
+          <label class="mg-field mg-wide"
+            >Business product<select name="businessProductId">
+              <option value="">Shared offering · all business products</option>
+              <% for (const product of products.filter(product => product.active || product.id === form.businessProductId)) { %>
+              <option value="<%= product.id %>" <%= product.id === form.businessProductId ? 'selected' : '' %>>
+                <%= product.name %><%= product.active ? '' : ' (archived)' %>
+              </option>
+              <% } %></select
+            ><small
+              >Assign to one product line, or keep this offering available across the organization.</small
+            ></label
+          >
+          <label class="mg-field mg-wide"
+            >Description<textarea name="description" rows="3" maxlength="1800"><%= form.description %></textarea>
+          </label>
+          <label class="mg-field"
+            >SKU / reference code<input
+              name="sku"
+              maxlength="80"
+              value="<%= form.sku %>"
+              placeholder="e.g. SVC-001"
+          /></label>
+          <label class="mg-field"
+            >HSN / SAC code<input
+              name="hsn"
+              maxlength="8"
+              pattern="[0-9]{4,8}"
+              inputmode="numeric"
+              value="<%= form.hsn %>"
+              placeholder="Optional · 4 to 8 digits"
+          /></label>
+          <label class="mg-field"
+            ><span data-rate-label>Selling price (₹)</span
+            ><input
+              name="rate"
+              type="number"
+              required
+              min="0"
+              max="100000000"
+              step="0.01"
+              value="<%= form.rate %>"
+          /></label>
+          <label class="mg-field"
+            >Unit <span aria-hidden="true">*</span
+            ><input
+              name="unit"
+              list="catalog-units"
+              required
+              maxlength="20"
+              value="<%= form.unit %>"
+            /><datalist id="catalog-units"><% for (const unit of [...new Set([...billingProfile.units, ...helpers.CATALOG_UNITS])]) { %><option value="<%= unit %>"><% } %></datalist></label
+          >
+          <label class="mg-field"
+            >GST rate (%)<input
+              name="gstRate"
+              type="number"
+              required
+              min="0"
+              max="40"
+              step="0.01"
+              value="<%= form.gstRate %>"
+            /><small>Enter the applicable rate, including 0 for an exempt item.</small></label
+          >
+          <p class="mg-hint">Prices are before GST. You can adjust the price on each draft document.</p>
+        </div>
+        <%- include('pricing', { pricing: form.pricing, rate: form.rate, unit: form.unit, quantity: 1 }) %>
+        <p class="mg-hint">
+          Changes apply when you next add this item. Saved quotations and invoices keep their original prices.
+        </p>
+      </fieldset>
+      <div data-error class="mg-message error" role="alert" tabindex="-1" hidden></div>
+      <footer class="mg-actions">
+        <a class="button secondary" href="<%= base %>" data-manager-link>Cancel</a
+        ><button type="submit" class="button primary">Save <%= route.action === 'edit' ? 'changes' : form.type %></button>
+      </footer>
+    </form>
+  </section>
+  <% } else { %>
+  <section class="mg-intro">
+    <div>
+      <span class="mg-eyebrow">YOUR OFFERINGS, ORGANIZED</span>
+      <h2>Save it once. Invoice it in seconds.</h2>
+      <p>A reusable library of everything <%= organization.name %> offers.</p>
+      <div class="mg-actions">
+        <a
+          class="button primary"
+          href="<%= base %>/new?itemType=service"
+          data-manager-link
+          data-add-item
+          >Add service</a
+        ><a
+          class="button secondary"
+          href="<%= base %>/new?itemType=product"
+          data-manager-link
+          data-add-item
+          >Add product</a
+        >
+      </div>
+    </div>
+    <div class="mg-stats">
+      <div><strong data-count="service"><%= directory.counts.service %></strong><span>Active services</span></div>
+      <div><strong data-count="product"><%= directory.counts.product %></strong><span>Active products</span></div>
+    </div>
+  </section>
+  <div class="mg-note">
+    <strong><%= billingProfile.label %></strong>
+    <p><%= billingProfile.hint %>. Set your own prices and applicable GST.</p>
+  </div>
+  <section class="mg-card">
+    <form method="get" action="<%= base %>" data-directory-filters>
+    <input type="hidden" name="type" value="<%= directory.filters.type %>" />
+    <% if (data.returnTo) { %><input type="hidden" name="returnTo" value="<%= data.returnTo %>" /><% } %>
+    <div class="mg-toolbar">
+      <div class="mg-tabs" aria-label="Filter catalog">
+        <% for (const [key,label] of [['all','All items'],['service','Services'],['product','Products'],['archived','Archived']]) { %><button
+          type="button"
+          data-filter="<%= key %>"
+          aria-pressed="<%= key === directory.filters.type %>"
+        >
+          <%= label %>
+          <span data-count="<%= key %>"><%= directory.counts[key] %></span></button
+        ><% } %>
+      </div>
+      <label class="mg-search"
+        ><span class="mg-sr-only">Search catalog</span
+        ><input type="search" name="q" maxlength="200" value="<%= directory.filters.search %>" data-search placeholder="Search name, SKU or HSN…" /></label
+      ><button class="button secondary" type="submit">Apply filters</button>
+      <a class="button secondary" href="<%= directory.exportUrl %>" data-export>Export CSV</a>
+    </div>
+    <label class="mg-field mg-inline-filter"
+      >Business product<select name="product" data-product-filter>
+        <option value="all" <%= directory.filters.product==='all'?'selected':'' %>>All business products</option>
+        <option value="shared" <%= directory.filters.product==='shared'?'selected':'' %>>Shared offerings</option>
+        <% for (const product of products) { %>
+        <option value="<%= product.id %>" <%= directory.filters.product===product.id?'selected':'' %>><%= product.name %><%= product.active ? '' : ' (archived)' %></option>
+        <% } %>
+      </select></label
+    >
+    </form>
+    <div class="mg-table-wrap">
+      <table class="mg-table">
+        <thead>
+          <tr>
+            <th>Product / service</th>
+            <th>Type</th>
+            <th>HSN / SAC</th>
+            <th>Billing / price</th>
+            <th>GST</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% for (const item of items) { const recurring = item.pricing?.mode === 'recurring'; const jewellery = item.pricing?.mode === 'jewellery'; %>
+          <tr data-catalog-row="<%= item.id %>">
+            <td>
+              <a class="mg-name" href="<%= base %>/edit/<%= encodeURIComponent(item.id) %>" data-manager-link
+                ><%= item.name %></a
+              ><small><%= item.sku ? `SKU: ${item.sku}` : item.description || 'No description added' %></small><small><%= productName(item.businessProductId) %></small>
+            </td>
+            <td><span class="mg-badge"><%= item.type %></span></td>
+            <td><%= item.hsn || '—' %></td>
+            <td>
+              <strong><%= helpers.money(item.rate) %></strong
+              ><small><%= jewellery ? 'per gram of net metal' : recurring ? `per ${item.unit} / ${(item.pricing.periodUnit || 'Month').toLowerCase()}` : `per ${item.unit}` %></small><% if (recurring || jewellery) { %><small
+                ><%= helpers.money(helpers.calculateLineAmount({ quantity:1, rate:item.rate, pricing:item.pricing })) %> / <%= item.unit %> before GST</small
+              ><% } %>
+            </td>
+            <td><%= item.gstRate %>%</td>
+            <td>
+              <div class="mg-row-actions">
+                <a
+                  class="button secondary small"
+                  href="<%= base %>/edit/<%= encodeURIComponent(item.id) %>"
+                  data-manager-link
+                  >Edit</a
+                ><a
+                  class="button secondary small"
+                  href="<%= base %>/new/<%= encodeURIComponent(item.id) %>"
+                  data-manager-link
+                  >Duplicate</a
+                ><button type="button" class="button secondary small" data-archive="<%= item.id %>">
+                  <%= item.active ? 'Archive' : 'Restore' %>
+                </button>
+              </div>
+            </td>
+          </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+    <div class="mg-empty" data-empty <%= items.length ? 'hidden' : '' %>>
+      <h3>No matching items</h3>
+      <p>Try a different name, SKU, HSN code or filter, or add your first offering.</p>
+    </div>
+    <footer class="mg-directory-footer">
+      <span data-results aria-live="polite"><%= directory.total %> matching items</span>
+      <a class="button secondary small" href="/workspace/<%= encodeURIComponent(organization.id) %>/invoices/new"
+        >Create an invoice</a
+      >
+    </footer>
+    <%- include('../partials/finance-pagination', { pagination: directory, previousUrl: directory.previousUrl, nextUrl: directory.nextUrl, label: 'Catalog pages' }) %>
+  </section>
+  <section class="mg-suggestions">
+    <h3>A starting point for <%= organization.name %></h3>
+    <p>Optional ideas—choose one, then set your own description, price and tax.</p>
+    <div class="mg-grid">
+      <% for (const suggestion of suggestions) { %><a
+        class="mg-card mg-suggestion"
+        href="<%= base %>/new?itemType=<%= suggestion[1] %>&suggestion=<%= encodeURIComponent(suggestion[0]) %>"
+        data-manager-link
+        data-add-item
+        ><strong><%= suggestion[0] %></strong
+        ><span><%= suggestion[1] %> · per <%= suggestion[2] %></span></a
+      ><% } %>
+    </div>
+  </section>
+  <% } %>
+</div>
+<script type="module" src="/js/management/catalog.js"></script>

@@ -1,0 +1,151 @@
+<%
+const doc = data.document;
+const t = helpers.types;
+const base = `/workspace/${encodeURIComponent(doc.organizationId)}/invoices/preview/${encodeURIComponent(doc.id)}`;
+const today = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Kolkata',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+}).format(new Date());
+%>
+<section
+  class="workspace-page payment-page payment-panel"
+  id="payment-panel"
+  aria-labelledby="payment-title"
+  aria-busy="true"
+>
+  <header class="payment-header">
+    <div>
+      <p class="payment-eyebrow">PAYMENTS & RECEIPTS</p>
+      <h1 id="payment-title">Invoice payments</h1>
+      <p><%= doc.number %></p>
+    </div>
+    <a class="payment-secondary payment-page-back" href="<%= base %>">Back to invoice</a>
+  </header>
+  <div class="payment-body">
+    <div class="payment-customer">
+      <div><strong><%= doc.customerSnapshot.name %></strong><span><%= doc.organizationSnapshot.name %></span></div>
+      <span class="payment-state" id="payment-state"><%= doc.finalizedAt?'Paid / Final':t.STATUS_LABELS[doc.status] %></span>
+    </div>
+    <div class="payment-summary" aria-label="Invoice payment totals">
+      <div><span>Invoice total</span><strong data-payment-total="total"><%= t.money(doc.totals.total) %></strong></div>
+      <div><span>Received</span><strong data-payment-total="received"><%= t.money(t.paidAmount(doc)) %></strong></div>
+      <div class="payment-balance">
+        <span>Outstanding</span><strong data-payment-total="remaining"><%= t.money(t.balanceDue(doc)) %></strong>
+      </div>
+    </div>
+    <div id="payment-feedback" class="payment-error" role="alert" tabindex="-1" hidden></div>
+    <div id="payment-notice" class="payment-success" role="status" hidden></div>
+    <p id="payment-loading" class="payment-loading" role="status">
+      Loading payment history and online link status…
+    </p>
+    <div class="payment-final-banner" id="payment-final-banner" <%= doc.finalizedAt?'':'hidden' %>>
+      <p>
+        <strong>Payment complete. Invoice finalized.</strong
+        ><span
+          >The invoice number and details are locked. Manual receipt corrections remain in the activity
+          history.</span
+        >
+      </p>
+    </div>
+    <div class="payment-info" id="payment-cancelled" <%= doc.status==='cancelled'?'':'hidden' %>>
+      This invoice is cancelled. Payments cannot be added.
+    </div>
+    <section class="online-payments" id="online-payments" aria-labelledby="online-payment-title">
+      <div class="online-payment-heading">
+        <div>
+          <h2 id="online-payment-title">Online payments</h2>
+          <p>Checking the saved invoice’s Razorpay, Cashfree or manual payment configuration.</p>
+        </div>
+      </div>
+      <div id="online-payment-content"><p>Loading payment links…</p></div>
+    </section>
+    <%- include('schedule',{doc,t,today}) %>
+    <section class="payment-record-section">
+      <div class="payment-section-heading">
+        <div>
+          <h2>Record a payment</h2>
+          <p>Record money already received by this business.</p>
+        </div>
+      </div>
+      <div id="manual-payment-blocked" class="payment-info">
+        Checking active online links before enabling manual receipts.
+      </div>
+      <form id="payment-record-form" novalidate>
+        <fieldset class="payment-fieldset" id="payment-record-fields" disabled>
+          <div class="payment-grid">
+            <label class="payment-field"
+              >Amount received (INR)<input
+                id="payment-amount"
+                name="amount"
+                type="number"
+                min="0.01"
+                step="0.01"
+                inputmode="decimal"
+                value="<%= t.balanceDue(doc)>0?t.balanceDue(doc).toFixed(2):'' %>"
+                required /></label
+            ><label class="payment-field"
+              >Date received<input
+                name="paidOn"
+                type="date"
+                value="<%= today %>"
+                min="2000-01-01"
+                max="<%= today %>"
+                required /></label
+            ><label class="payment-field"
+              >Payment method<select name="method">
+                <% Object.entries(t.PAYMENT_METHODS).forEach(([value,label])=>{ %>
+                <option value="<%= value %>"><%= label %></option>
+                <% }); %>
+              </select></label
+            ><label class="payment-field"
+              >Reference<input
+                name="reference"
+                maxlength="120"
+                placeholder="Bank reference, UTR or receipt number"
+            /></label>
+          </div>
+          <label class="payment-field"
+            >Internal notes<textarea
+              name="notes"
+              maxlength="1000"
+              rows="2"
+              placeholder="Optional receipt details"
+            ></textarea>
+          </label>
+          <p class="payment-info" id="payment-after">
+            The remaining balance updates after the receipt is saved.
+          </p>
+          <button class="payment-primary" type="submit" id="payment-record-button">Record payment</button>
+        </fieldset>
+      </form>
+      <div id="payment-finalize-section" <%= !doc.finalizedAt&&t.balanceDue(doc)===0&&doc.status!=='cancelled'?'':'hidden' %>>
+        <p class="payment-info">The invoice is fully paid. Finalizing locks its saved details.</p>
+        <button type="button" class="payment-primary" data-payment-action="finalize">
+          Mark Paid / Final
+        </button>
+      </div>
+    </section>
+    <section class="payment-history">
+      <div class="payment-section-heading">
+        <h2>Payment history</h2>
+        <button type="button" class="payment-secondary" data-payment-action="refresh">
+          Refresh payment history
+        </button>
+      </div>
+      <div id="payment-history"><p class="payment-no-events">Loading receipts…</p></div>
+    </section>
+    <details class="payment-audit">
+      <summary class="payment-section-heading">
+        Invoice activity <span id="payment-event-count">0</span>
+      </summary>
+      <div id="payment-audit-list"><p class="payment-no-events">Loading invoice activity…</p></div>
+    </details>
+  </div>
+  <footer class="payment-footer">
+    <span>Manual receipts and verified online payments share one ledger.</span
+    ><a href="<%= base %>" class="payment-secondary">Back to invoice</a>
+  </footer>
+</section>
+<script type="module" src="/js/payments/panel.js"></script>

@@ -1,0 +1,110 @@
+<header class="page-header">
+  <div>
+    <span class="eyebrow">WORKSPACE GUIDE</span>
+    <h1>How can we help?</h1>
+    <p>Use the workflow below to keep your business records complete.</p>
+  </div>
+  <a class="button" href="mailto:<%= helpers.organizationSupportEmail(data.organization) %>">Email support</a>
+</header>
+<div class="grid-2">
+  <section class="card stack">
+    <h2>Create your first invoice</h2>
+    <ol class="help-list">
+      <li>Choose the correct business from the sidebar.</li>
+      <li>Review its address, GST registration, bank details and document branding.</li>
+      <li>Add a customer, vendor or B2B buyer in Contacts.</li>
+      <li>Add catalog products and services, or enter document items directly.</li>
+      <li>Create an invoice, choose the issuing GST registration and check its totals.</li>
+      <li>Preview the saved document, download its PDF or send it by email.</li>
+    </ol>
+    <div class="actions">
+      <a class="button button-primary" href="<%= helpers.url(data,'invoices','new') %>">Create invoice</a
+      ><a class="button" href="<%= helpers.url(data,'customers') %>">Open contacts</a>
+    </div>
+  </section>
+  <section class="card stack">
+    <h2>Payments &amp; installments</h2>
+    <p class="muted">
+      Open an invoice’s Payments page to record receipts or create an installment schedule. Use an equal EMI,
+      down payment, custom amounts or the 70% / 20% / 10% preset.
+    </p>
+    <p class="muted">
+      Configured payment gateways can create and synchronize payment links. If a payment is entered
+      incorrectly, void it with a reason; the correction remains in the history.
+    </p>
+    <p class="muted">
+      A fully paid invoice can be finalized. Issued documents keep their saved customer, issuer and format
+      information.
+    </p>
+  </section>
+  <section class="card stack">
+    <h2>Quotations &amp; delivery</h2>
+    <p class="muted">
+      Prepare quotations and proforma invoices before billing. Convert an eligible quotation or proforma into
+      an invoice when the customer is ready. Reopening the conversion returns the same linked invoice.
+    </p>
+    <p class="muted">
+      Create a delivery challan from an invoice to carry its items and shipping details. Delivery challans
+      show quantities without prices or taxes.
+    </p>
+    <a class="text-button" href="<%= helpers.url(data,'quotations') %>">Open quotations →</a>
+  </section>
+  <section class="card stack">
+    <h2>Customer statements</h2>
+    <p class="muted">
+      Open Customer ledger to review balances across contacts, then open a statement for its invoices,
+      receipts and receipt corrections. Date filters change the statement period; current outstanding
+      remains visible separately. Export includes all matching rows, and Print statement opens a complete
+      printable copy.
+    </p>
+    <p class="muted">
+      Statements use current invoice status. Older balances without dated receipts are clearly marked;
+      opening and running balances are unavailable where the history cannot establish them.
+    </p>
+    <a class="text-button" href="<%= helpers.url(data,'ledger') %>">Open customer ledger →</a>
+  </section>
+  <section class="card stack">
+    <h2>Follow up on payments</h2>
+    <p class="muted">
+      Payment reminders lists open invoice and installment dates. Preview a reminder to review the saved
+      recipient, due date and remaining amount, then choose Queue reminder. Delivery status appears in
+      Reminder history. The invoice needs a valid saved email and this business needs an outgoing sender.
+    </p>
+    <p class="muted">
+      Administrators can separately enable automatic reminders and select days before or after each due
+      date. The server checks the balance again before first delivery. Missed dates are skipped after
+      downtime; an already attempted email may still finish after a payment.
+    </p>
+    <a class="text-button" href="<%= helpers.url(data,'reminders') %>">Open payment reminders →</a>
+  </section>
+  <section class="card stack">
+    <h2>Recurring invoice drafts</h2>
+    <p class="muted">
+      An administrator can create a weekly, monthly, quarterly or yearly schedule from a saved invoice.
+      The schedule keeps its item and price inputs. Each due occurrence creates a new draft with current
+      business and customer details, ready for review before issuing or sending.
+    </p>
+    <p class="muted">
+      New schedules start paused unless activation is selected. Open a schedule to review its next date,
+      generated invoices and activity, or pause and resume it. A failed dependency pauses generation for
+      review. Changing the source invoice later does not change the saved schedule template.
+    </p>
+    <a class="text-button" href="<%= helpers.url(data,'recurring') %>">Open recurring invoices →</a>
+  </section>
+  <section class="card stack">
+    <h2>Access &amp; business identity</h2>
+    <p class="muted">
+      An administrator approves new team accounts and assigns the businesses each member can access. Use a
+      separate login for every team member.
+    </p>
+    <p class="muted">
+      Each business has its own contacts, catalog and document numbering. Independent businesses use their own
+      legal identity, payment account and email sender.
+    </p>
+    <p class="muted">
+      Administrators can download verified database snapshots from Database backups. Restored data stays on
+      hold until payments, email delivery and accounts have been reviewed. Restored reminder automation is
+      disabled and recurring schedules are paused until an administrator reviews and enables them again.
+    </p>
+  </section>
+</div>

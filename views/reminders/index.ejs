@@ -1,0 +1,258 @@
+<%
+const reminders = data.reminders;
+const policy = reminders.policy;
+const history = data.reminderHistory;
+const filters = reminders.filters;
+const page = reminders.pagination;
+const historyPage = history.pagination;
+const admin = data.user.role === 'admin';
+const listUrl = extra => helpers.pageUrl(data, 'reminders', {
+  q: filters.q,
+  status: filters.status,
+  page: page.page,
+  historyPage: historyPage.page,
+  ...extra
+});
+const offsetLabel = offset => offset === 0
+  ? 'On the due date'
+  : `${Math.abs(offset)} ${Math.abs(offset) === 1 ? 'day' : 'days'} ${offset < 0 ? 'before' : 'after'}`;
+const choices = [...new Set([-14, -7, -3, -1, 0, 3, 7, 14, 30, ...policy.offsets])].sort((a, b) => a - b);
+const statusLabels = { overdue: 'Overdue', due_today: 'Due today', upcoming: 'Upcoming' };
+%>
+<link rel="stylesheet" href="/css/receivables.css" />
+<header class="page-header">
+  <div>
+    <span class="eyebrow">RECEIVABLES</span>
+    <h1>Payment reminders</h1>
+    <p>Follow up on invoice and installment balances using the saved customer email.</p>
+  </div>
+  <div class="actions">
+    <a class="button" href="<%= helpers.url(data, 'ledger') %>">Customer ledger</a>
+    <a class="button" href="<%= listUrl({}) %>">Refresh</a>
+  </div>
+</header>
+<div class="metrics-grid finance-metrics">
+  <% for (const [key, label] of [
+    ['total', 'Scheduled balance'],
+    ['overdue', 'Overdue'],
+    ['dueToday', 'Due today'],
+    ['upcoming', 'Upcoming']
+  ]) {
+    const value = reminders.counters[key];
+  %>
+    <section class="metric">
+      <div class="metric-label"><%= label %></div>
+      <div class="metric-value"><%= helpers.money(value.amount) %></div>
+      <div class="metric-hint"><%= value.count %> open invoice / installment dates</div>
+    </section>
+  <% } %>
+</div>
+<p class="finance-basis">As of <%= helpers.displayDate(reminders.asOf) %> in India. Amounts show the remaining balance for each invoice or installment date.</p>
+<% if (!reminders.email.configured) { %>
+  <div class="alert alert-info">
+    <strong>Email setup is required.</strong> <%= reminders.email.reason || 'Configure the outgoing email provider for this business to queue reminders.' %>
+    <% if (admin) { %>
+      <a href="<%= helpers.url(data, 'integrations') %>">Open Payments &amp; email</a>
+    <% } %>
+  </div>
+<% } %>
+<details class="card reminder-policy" <%= policy.enabled ? '' : 'open' %>>
+  <summary>
+    Automatic reminders <span class="badge"><%= policy.enabled ? 'Enabled' : 'Off' %></span>
+  </summary>
+  <p class="finance-basis">When enabled, the server queues reminders on the selected days around each due date. It checks the latest balance before a first delivery. Missed reminder dates are skipped after downtime.</p>
+  <% if (admin) { %>
+    <form data-reminder-policy-form>
+      <div class="alert alert-error" data-form-error hidden role="alert"></div>
+      <label class="checkbox">
+        <input type="checkbox" name="enabled" <%= policy.enabled ? 'checked' : '' %> />
+        Enable automatic email reminders for <%= data.organization.name %>
+      </label>
+      <fieldset class="reminder-offsets">
+        <legend>Send timing</legend>
+        <div class="check-group">
+          <% for (const offset of choices) { %>
+            <label class="checkbox">
+              <input type="checkbox" name="offsets" value="<%= offset %>" <%= policy.offsets.includes(offset) ? 'checked' : '' %> />
+              <%= offsetLabel(offset) %>
+            </label>
+          <% } %>
+        </div>
+      </fieldset>
+      <p class="finance-basis">One reminder per selected rule and due date. Messages use this business’s email sender and the invoice’s saved customer email, with the current invoice PDF attached.</p>
+      <div class="form-actions">
+        <button class="button button-primary" type="submit">Save reminder settings</button>
+        <a class="button" href="<%= listUrl({}) %>">Reload saved settings</a>
+      </div>
+    </form>
+  <% } else { %>
+    <p><%= policy.offsets.map(offsetLabel).join(' · ') %></p>
+    <p class="finance-basis">An administrator can change automatic reminder settings. You can preview and queue an eligible reminder below.</p>
+  <% } %>
+</details>
+<section class="card">
+  <form class="finance-filters" method="get" action="<%= helpers.url(data, 'reminders') %>" data-reminder-filters>
+    <label class="field finance-search">
+      Search
+      <input type="search" name="q" maxlength="200" value="<%= filters.q %>" placeholder="Invoice, customer or installment" />
+    </label>
+    <label class="field">
+      Due status
+      <select name="status">
+        <% for (const [value, label] of [
+          ['all', 'All open dates'],
+          ['overdue', 'Overdue'],
+          ['due_today', 'Due today'],
+          ['upcoming', 'Upcoming']
+        ]) { %>
+          <option value="<%= value %>" <%= filters.status === value ? 'selected' : '' %>><%= label %></option>
+        <% } %>
+      </select>
+    </label>
+    <button class="button" type="submit">Apply filters</button>
+    <a class="text-button" href="<%= helpers.url(data, 'reminders') %>">Reset</a>
+  </form>
+  <div class="finance-section-heading">
+    <h2>Open payment dates</h2>
+    <span class="muted"><%= page.total %> matching dates</span>
+  </div>
+  <div class="table-wrap">
+    <table class="finance-table" data-reminder-table>
+      <thead>
+        <tr>
+          <th>Invoice / customer</th>
+          <th>Payment date</th>
+          <th>Status</th>
+          <th class="text-right">Remaining</th>
+          <th>Reminder</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% for (const [index, item] of reminders.items.entries()) { %>
+          <tr data-reminder-document="<%= item.documentId %>">
+            <td>
+              <a href="<%= helpers.url(data, 'invoices', 'preview', item.documentId) %>"><strong><%= item.documentNumber %></strong></a>
+              <small><%= item.customerName %></small>
+              <small><%= item.customerEmail || 'No saved email' %></small>
+            </td>
+            <td>
+              <%= helpers.displayDate(item.dueDate) %>
+              <small><%= item.label %></small>
+            </td>
+            <td>
+              <span class="badge <%= item.status === 'overdue' ? 'badge-overdue' : '' %>"><%= statusLabels[item.status] %></span>
+            </td>
+            <td class="text-right">
+              <strong><%= helpers.money(item.balanceDue) %></strong>
+              <small>Invoice balance <%= helpers.money(item.invoiceBalance) %></small>
+            </td>
+            <td>
+              <button class="button" type="button" data-reminder-preview="<%= index %>" <%= item.canSend ? '' : 'disabled' %>>Preview reminder</button>
+              <% if (!item.canSend) { %>
+                <span class="reminder-reason"><%= item.unavailableReason || 'This payment date is unavailable for reminders.' %></span>
+              <% } %>
+            </td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+  <% if (!reminders.items.length) { %>
+    <div class="empty-state">
+      <h2>No matching payment dates</h2>
+      <p>Issued invoices with an unpaid balance and a valid due date appear here. You can also adjust the filters.</p>
+      <a class="button" href="<%= helpers.url(data, 'invoices') %>">Open invoices</a>
+    </div>
+  <% } %>
+  <%- include('../partials/finance-pagination', {
+    pagination: page,
+    label: 'Payment reminder pages',
+    previousUrl: page.page > 1 ? listUrl({ page: page.page - 1 }) : '',
+    nextUrl: page.page < page.pageCount ? listUrl({ page: page.page + 1 }) : ''
+  }) %>
+</section>
+<section class="card finance-notice" id="reminder-history">
+  <div class="finance-section-heading">
+    <h2>Reminder history</h2>
+    <span class="muted"><%= historyPage.total %> messages</span>
+  </div>
+  <p class="finance-basis">Manual reminder requests for the same payment date on the same Indian business day return the existing message. An attempted delivery may finish even after a payment or policy change.</p>
+  <div class="table-wrap">
+    <table class="finance-table" data-reminder-history>
+      <thead>
+        <tr>
+          <th>Created</th>
+          <th>Message</th>
+          <th>Recipient</th>
+          <th>Status</th>
+          <th>Details</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% for (const message of history.messages) { %>
+          <tr>
+            <td>
+              <%= helpers.displayDate(message.createdAt) %>
+              <small><%= message.reminder?.automatic ? 'Automatic' : 'Manual' %></small>
+            </td>
+            <td>
+              <a href="<%= helpers.url(data, 'invoices', 'email', message.documentId) %>"><strong><%= message.subject %></strong></a>
+              <small><%= message.reminder?.label || '' %><%= message.reminder?.dueDate ? ' · ' + helpers.displayDate(message.reminder.dueDate) : '' %></small>
+            </td>
+            <td><%= message.to %></td>
+            <td>
+              <span class="badge"><%= message.status %></span>
+              <small><%= message.attempts %> attempts</small>
+            </td>
+            <td>
+              <%= message.lastError || (message.sentAt ? 'Accepted by email provider' : 'Delivery pending') %>
+              <% if (message.nextAttemptAt) { %>
+                <small>Next attempt: <%= helpers.displayDate(message.nextAttemptAt) %></small>
+              <% } %>
+            </td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+  <% if (!history.messages.length) { %>
+    <div class="empty-state">
+      <h3>No reminders queued yet</h3>
+      <p>Preview an eligible payment date to queue a reminder, or configure automatic reminders.</p>
+    </div>
+  <% } %>
+  <%- include('../partials/finance-pagination', {
+    pagination: historyPage,
+    label: 'Reminder history pages',
+    previousUrl: historyPage.page > 1
+      ? listUrl({ historyPage: historyPage.page - 1 }) + '#reminder-history'
+      : '',
+    nextUrl: historyPage.page < historyPage.pageCount
+      ? listUrl({ historyPage: historyPage.page + 1 }) + '#reminder-history'
+      : ''
+  }) %>
+</section>
+<dialog class="reminder-preview" data-reminder-dialog aria-labelledby="reminder-preview-title">
+  <h2 id="reminder-preview-title">Queue a payment reminder</h2>
+  <form data-reminder-confirm-form>
+    <div class="alert alert-error" data-form-error hidden role="alert"></div>
+    <dl>
+      <dt>Invoice</dt>
+      <dd data-reminder-invoice></dd>
+      <dt>To</dt>
+      <dd data-reminder-to></dd>
+      <dt>Subject</dt>
+      <dd data-reminder-subject></dd>
+      <dt>Due date</dt>
+      <dd data-reminder-date></dd>
+      <dt>Remaining</dt>
+      <dd data-reminder-amount></dd>
+    </dl>
+    <p>The message will be queued with the latest invoice PDF. The server checks eligibility again before its first delivery.</p>
+    <div class="form-actions">
+      <button class="button" type="button" data-reminder-cancel>Cancel</button>
+      <button class="button button-primary" type="submit">Queue reminder</button>
+    </div>
+  </form>
+</dialog>
+<script type="module" src="/js/workspace/reminders.js"></script>

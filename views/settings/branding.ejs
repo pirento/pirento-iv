@@ -1,0 +1,24 @@
+<header class="page-header">
+  <div>
+    <span class="eyebrow">WORKSPACE SETTINGS</span>
+    <h1>Workspace branding</h1>
+    <p>Choose the name and logo shown across your business workspace.</p>
+  </div>
+</header>
+<form class="card" id="branding-form" style="max-width:760px">
+  <div class="alert alert-error" data-form-error hidden role="alert"></div>
+  <div class="stack">
+    <label class="field"
+      >Workspace company name<input
+        name="companyName"
+        maxlength="200"
+        required
+        value="<%= data.workspaceSettings.companyName %>" /></label
+    ><%- include('../partials/image-field',{name:'dashboardLogoUrl',label:'Workspace logo',value:data.workspaceSettings.dashboardLogoUrl,helpers}) %>
+  </div>
+  <div class="form-actions">
+    <a class="button" href="<%= helpers.url(data,'overview') %>">Cancel</a
+    ><button type="submit" class="button button-primary">Save branding</button>
+  </div>
+</form>
+<script type="module" src="/js/organizations/branding.js"></script>

@@ -1,0 +1,21 @@
+# Local development database. The published port is bound to your computer only.
+# Production should use an authenticated MongoDB replica set or Atlas cluster.
+services:
+  mongodb:
+    image: mongo:8.0
+    command: ['mongod', '--replSet', 'rs0', '--bind_ip_all']
+    ports:
+      - '127.0.0.1:27017:27017'
+    volumes:
+      - venturecore-mongo:/data/db
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'mongosh --quiet --eval ''try { rs.status().ok } catch (e) { rs.initiate({_id: "rs0", members: [{_id: 0, host: "127.0.0.1:27017"}]}).ok }''',
+        ]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+volumes:
+  venturecore-mongo:

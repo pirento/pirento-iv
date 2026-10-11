@@ -1,0 +1,107 @@
+<%
+const status = data.backupStatus;
+const backups = [...(data.backups || [])].sort((a,b) => b.createdAt.localeCompare(a.createdAt));
+const date = value => value ? new Intl.DateTimeFormat('en-IN', {year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Asia/Kolkata'}).format(new Date(value)) : 'No completed backup yet';
+const interval = minutes => minutes % 60 === 0 ? `Every ${minutes / 60} ${minutes === 60 ? 'hour' : 'hours'}` : `Every ${minutes} minutes`;
+const unavailable = status?.available === false;
+%>
+<link rel="stylesheet" href="/css/management.css" />
+<div class="mg-page" id="backups-page">
+  <% if (data.user.role !== 'admin') { %>
+  <section class="mg-empty">
+    <h2>Administrator access required</h2>
+    <p>Database backups are available to workspace administrators.</p>
+  </section>
+  <% } else { %>
+  <section class="mg-intro">
+    <div>
+      <span class="mg-eyebrow">WORKSPACE ADMINISTRATION</span>
+      <h2>Back up every organization’s records</h2>
+      <p>
+        Each database snapshot includes all organizations, contacts, invoices, payments and account settings.
+        Uploaded files outside the database need their own backup.
+      </p>
+    </div>
+    <div class="mg-actions">
+      <button class="button secondary" type="button" data-refresh>Refresh</button
+      ><button class="button primary" type="button" data-create-backup <%= !status || status.running || unavailable ? 'disabled' : '' %>>
+        <%= status?.running ? 'Creating backup…' : 'Create backup' %>
+      </button>
+    </div>
+  </section>
+  <div data-error class="mg-message error" role="alert" tabindex="-1" hidden></div>
+  <div data-notice class="mg-message success" role="status" hidden></div>
+  <p data-loading role="status" <%= status ? 'hidden' : '' %>>Checking database backups…</p>
+  <div data-backup-details <%= status ? '' : 'hidden' %>>
+    <div class="mg-grid mg-backup-summary">
+      <section class="mg-card">
+        <header class="mg-card-heading">
+          <h3>Automatic schedule</h3>
+          <span class="mg-badge" data-schedule-badge><%= status?.enabled ? 'On' : 'Off' %></span>
+        </header>
+        <strong data-schedule><%= status?.enabled ? interval(status.intervalMinutes) : 'Not enabled' %></strong>
+        <p data-retention><%= status?.enabled ? `Keeps the latest ${status.retention} completed database snapshots on this server.` : 'You can create a manual backup. Enable the schedule in the hosting server configuration.' %></p>
+      </section>
+      <section class="mg-card">
+        <h3>Last successful backup</h3>
+        <strong data-last-success><%= date(status?.lastSuccessfulAt) %></strong>
+        <p>Backup dates and times are shown in India Standard Time.</p>
+      </section>
+      <section class="mg-card">
+        <header class="mg-card-heading">
+          <h3>Backup storage</h3>
+          <span class="mg-badge" data-storage-badge><%= unavailable ? 'Needs setup' : 'Server' %></span>
+        </header>
+        <strong data-storage><%= unavailable ? 'Storage unavailable' : 'Private server storage' %></strong>
+        <p data-storage-note><%= unavailable ? 'Ask your server administrator to configure writable private backup storage.' : status?.remoteConfigured ? 'Remote backup storage is configured on the server.' : 'Offsite backup is not configured. Download a copy and keep it in secure storage outside this server.' %></p>
+      </section>
+    </div>
+    <div class="mg-message warning" role="alert" data-last-failure <%= status?.lastFailure ? '' : 'hidden' %>>
+      The last backup attempt failed. Check the server’s backup configuration before trying again.
+    </div>
+    <section class="mg-card">
+      <header class="mg-card-heading">
+        <div>
+          <h3>Completed snapshots</h3>
+          <p><span data-backup-count><%= backups.length %></span> available · Administrators only</p>
+          <p>Snapshot contents and checksums are verified before each download. Refresh reads the backup inventory.</p>
+        </div>
+      </header>
+      <div class="mg-table-wrap" data-backup-table <%= backups.length ? '' : 'hidden' %>>
+        <table class="mg-table">
+          <thead>
+            <tr>
+              <th>Created · IST</th>
+              <th>Size</th>
+              <th>Status</th>
+              <th>Download</th>
+            </tr>
+          </thead>
+          <tbody data-backup-rows>
+            <% for (const backup of backups) { %><%- include('row', { backup }) %><% } %>
+          </tbody>
+        </table>
+      </div>
+      <div class="mg-empty" data-empty <%= backups.length ? 'hidden' : '' %>>
+        <h3>No completed backups</h3>
+        <p>Create your first snapshot to save a copy of the current database.</p>
+      </div>
+    </section>
+    <template id="backup-row-template"><%- include('row', { backup: {id:'',createdAt:null,byteLength:0} }) %></template>
+    <section class="mg-note">
+      <h3>Restoring a backup</h3>
+      <p>
+        On the private server, keep the MongoDB snapshot and its manifest together as
+        <code>database.ejson</code> and <code>manifest.json</code> inside the snapshot-ID folder. Restore
+        requires stopping the application and using the administrator restore utility. The utility checks the
+        snapshot before restoring; start the application again only after the restore completes.
+      </p>
+      <p>
+        A database restore returns saved account and payment records to that point in time. Keep a current
+        backup and the corresponding uploaded files before restoring.
+      </p>
+    </section>
+  </div>
+  <% } %>
+</div>
+<script type="module" src="/js/management/backups.js"></script>

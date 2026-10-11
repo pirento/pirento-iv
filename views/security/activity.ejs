@@ -1,0 +1,118 @@
+<%
+const result = data.securityAudit;
+const filters = result.filters;
+const page = result.pagination;
+const labels = new Map(result.actions.map(action => [action.value, action.label]));
+const accounts = [...(data.teamUsers || [])].sort((a, b) => a.name.localeCompare(b.name));
+const businessNames = new Map(data.organizations.map(organization => [organization.id, organization.name]));
+const listUrl = extra => helpers.pageUrl(data, 'security', { ...filters, page: page.page, ...extra });
+const accessLabel = state => {
+  if (!state) return 'Not recorded';
+  const role = { admin: 'Administrator', staff: 'Staff' }[state.role] || 'Role not recorded';
+  const status = { active: 'Active', pending: 'Pending approval', disabled: 'Disabled' }[state.status] || 'Not recorded';
+  const ids = state.organizationIds || [];
+  const businesses = state.role === 'admin' ? 'Every business' : !Array.isArray(state.organizationIds) ? 'Business access not recorded' : ids.length
+    ? ids.slice(0, 8).map(id => businessNames.get(id) || 'Unavailable business').join(', ') + (ids.length > 8 ? ` and ${ids.length - 8} more` : '')
+    : 'No assigned businesses';
+  return `${role} · ${status} · ${businesses}`;
+};
+%>
+<link rel="stylesheet" href="/css/security.css" />
+<div class="mg-page security-page" id="security-activity-page">
+  <header class="mg-intro">
+    <div>
+      <span class="mg-eyebrow">WORKSPACE ADMINISTRATION</span>
+      <h1>Security activity</h1>
+      <p>Review recorded sign-ins, account requests, password resets, access changes and session sign-outs across the workspace.</p>
+    </div>
+    <a class="button" href="<%= helpers.url(data, 'team') %>">Manage team</a>
+  </header>
+  <section class="mg-card">
+    <form class="security-filters" method="get" action="<%= helpers.url(data, 'security') %>" data-security-filters>
+      <label class="mg-field">From date
+        <input type="date" name="from" value="<%= filters.from %>" />
+      </label>
+      <label class="mg-field">Through date
+        <input type="date" name="to" value="<%= filters.to %>" />
+      </label>
+      <label class="mg-field">Activity
+        <select name="action">
+          <option value="all" <%= filters.action === 'all' ? 'selected' : '' %>>All activities</option>
+          <% for (const action of result.actions) { if (action.value === 'all') continue; %>
+            <option value="<%= action.value %>" <%= filters.action === action.value ? 'selected' : '' %>><%= action.label %></option>
+          <% } %>
+        </select>
+      </label>
+      <label class="mg-field">Account involved
+        <select name="userId">
+          <option value="">All accounts</option>
+          <% if (filters.userId && !accounts.some(account => account.id === filters.userId)) { %>
+            <option value="<%= filters.userId %>" selected>Previously selected account</option>
+          <% } %>
+          <% for (const account of accounts) { %>
+            <option value="<%= account.id %>" <%= filters.userId === account.id ? 'selected' : '' %>><%= account.name %> · <%= account.email %></option>
+          <% } %>
+        </select>
+      </label>
+      <button class="button primary" type="submit">Apply filters</button>
+      <a class="button" href="<%= helpers.url(data, 'security') %>">Reset filters</a>
+    </form>
+    <p class="security-muted">Dates include the whole day in IST. The account filter matches the person performing the action or the affected account.</p>
+  </section>
+  <section class="mg-card">
+    <header class="mg-card-heading">
+      <h2>Recorded activity</h2>
+      <span class="security-muted" data-security-total><%= page.total %> matching <%= page.total === 1 ? 'event' : 'events' %></span>
+    </header>
+    <div class="table-wrap">
+      <table class="security-table" data-security-events>
+        <thead>
+          <tr><th>Time (IST)</th><th>Activity</th><th>Performed by</th><th>Affected account</th><th>Details</th></tr>
+        </thead>
+        <tbody>
+          <% for (const event of result.events) { %>
+            <tr data-security-event="<%= event.id %>">
+              <td><%= helpers.displayDateTime(event.createdAt) %></td>
+              <td><strong><%= labels.get(event.action) || 'Recorded account activity' %></strong></td>
+              <td>
+                <% if (event.actor) { %><strong><%= event.actor.name %></strong><small><%= event.actor.email %></small>
+                <% } else { %><span class="security-muted">System / account request</span><% } %>
+              </td>
+              <td>
+                <% if (event.user) { %><strong><%= event.user.name %></strong><small><%= event.user.email %></small>
+                <% } else { %><span class="security-muted">No account record</span><% } %>
+              </td>
+              <td>
+                <% if (event.details?.before || event.details?.after) { %>
+                  <details class="security-access-change">
+                    <summary>View access change</summary>
+                    <dl><dt>Before</dt><dd><%= accessLabel(event.details.before) %></dd><dt>After</dt><dd><%= accessLabel(event.details.after) %></dd></dl>
+                  </details>
+                <% } else if (Number.isSafeInteger(event.details?.revokedSessions)) { %>
+                  <%= event.details.revokedSessions %> <%= event.details.revokedSessions === 1 ? 'session' : 'sessions' %> signed out
+                <% } else if (event.details?.scope) { %>
+                  <%= { login: 'Sign-in requests', signup: 'Account requests', forgot: 'Password reset requests', reset: 'Password changes' }[event.details.scope] || 'Account requests' %>
+                <% } else { %>
+                  <span class="security-muted">—</span>
+                <% } %>
+              </td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+    <% if (!result.events.length) { %>
+      <div class="mg-empty" data-security-empty>
+        <h3>No matching activity</h3>
+        <p>Try a wider date range, another activity or a different account.</p>
+      </div>
+    <% } %>
+    <%- include('../partials/finance-pagination', {
+      pagination: page,
+      label: 'Security activity pages',
+      previousUrl: page.page > 1 ? listUrl({ page: page.page - 1 }) : '',
+      nextUrl: page.page < page.pageCount ? listUrl({ page: page.page + 1 }) : ''
+    }) %>
+    <p class="security-muted">Repeated unsuccessful attempts may appear as one observation. The totals count recorded events.</p>
+  </section>
+</div>

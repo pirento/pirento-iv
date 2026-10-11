@@ -1,0 +1,130 @@
+<%
+const kind=({invoices:'invoice',quotations:'quotation',proformas:'proforma',shipping:'delivery_note'})[data.route.view];
+const documents=data.documents.filter(document=>document.kind===kind).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
+const isDelivery=kind==='delivery_note';
+const list=data.documentList;
+%>
+<link rel="stylesheet" href="/css/document-list.css" />
+<header class="page-header">
+  <div>
+    <span class="eyebrow">BUSINESS DOCUMENTS</span>
+    <h1><%= data.pageTitle %></h1>
+    <p><%= isDelivery?'Track dispatches and delivery records.':`Create, send and manage your ${data.pageTitle.toLowerCase()}.` %></p>
+  </div>
+  <div class="actions">
+    <a class="button" href="<%= list.exportUrl %>" data-export-documents download>Export CSV</a
+    ><a class="button button-primary" href="<%= helpers.url(data,data.route.view,'new') %>">+ Create <%= helpers.DOCUMENT_LABELS[kind].toLowerCase() %></a>
+  </div>
+</header>
+<div class="card">
+  <form class="filters" method="get" action="<%= helpers.url(data,data.route.view) %>" data-document-list-filters>
+    <input
+      data-document-search
+      name="q"
+      type="search"
+      maxlength="200"
+      value="<%= list.filters.search %>"
+      aria-label="Search documents"
+      placeholder="Search number, customer or title…"
+    /><select name="status" data-document-status aria-label="Document status">
+      <option value="all">All statuses</option>
+      <% for(const status of [...Object.keys(helpers.STATUS_LABELS),...(kind==='invoice'?['overdue']:[])]){ %>
+      <option value="<%= status %>" <%= list.filters.status===status?'selected':'' %>><%= helpers.statusLabel(status) %></option>
+      <% } %></select
+    ><% if(data.businessProducts.length){ %><select name="product" data-document-product aria-label="Business product">
+      <option value="">All business products</option>
+      <% for(const product of data.businessProducts){ %>
+      <option value="<%= product.id %>" <%= list.filters.product===product.id?'selected':'' %>><%= product.name %></option>
+      <% } %></select
+    ><% } %><button type="submit" class="button" data-apply-document-filters>Search</button>
+    <span class="muted" data-document-count><%= list.total ? `${(list.page-1)*list.pageSize+1}–${(list.page-1)*list.pageSize+documents.length} of ${list.total}` : '0' %> documents</span>
+  </form>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Document</th>
+          <th>Customer</th>
+          <th>Date / due</th>
+          <th>Status</th>
+          <% if(!isDelivery){ %>
+          <th class="text-right">Total</th>
+          <% if(kind==='invoice'){ %>
+          <th class="text-right">Balance</th>
+          <% }} %>
+          <th class="text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% for(const document of documents){const status=helpers.statusOf(document,data.businessDate); %>
+        <tr data-document-row="<%= document.id %>">
+          <td>
+            <a href="<%= helpers.url(data,data.route.view,'preview',document.id) %>"><strong><%= document.number %></strong></a
+            ><small><%= document.businessProductSnapshot?.name || document.title %></small>
+          </td>
+          <td><%= document.customerSnapshot.name %></td>
+          <td><%= helpers.displayDate(document.issueDate) %><small><%= document.dueDate?'Due '+helpers.displayDate(document.dueDate):'' %></small></td>
+          <td>
+            <span class="badge badge-<%= status %>"><%= helpers.statusLabel(status) %></span
+            ><% if(document.finalizedAt){ %><small>Finalized</small><% } %>
+          </td>
+          <% if(!isDelivery){ %>
+          <td class="text-right"><%= helpers.money(document.totals.total) %></td>
+          <% if(kind==='invoice'){ %>
+          <td class="text-right"><%= helpers.money(helpers.balanceDue(document)) %></td>
+          <% }} %>
+          <td>
+            <div class="row-actions">
+              <a href="<%= helpers.url(data,data.route.view,'preview',document.id) %>">View</a>
+              <details class="document-actions">
+                <summary aria-label="Actions for <%= document.number %>">•••</summary>
+                <div class="action-menu">
+                  <a href="<%= helpers.url(data,data.route.view,'edit',document.id) %>"><%= document.finalizedAt||document.convertedInvoiceId?'View details':'Edit' %></a><% if(kind==='invoice'){ %><a
+                    href="<%= helpers.url(data,data.route.view,'payments',document.id) %>"
+                    >Payments</a
+                  ><% if(data.user.role==='admin'&&document.status!=='cancelled'){ %><a href="<%= helpers.url(data,'recurring','new',undefined,{documentId:document.id}) %>">Recurring schedule</a><% } %><% } %><a href="<%= helpers.url(data,data.route.view,'email',document.id) %>">Send by email</a
+                  ><% if(['quotation','proforma'].includes(kind)){ %><% if(document.convertedInvoiceId){ %><a href="<%= helpers.url(data,'invoices','preview',document.convertedInvoiceId) %>"
+                    >Open invoice</a
+                  ><% }else if(!['cancelled','declined'].includes(document.status)){ %><button
+                    class="text-button"
+                    type="button"
+                    data-convert-document="<%= document.id %>"
+                  >
+                    Convert to invoice</button
+                  ><% }} %><% if(kind==='invoice'&&document.status!=='cancelled'){ %><% if(document.deliveryNoteId){ %><a
+                    href="<%= helpers.url(data,'shipping','preview',document.deliveryNoteId) %>"
+                    >Open delivery challan</a
+                  ><% }else{ %><button
+                    class="text-button"
+                    type="button"
+                    data-create-delivery="<%= document.id %>"
+                  >
+                    Create delivery challan</button
+                  ><% }} %><% if(document.status==='draft'&&!document.convertedInvoiceId&&!document.finalizedAt){ %><a
+                    class="danger"
+                    href="<%= helpers.url(data,data.route.view,'delete',document.id) %>"
+                    >Delete draft</a
+                  ><% } %>
+                </div>
+              </details>
+            </div>
+          </td>
+        </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+  <% if(list.pageCount>1){ %>
+  <nav class="document-pagination" aria-label="Document pages">
+    <div><% if(list.previousUrl){ %><a class="button" href="<%= list.previousUrl %>" rel="prev">← Previous</a><% } %></div>
+    <span class="muted">Page <%= list.page %> of <%= list.pageCount %></span>
+    <div><% if(list.nextUrl){ %><a class="button" href="<%= list.nextUrl %>" rel="next">Next →</a><% } %></div>
+  </nav>
+  <% } %>
+  <div class="empty-state" data-document-empty <%= documents.length?'hidden':'' %>>
+    <h2>No documents to display</h2>
+    <p>Create a new <%= helpers.DOCUMENT_LABELS[kind].toLowerCase() %> or adjust the filters.</p>
+    <a class="button button-primary" href="<%= helpers.url(data,data.route.view,'new') %>">Create document</a>
+  </div>
+</div>
+<script type="module" src="/js/workspace/documents.js"></script>

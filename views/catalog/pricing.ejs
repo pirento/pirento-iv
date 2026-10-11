@@ -1,0 +1,128 @@
+<%
+const mode = pricing?.mode || 'standard';
+const jewellery = pricing?.jewellery || { grossWeight: 0, stoneWeight: 0, purity: '', makingChargeType: 'per_gram', makingCharge: 0, stoneAmount: 0, otherCharges: 0, wastagePercent: 0 };
+%>
+<section class="mg-pricing" data-pricing>
+  <h3>Pricing method</h3>
+  <label class="mg-field"
+    >How this item is priced
+    <select name="pricingMode">
+      <option value="standard" <%= mode === 'standard' ? 'selected' : '' %>>Standard · quantity × rate</option>
+      <option value="recurring" <%= mode === 'recurring' ? 'selected' : '' %>>Recurring · units × periods × rate</option>
+      <option value="jewellery" <%= mode === 'jewellery' ? 'selected' : '' %>>Jewellery · metal + making + charges</option>
+    </select>
+  </label>
+  <p class="mg-hint" data-pricing-mode="standard" <%= mode !== 'standard' ? 'hidden' : '' %>>
+    The item quantity is multiplied by its rate per unit.
+  </p>
+  <div data-pricing-mode="recurring" <%= mode !== 'recurring' ? 'hidden' : '' %>>
+    <h4>Billing periods</h4>
+    <div class="mg-form-grid">
+      <label class="mg-field"
+        >Number of periods<input
+          name="periods"
+          type="number"
+          min="0.001"
+          max="1200"
+          step="any"
+          value="<%= pricing?.periods ?? 1 %>"
+      /></label>
+      <label class="mg-field"
+        >Period unit<select name="periodUnit">
+          <% for (const period of ['Hour', 'Day', 'Month', 'Year']) { %>
+          <option <%= (pricing?.periodUnit || 'Month') === period ? 'selected' : '' %>><%= period %></option>
+          <% } %>
+        </select></label
+      >
+    </div>
+    <output class="mg-formula" data-price-formula></output>
+  </div>
+  <div data-pricing-mode="jewellery" <%= mode !== 'jewellery' ? 'hidden' : '' %>>
+    <h4>Jewellery details per item</h4>
+    <p class="mg-hint">The item rate is the metal price per gram.</p>
+    <div class="mg-form-grid">
+      <label class="mg-field"
+        >Gross weight (g)<input
+          name="grossWeight"
+          type="number"
+          min="0.000001"
+          max="1000000"
+          step="any"
+          value="<%= jewellery.grossWeight %>"
+      /></label>
+      <label class="mg-field"
+        >Stone weight (g)<input
+          name="stoneWeight"
+          type="number"
+          min="0"
+          max="1000000"
+          step="any"
+          value="<%= jewellery.stoneWeight %>"
+      /></label>
+      <label class="mg-field"
+        >Net metal weight<output class="mg-output" data-net-weight><%= jewellery.grossWeight - jewellery.stoneWeight %> g</output></label
+      >
+      <label class="mg-field"
+        >Purity / hallmark<input
+          name="purity"
+          maxlength="100"
+          placeholder="e.g. 22K / 916"
+          value="<%= jewellery.purity %>"
+      /></label>
+      <label class="mg-field"
+        >Making charge method<select name="makingChargeType">
+          <% for (const [key,label] of [['per_gram','Per gram of net metal'],['fixed','Fixed per item'],['percent','% of metal value']]) { %>
+          <option value="<%= key %>" <%= jewellery.makingChargeType === key ? 'selected' : '' %>><%= label %></option>
+          <% } %>
+        </select></label
+      >
+      <label class="mg-field"
+        >Making charge (<span data-making-unit>₹/g</span>)<input
+          name="makingCharge"
+          type="number"
+          min="0"
+          max="100000000"
+          step="any"
+          value="<%= jewellery.makingCharge %>"
+      /></label>
+      <label class="mg-field"
+        >Stone value (₹/item)<input
+          name="stoneAmount"
+          type="number"
+          min="0"
+          max="100000000"
+          step="0.01"
+          value="<%= jewellery.stoneAmount %>"
+      /></label>
+      <label class="mg-field"
+        >Wastage (% of metal)<input
+          name="wastagePercent"
+          type="number"
+          min="0"
+          max="100"
+          step="any"
+          value="<%= jewellery.wastagePercent %>"
+      /></label>
+      <label class="mg-field"
+        >Other charges (₹/item)<input
+          name="otherCharges"
+          type="number"
+          min="0"
+          max="100000000"
+          step="0.01"
+          value="<%= jewellery.otherCharges %>"
+      /></label>
+    </div>
+    <dl class="mg-breakdown" aria-label="Jewellery price breakdown">
+      <% for (const [key,label] of [['base','Metal'],['making','Making'],['stones','Stones'],['wastage','Wastage'],['other','Other'],['total','Item subtotal']]) { %>
+      <div>
+        <dt><%= label %></dt>
+        <dd data-price-part="<%= key %>">₹0.00</dd>
+      </div>
+      <% } %>
+    </dl>
+    <p class="mg-hint">
+      Weights and charges are per item. GST and document discount are applied after this subtotal.
+    </p>
+  </div>
+</section>

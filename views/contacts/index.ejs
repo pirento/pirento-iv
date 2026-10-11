@@ -1,0 +1,251 @@
+<%
+const source = data.customers.find(contact => contact.id === data.route.id);
+const editing = Boolean(data.route.action);
+const form = helpers.normalizeContact(source || { organizationId: data.organization.id, name: '', email: '', phone: '', gstin: '', address: '', stateCode: '', contactPerson: '', roles: [data.route.role || 'customer'] });
+const directory = data.directory;
+%>
+<header class="page-header">
+  <div>
+    <span class="eyebrow">BUSINESS DIRECTORY</span>
+    <h1><%= editing ? source ? 'Edit contact' : 'New contact' : 'Contacts' %></h1>
+    <p><%= editing ? 'Customer, vendor and B2B details for this business.' : 'Manage customers, vendors and B2B buyers in one place.' %></p>
+  </div>
+  <div class="actions">
+    <a class="button" data-resume-document hidden>Resume document</a><% if (!editing) { %><a
+      class="button"
+      href="<%= directory.exportUrl %>"
+      data-export-contacts
+    >
+      Export CSV</a
+    ><a class="button button-primary" href="<%= helpers.url(data, 'customers', 'new') %>">+ Add contact</a
+    ><% } else { %><a class="button" href="<%= helpers.url(data, 'customers') %>">Back to contacts</a
+    ><% } %>
+  </div>
+</header>
+<% if (editing && data.route.id && !source) { %>
+<div class="alert alert-error">This contact is unavailable.</div>
+<% } else if (editing && data.route.action === 'delete') { %>
+<div class="card">
+  <h2>Archive this contact</h2>
+  <p class="muted">
+    Archive <strong><%= form.name %></strong> to keep their past documents and remove them from new
+    document selections.
+  </p>
+  <div class="form-actions">
+    <a class="button" href="<%= helpers.url(data, 'customers') %>">Cancel</a
+    ><button class="button button-danger" data-archive-contact="<%= source.id %>">
+      Archive contact
+    </button>
+  </div>
+</div>
+<% } else if (editing) { %>
+<form id="contact-form" class="card" data-id="<%= source?.id || '' %>">
+  <div class="alert alert-error" data-form-error hidden role="alert"></div>
+  <section>
+    <h2 class="section-heading">Contact roles</h2>
+    <div class="check-group">
+      <% for (const role of helpers.CONTACT_ROLES) { %><label class="checkbox"
+        ><input
+          type="checkbox"
+          name="roles"
+          value="<%= role %>"
+          <%= form.roles.includes(role) ? 'checked' : '' %>
+        /><%= helpers.CONTACT_ROLE_LABELS[role] %></label
+      ><% } %><label class="checkbox"
+        ><input type="checkbox" name="active" <%= form.active ? 'checked' : '' %> />Active contact</label
+      >
+    </div>
+  </section>
+  <hr />
+  <section>
+    <h2 class="section-heading">Business details</h2>
+    <div class="form-grid">
+      <label class="field"
+        >GSTIN
+        <div class="input-action">
+          <input name="gstin" maxlength="15" value="<%= form.gstin %>" autocomplete="off" /><button
+            type="button"
+            class="button"
+            data-gst-lookup
+          >
+            Fetch details
+          </button>
+        </div>
+        <small>Optional for unregistered contacts. Review fetched details before saving.</small></label
+      >
+      <label class="field">PAN<input name="pan" maxlength="10" value="<%= form.pan %>" /></label>
+      <div class="full-width" data-gst-captcha hidden>
+        <div class="input-action">
+          <img data-captcha-image alt="GST portal CAPTCHA" width="180" /><input
+            data-captcha-input
+            inputmode="numeric"
+            maxlength="6"
+            placeholder="Six-digit CAPTCHA"
+            aria-label="GST CAPTCHA"
+          /><button type="button" class="button" data-gst-verify>Verify &amp; fetch</button
+          ><button type="button" class="text-button" data-gst-refresh>Refresh</button>
+        </div>
+      </div>
+      <div class="full-width alert alert-info" data-gst-message hidden role="status"></div>
+      <label class="field"
+        >Business / contact name<input
+          name="name"
+          maxlength="200"
+          required
+          value="<%= form.name %>" /></label
+      ><label class="field"
+        >Contact person<input name="contactPerson" maxlength="200" value="<%= form.contactPerson %>"
+      /></label>
+      <label class="field"
+        >Email address<input
+          type="email"
+          name="email"
+          maxlength="254"
+          value="<%= form.email %>" /></label
+      ><label class="field"
+        >Phone<input type="tel" name="phone" maxlength="30" value="<%= form.phone %>"
+      /></label>
+      <label class="field full"
+        >Billing address<textarea name="address" maxlength="2000"><%= form.address %></textarea>
+      </label>
+      <label class="field"
+        >Billing state<select name="stateCode">
+          <option value="">Select state</option>
+          <% for (const [code, name] of helpers.STATES) { %>
+          <option value="<%= code %>" <%= form.stateCode === code ? 'selected' : '' %>>
+            <%= name %> (<%= code %>)
+          </option>
+          <% } %>
+        </select></label
+      >
+    </div>
+  </section>
+  <hr />
+  <section>
+    <h2 class="section-heading">
+      Shipping details
+      <button class="text-button" type="button" data-copy-billing>Copy billing address</button>
+    </h2>
+    <div class="form-grid">
+      <label class="field"
+        >Shipping address<textarea name="shippingAddress" maxlength="2000"><%= form.shippingAddress %></textarea></label
+      ><label class="field"
+        >Shipping state<select name="shippingStateCode">
+          <option value="">Select state</option>
+          <% for (const [code, name] of helpers.STATES) { %>
+          <option value="<%= code %>" <%= form.shippingStateCode === code ? 'selected' : '' %>>
+            <%= name %> (<%= code %>)
+          </option>
+          <% } %>
+        </select></label
+      >
+    </div>
+  </section>
+  <hr />
+  <section>
+    <h2 class="section-heading">Payment terms &amp; notes</h2>
+    <div class="form-grid">
+      <label class="field"
+        >Payment terms (days)<input
+          name="paymentTermsDays"
+          type="number"
+          min="0"
+          max="3650"
+          step="1"
+          value="<%= form.paymentTermsDays %>" /></label
+      ><label class="field"
+        >Credit limit (₹)<input
+          name="creditLimit"
+          type="number"
+          min="0"
+          step="0.01"
+          value="<%= form.creditLimit %>" /></label
+      ><label class="field full"
+        >Internal notes<textarea name="notes" maxlength="5000"><%= form.notes %></textarea>
+      </label>
+    </div>
+  </section>
+  <div class="form-actions">
+    <a class="button" href="<%= helpers.url(data, 'customers') %>">Cancel</a
+    ><button class="button button-primary" type="submit">Save contact</button>
+  </div>
+</form>
+<% } else { %>
+<div class="metrics-grid">
+  <% for (const [key,label] of [['customer','Customers'],['vendor','Vendors'],['b2b_buyer','B2B buyers']]) { %>
+  <div class="metric">
+    <div class="metric-label"><%= label %></div>
+    <div class="metric-value"><%= directory.counts[key] %></div>
+    <div class="metric-hint">Active contacts</div>
+  </div>
+  <% } %>
+  <div class="metric">
+    <div class="metric-label">Archived</div>
+    <div class="metric-value"><%= directory.counts.archived %></div>
+    <div class="metric-hint">Past records are retained</div>
+  </div>
+</div>
+<div class="card">
+  <form class="filters" method="get" action="<%= helpers.url(data, 'customers') %>" data-directory-filters>
+    <input
+      type="search"
+      name="q"
+      maxlength="200"
+      value="<%= directory.filters.search %>"
+      data-contact-search
+      placeholder="Search name, email, GSTIN or phone…"
+      aria-label="Search contacts"
+    /><select name="role" data-contact-role aria-label="Contact role">
+      <option value="all" <%= directory.filters.role==='all'?'selected':'' %>>All active contacts</option>
+      <% for(const role of helpers.CONTACT_ROLES){ %>
+      <option value="<%= role %>" <%= directory.filters.role === role?'selected':'' %>><%= helpers.CONTACT_ROLE_LABELS[role] %></option>
+      <% } %>
+      <option value="archived" <%= directory.filters.role==='archived'?'selected':'' %>>Archived</option></select
+    ><button class="button" type="submit">Apply filters</button>
+    <span class="muted" data-contact-count><%= directory.total %> matching contacts</span>
+  </form>
+  <div class="table-wrap">
+    <table id="contacts-table">
+      <thead>
+        <tr>
+          <th>Contact</th>
+          <th>Role</th>
+          <th>Contact details</th>
+          <th>GSTIN / state</th>
+          <th class="text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% for(const contact of data.customers){ %>
+        <tr data-contact-row="<%= contact.id %>">
+          <td><strong><%= contact.name %></strong><small><%= contact.contactPerson %></small></td>
+          <td>
+            <% for(const role of helpers.contactRoles(contact)){ %><span class="badge"><%= helpers.CONTACT_ROLE_LABELS[role] %></span>
+            <% } %><% if(contact.active===false){ %><span class="badge">Archived</span
+            ><% } %>
+          </td>
+          <td><%= contact.email || '—' %><small><%= contact.phone %></small></td>
+          <td><%= contact.gstin || 'Unregistered' %><small><%= helpers.STATES.find(([code])=>code===contact.stateCode)?.[1] || '' %></small></td>
+          <td>
+            <div class="row-actions">
+              <a href="<%= helpers.url(data,'customers','edit',contact.id) %>">Edit</a
+              ><a href="<%= helpers.url(data,'ledger','preview',contact.id) %>">Statement</a
+              ><button type="button" class="text-button" data-archive-contact="<%= contact.id %>">
+                <%= contact.active===false?'Restore':'Archive' %>
+              </button>
+            </div>
+          </td>
+        </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+  <%- include('../partials/finance-pagination', { pagination: directory, previousUrl: directory.previousUrl, nextUrl: directory.nextUrl, label: 'Contact pages' }) %>
+  <div class="empty-state" data-contact-empty <%= data.customers.length?'hidden':'' %>>
+    <h2>No contacts to display</h2>
+    <p>Add a contact or change the filters.</p>
+    <a class="button button-primary" href="<%= helpers.url(data,'customers','new') %>">Add contact</a>
+  </div>
+</div>
+<% } %>
+<script type="module" src="/js/contacts/contacts.js"></script>

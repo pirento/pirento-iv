@@ -1,0 +1,168 @@
+<%
+const summary=data.overview;
+const {received,outstanding,recent,scheduled,monthly}=summary;
+const chartMax=Math.max(1,...monthly.map(month=>month.total));
+%>
+<header class="page-header">
+  <div>
+    <span class="eyebrow">BUSINESS OVERVIEW</span>
+    <h1>Good to see you, <%= data.user.name.split(' ')[0] %>.</h1>
+    <p>Here is what is happening at <%= data.organization.name %>.</p>
+  </div>
+  <a class="button button-primary" href="<%= helpers.url(data,'invoices','new') %>">+ Create invoice</a>
+</header>
+<div class="metrics-grid">
+  <div class="metric">
+    <div class="metric-label">Payments received <%- helpers.icon('document') %></div>
+    <div class="metric-value"><%= helpers.money(received) %></div>
+    <div class="metric-hint">Across <%= summary.invoiceCount %> invoices</div>
+  </div>
+  <div class="metric">
+    <div class="metric-label">Outstanding amount <%- helpers.icon('document') %></div>
+    <div class="metric-value"><%= helpers.money(outstanding) %></div>
+    <div class="metric-hint"><%= summary.overdueCount %> overdue invoices</div>
+  </div>
+  <div class="metric">
+    <div class="metric-label">Open quotations <%- helpers.icon('document') %></div>
+    <div class="metric-value"><%= summary.openQuoteCount %></div>
+    <div class="metric-hint"><%= helpers.money(summary.openQuoteTotal) %> total value</div>
+  </div>
+  <div class="metric">
+    <div class="metric-label">Active contacts <%- helpers.icon('people') %></div>
+    <div class="metric-value"><%= summary.activeContacts %></div>
+    <div class="metric-hint">Customers, vendors &amp; B2B buyers</div>
+  </div>
+</div>
+<div class="dashboard-grid">
+  <div class="stack">
+    <section class="card">
+      <div class="card-header">
+        <div>
+          <h2>Recent documents</h2>
+          <p>The latest invoices, quotations and delivery records.</p>
+        </div>
+        <a href="<%= helpers.url(data,'invoices') %>" class="text-button">View invoices →</a>
+      </div>
+      <% if(recent.length){ %>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Document</th>
+              <th>Customer</th>
+              <th>Date</th>
+              <th>Status</th>
+              <th class="text-right">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% for(const document of recent){ const status=helpers.statusOf(document,data.businessDate); %>
+            <tr>
+              <td>
+                <a href="<%= helpers.url(data,helpers.documentViews[document.kind],'preview',document.id) %>"><strong><%= document.number %></strong></a
+                ><small><%= helpers.DOCUMENT_LABELS[document.kind] %></small>
+              </td>
+              <td><%= document.customerSnapshot.name %></td>
+              <td><%= helpers.displayDate(document.issueDate) %></td>
+              <td><span class="badge badge-<%= status %>"><%= helpers.statusLabel(status) %></span></td>
+              <td class="text-right"><%= document.kind==='delivery_note'?'—':helpers.money(document.totals.total) %></td>
+            </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+      <% }else{ %>
+      <div class="empty-state">
+        <h2>Your first document starts here.</h2>
+        <p>Add a contact and create an invoice or quotation for your business.</p>
+        <a href="<%= helpers.url(data,'customers','new') %>" class="button">Add your first contact</a>
+      </div>
+      <% } %>
+    </section>
+    <section class="card">
+      <div class="card-header">
+        <div>
+          <h2>Upcoming installments</h2>
+          <p>Scheduled balances in order of due date.</p>
+        </div>
+        <% if(scheduled.length){ %><span class="badge"><%= summary.pendingInstallmentCount %> pending</span
+        ><% } %>
+      </div>
+      <% if(scheduled.length){ %>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Invoice / installment</th>
+              <th>Due date</th>
+              <th>Status</th>
+              <th class="text-right">Balance</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% for(const row of scheduled.slice(0,8)){ %>
+            <tr>
+              <td>
+                <a href="<%= helpers.url(data,'invoices','payments',row.document.id) %>"><strong><%= row.document.number %></strong></a
+                ><small><%= row.label %> · <%= row.document.customerSnapshot.name %></small>
+              </td>
+              <td><%= helpers.displayDate(row.dueDate) %></td>
+              <td><span class="badge badge-<%= row.status %>"><%= row.status==='overdue'?'Overdue':'Upcoming' %></span></td>
+              <td class="text-right"><%= helpers.money(row.balanceDue) %></td>
+            </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+      <% }else{ %>
+      <p class="muted">No pending installments. Add a payment schedule from an invoice’s Payments page.</p>
+      <% } %>
+    </section>
+  </div>
+  <aside class="stack">
+    <section class="card">
+      <div class="card-header"><h3>Quick actions</h3></div>
+      <div class="quick-actions">
+        <% for(const [view,label] of [['invoices','Invoice'],['quotations','Quotation'],['proformas','Proforma'],['shipping','Delivery challan']]){ %><a class="quick-action" href="<%= helpers.url(data,view,'new') %>"
+          ><%- helpers.icon('document') %><%= label %></a
+        ><% } %>
+      </div>
+      <div class="summary-line" style="margin-top:15px">
+        <a href="<%= helpers.url(data,'customers','new') %>">+ Add contact</a
+        ><a href="<%= helpers.url(data,'catalog','new') %>">+ Add catalog item</a>
+      </div>
+    </section>
+    <section class="card">
+      <div class="card-header">
+        <div>
+          <h3>Collections by invoice month</h3>
+          <p>Payments received on invoices issued each month.</p>
+        </div>
+      </div>
+      <div class="chart-bars" role="img" aria-label="Payments received by invoice issue month">
+        <% for(const month of monthly){ %>
+        <div class="chart-column" title="<%= month.label %>: <%= helpers.money(month.total) %>">
+          <div class="bar" style="height:<%= Math.max(2,month.total/chartMax*75) %>px"></div>
+          <span><%= month.label %></span>
+        </div>
+        <% } %>
+      </div>
+    </section>
+    <section class="card">
+      <h3><%= data.organization.name %></h3>
+      <div class="summary-line">
+        <span class="muted">GST registration</span><span><%= data.organization.gstin?'Added':'Not added' %></span>
+      </div>
+      <div class="summary-line">
+        <span class="muted">Catalog items</span><span><%= summary.activeCatalog %> active</span>
+      </div>
+      <div class="summary-line">
+        <span class="muted">Document formats</span
+        ><a href="<%= helpers.url(data,'formats') %>"><%= summary.availableFormats %> available</a>
+      </div>
+      <div class="summary-line">
+        <span class="muted">Support</span><a href="mailto:<%= helpers.organizationSupportEmail(data.organization) %>">Contact support</a>
+      </div>
+    </section>
+  </aside>
+</div>

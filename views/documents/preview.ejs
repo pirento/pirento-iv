@@ -1,0 +1,363 @@
+<%
+const doc = data.document;
+const t = helpers.types;
+const roundingPolicy = t.documentRoundingPolicy(doc);
+const p = helpers.pdf;
+const organization = doc.organizationSnapshot;
+const customer = doc.customerSnapshot;
+const format = t.getDocumentFormat(doc);
+const geometry = p.documentGeometry(format);
+const colors = p.documentColors(format.accentColor);
+const identity = p.documentBusinessIdentity(doc);
+const signing = p.documentSigningBlocks(doc);
+const delivery = doc.kind === 'delivery_note';
+const isInvoice = doc.kind === 'invoice';
+const narrow = geometry.widthMm - 2 * geometry.marginMm < 137.5;
+const installments = delivery ? [] : t.installmentBalances(doc);
+const bank = !delivery && format.showBankDetails ? p.bankDetails(doc) : [];
+const logo = p.documentLogo(doc);
+const showQr = !delivery && format.showPaymentQr && organization.paymentQrUrl;
+const base = `/workspace/${encodeURIComponent(doc.organizationId)}/${data.route.view}`;
+const locked = Boolean(doc.finalizedAt || doc.convertedInvoiceId);
+const styles = `--doc-accent:${colors.accent};--doc-on-accent:${colors.onAccent};--doc-accent-text:${colors.accentText};--doc-page-width:${geometry.widthMm}mm;--doc-page-height:${geometry.heightMm}mm;--doc-margin:${geometry.marginMm}mm;--doc-font-size:${geometry.fontSize}pt;--doc-logo-width:${geometry.logoWidth}px;--doc-signature-width:${geometry.signatureWidth}px;--doc-stamp-width:${geometry.stampWidth}px;--doc-qr-width:${geometry.paymentQrWidth}px;--doc-logo-height:${Math.min(96, Math.max(42.67, geometry.logoWidth))}px`;
+%>
+<section class="workspace-page doc-preview-page doc-preview" aria-labelledby="doc-preview-heading">
+  <style>
+    @page {
+      size: <%= geometry.pageSize==='LETTER'?'letter':geometry.pageSize %> <%= geometry.orientation %>;
+      margin: <%= geometry.marginMm %>mm;
+    }
+  </style>
+  <header class="doc-preview-toolbar">
+    <a class="doc-button doc-button-secondary" href="<%= base %>">Back</a>
+    <div class="doc-preview-heading">
+      <div>
+        <h1 id="doc-preview-heading"><%= doc.number %></h1>
+        <span><%= organization.name %></span>
+      </div>
+      <span class="doc-status doc-status-<%= doc.status %>"><%= t.STATUS_LABELS[doc.status]||doc.status %></span
+      ><% if(doc.finalizedAt){ %><span class="doc-final-badge">Final</span><% } %>
+    </div>
+    <div class="doc-preview-actions">
+      <% if(!locked){ %><a
+        href="<%= base %>/edit/<%= encodeURIComponent(doc.id) %>"
+        class="doc-button doc-button-secondary"
+        >Edit</a
+      ><% } %> <% if(['quotation','proforma'].includes(doc.kind)&&!doc.convertedInvoiceId&&!['declined','cancelled'].includes(doc.status)){ %><button
+        type="button"
+        class="doc-button doc-button-secondary"
+        data-preview-action="convert"
+      >
+        Convert to invoice</button
+      ><% } %> <% if(doc.convertedInvoiceId){ %><a
+        class="doc-button doc-button-secondary"
+        href="/workspace/<%= encodeURIComponent(doc.organizationId) %>/invoices/preview/<%= encodeURIComponent(doc.convertedInvoiceId) %>"
+        >View converted invoice</a
+      ><% } %> <% if(isInvoice){ %><a
+        href="<%= base %>/payments/<%= encodeURIComponent(doc.id) %>"
+        class="doc-button doc-button-secondary"
+        >Payments</a
+      ><% if(doc.customerId){ %><a class="doc-button doc-button-secondary" href="<%= helpers.url(data,'ledger','preview',doc.customerId) %>">Customer statement</a><% } %><% if(data.user?.role==='admin'&&doc.status!=='cancelled'){ %><a class="doc-button doc-button-secondary" href="<%= helpers.url(data,'recurring','new',undefined,{documentId:doc.id}) %>">Recurring schedule</a><% } %><% if(doc.status!=='cancelled'){ %><button
+        class="doc-button doc-button-secondary"
+        type="button"
+        data-preview-action="delivery"
+      >
+        <%= doc.deliveryNoteId?'Open delivery challan':'Create delivery challan' %></button
+      ><% } %><% } %> <% if(!delivery){ %><a
+        href="<%= base %>/email/<%= encodeURIComponent(doc.id) %>"
+        class="doc-button doc-button-secondary"
+        >Email</a
+      ><% } %>
+      <button type="button" class="doc-button doc-button-secondary" data-preview-action="print">Print</button>
+      <button type="button" class="doc-button doc-button-primary" data-preview-action="pdf">
+        Download PDF
+      </button>
+    </div>
+  </header>
+  <p id="doc-preview-feedback" class="doc-tax-note" role="status" hidden></p>
+  <div class="doc-print-hint">
+    <span
+      ><%= format.name %> · <%= format.layout %> · <%= geometry.pageSize %> <%= geometry.orientation %></span
+    ><% if(doc.convertedInvoiceId){ %><span class="doc-converted-note">Converted to invoice</span
+    ><% } %><% if(doc.deliveryNoteId){ %><span class="doc-converted-note"
+      >Delivery challan created</span
+    ><% } %>
+  </div>
+  <div class="doc-paper-viewport" tabindex="0" aria-label="Document preview; scroll to view the full page">
+    <article
+      class="doc-paper doc-template-<%= format.layout %> doc-density-<%= format.density %> doc-table-<%= format.tableStyle||'ruled' %> <%= narrow?'doc-paper-narrow':'' %> <%= delivery?'doc-delivery-paper':'' %> <%= format.showLogo&&logo?'doc-has-logo':'' %>"
+      style="<%= styles %>"
+    >
+      <div class="doc-paper-accent"></div>
+      <header class="doc-paper-header">
+        <div class="doc-brand-block">
+          <% if(format.showLogo&&logo){ %><img
+            class="doc-brand-logo"
+            src="<%= logo %>"
+            alt="<%= organization.name %> logo"
+          /><% } %>
+          <div class="doc-brand-identity">
+            <h2><%= organization.name %></h2>
+            <% if(identity.tradeName){ %>
+            <p class="doc-trade-name">Trade name: <%= identity.tradeName %></p>
+            <% } %><% if(doc.businessProductSnapshot?.name){ %>
+            <p class="doc-business-product"><span>Product:</span> <strong><%= doc.businessProductSnapshot.name %></strong></p>
+            <% } %><% if(identity.showLegalName){ %>
+            <p><%= identity.legalLabel %></p>
+            <h3><%= identity.legalName %></h3>
+            <% } %>
+          </div>
+        </div>
+        <div class="doc-paper-document-label">
+          <h1><%= p.documentTitle(doc) %></h1>
+          <strong><%= doc.number %></strong
+          ><span class="doc-paper-status"><%= t.STATUS_LABELS[doc.status]||doc.status %><%= doc.finalizedAt?' · Final':'' %></span>
+        </div>
+      </header>
+      <section class="doc-paper-parties">
+        <div class="doc-party">
+          <span class="doc-paper-eyebrow">From</span
+          ><strong><%= identity.sellerName %></strong><% if(identity.sellerLegalName){ %>
+          <p><%= identity.sellerLegalName %></p>
+          <% } %><% if(organization.address){ %>
+          <p class="doc-preserve-lines"><%= organization.address %></p>
+          <% } %><% if(organization.stateCode){ %>
+          <p><%= p.stateName(organization.stateCode) %> · State code <%= organization.stateCode %></p>
+          <% } %><% [['gstin','GSTIN'],['pan','PAN'],['cin','CIN'],['email',''],['phone','']].forEach(([key,label])=>{if(organization[key]){ %>
+          <p><%= label?`${label}: `:'' %><%= organization[key] %></p>
+          <% }}); %>
+        </div>
+        <div class="doc-party">
+          <span class="doc-paper-eyebrow"><%= delivery?'Customer':'Bill to' %></span
+          ><strong><%= customer.name %></strong><% if(customer.contactPerson){ %>
+          <p>Attn: <%= customer.contactPerson %></p>
+          <% } %><% if(customer.address){ %>
+          <p class="doc-preserve-lines"><%= customer.address %></p>
+          <% } %><% if(customer.stateCode){ %>
+          <p><%= p.stateName(customer.stateCode) %> · State code <%= customer.stateCode %></p>
+          <% } %><% [['gstin','GSTIN'],['email',''],['phone','']].forEach(([key,label])=>{if(customer[key]){ %>
+          <p><%= label?`${label}: `:'' %><%= customer[key] %></p>
+          <% }}); %>
+        </div>
+        <div class="doc-date-details">
+          <div><span class="doc-paper-eyebrow">Issue date</span><strong><%= p.documentDate(doc.issueDate) %></strong></div>
+          <% if(p.documentDueDate(doc)){ %>
+          <div>
+            <span class="doc-paper-eyebrow"><%= p.documentDueLabel(doc) %></span
+            ><strong><%= p.documentDate(p.documentDueDate(doc)) %></strong>
+          </div>
+          <% } %><% if(doc.placeOfSupply){ %>
+          <div>
+            <span class="doc-paper-eyebrow">Place of supply</span
+            ><strong><%= p.stateName(doc.placeOfSupply) %> (<%= doc.placeOfSupply %>)</strong>
+          </div>
+          <% } %>
+        </div>
+      </section>
+      <% if(p.shippingDetails(doc).length){ %>
+      <section class="doc-paper-shipping">
+        <span class="doc-paper-eyebrow">Shipping details</span>
+        <div class="doc-shipping-columns">
+          <% p.shippingGroups(doc).forEach(group=>{ %>
+          <dl>
+            <% group.forEach(([label,value])=>{ %>
+            <dt><%= label %></dt>
+            <dd class="doc-preserve-lines"><%= value %></dd>
+            <% }); %>
+          </dl>
+          <% }); %>
+        </div>
+      </section>
+      <% } %> <% if(p.documentSubject(doc)){ %>
+      <div class="doc-project-title">
+        <span class="doc-paper-eyebrow">Subject</span>
+        <h3><%= p.documentSubject(doc) %></h3>
+      </div>
+      <% } %> <% if(doc.kind==='proforma'){ %>
+      <p class="doc-proforma-note">Proforma invoice — not a tax invoice.</p>
+      <% } %>
+      <div class="doc-paper-table-wrap">
+        <table class="doc-paper-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Description</th>
+              <% if(format.showHsn){ %>
+              <th>HSN / SAC</th>
+              <% } %>
+              <th class="doc-align-right">Qty</th>
+              <% if(format.showUnit){ %>
+              <th>Unit</th>
+              <% } %><% if(!delivery){ %>
+              <th class="doc-align-right">Rate</th>
+              <% if(format.showGstRate){ %>
+              <th class="doc-align-right">GST</th>
+              <% } %>
+              <th class="doc-align-right">Amount</th>
+              <% } %>
+            </tr>
+          </thead>
+          <tbody>
+            <% doc.items.forEach((item,index)=>{ %>
+            <tr>
+              <td class="doc-row-number"><%= index+1 %></td>
+              <td class="doc-paper-description"><%= item.description %></td>
+              <% if(format.showHsn){ %>
+              <td><%= item.hsn||'—' %></td>
+              <% } %>
+              <td class="doc-align-right"><%= item.quantity %></td>
+              <% if(format.showUnit){ %>
+              <td><%= item.unit||'—' %></td>
+              <% } %><% if(!delivery){ %>
+              <td class="doc-align-right doc-no-wrap"><%= t.money(item.rate) %></td>
+              <% if(format.showGstRate){ %>
+              <td class="doc-align-right doc-no-wrap"><%= item.gstRate %>%</td>
+              <% } %>
+              <td class="doc-align-right doc-no-wrap doc-paper-amount"><%= t.money(t.calculateLineAmount(item, roundingPolicy)) %></td>
+              <% } %>
+            </tr>
+            <% if(p.linePricingNote(doc,item)){ %>
+            <tr class="doc-pricing-detail-row">
+              <td></td>
+              <td colspan="<%= 2+Number(format.showHsn)+Number(format.showUnit)+(!delivery?2+Number(format.showGstRate):0) %>">
+                <div class="doc-line-pricing"><%= p.linePricingNote(doc,item) %></div>
+              </td>
+            </tr>
+            <% } %><% }); %>
+          </tbody>
+        </table>
+      </div>
+      <section class="doc-paper-summary">
+        <div class="doc-paper-note">
+          <% if(doc.notes){ %><span class="doc-paper-eyebrow">Notes</span>
+          <p class="doc-preserve-lines"><%= doc.notes %></p>
+          <% } %><% if(doc.kind==='quotation'){ %>
+          <p class="doc-quotation-note">
+            This quotation is an estimate of the services and prices listed above.
+          </p>
+          <% } %><% if(!delivery&&format.showAmountInWords){ %>
+          <div class="doc-amount-words">
+            <span class="doc-paper-eyebrow">Amount in words</span><strong><%= p.amountInWords(doc.totals.total) %></strong>
+          </div>
+          <% } %>
+        </div>
+        <% if(!delivery){ %>
+        <div class="doc-paper-totals">
+          <div><span>Subtotal</span><span><%= t.money(doc.totals.subtotal) %></span></div>
+          <% if(doc.totals.discount>0){ %>
+          <div><span>Discount (<%= doc.discountPercent %>%)</span><span>− <%= t.money(doc.totals.discount) %></span></div>
+          <% } %>
+          <div><span>Taxable amount</span><span><%= t.money(doc.totals.taxable) %></span></div>
+          <% [['cgst','CGST'],['sgst','SGST / UTGST'],['igst','IGST']].forEach(([key,label])=>{if(doc.totals[key]>0){ %>
+          <div><span><%= label %></span><span><%= t.money(doc.totals[key]) %></span></div>
+          <% }}); %>
+          <div class="doc-paper-grand-total">
+            <span>Total <small>INR</small></span
+            ><strong><%= t.money(doc.totals.total) %></strong>
+          </div>
+          <% if(isInvoice){ %>
+          <div class="doc-received"><span>Amount received</span><span><%= t.money(t.paidAmount(doc)) %></span></div>
+          <div class="doc-balance"><strong>Balance due</strong><strong><%= t.money(t.balanceDue(doc)) %></strong></div>
+          <% } %>
+        </div>
+        <% } %>
+      </section>
+      <% if(installments.length){ %>
+      <section class="doc-installment-section">
+        <table class="doc-installment-table">
+          <thead>
+            <tr>
+              <th colspan="6">
+                <span class="doc-paper-eyebrow">Payment schedule / EMI</span
+                ><strong><%= doc.installmentPlan.name %></strong>
+              </th>
+            </tr>
+            <tr>
+              <th>Installment</th>
+              <th>Due date</th>
+              <th class="doc-align-right">Amount</th>
+              <th class="doc-align-right">Received</th>
+              <th class="doc-align-right">Pending</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% installments.forEach(entry=>{ %>
+            <tr>
+              <td><%= entry.label %></td>
+              <td><%= p.documentDate(entry.dueDate) %></td>
+              <td class="doc-align-right"><%= t.money(entry.amount) %></td>
+              <td class="doc-align-right"><%= t.money(entry.amountPaid) %></td>
+              <td class="doc-align-right"><%= t.money(entry.balanceDue) %></td>
+              <td><%= p.INSTALLMENT_STATUS_LABELS[entry.status] %></td>
+            </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </section>
+      <% } %> <% if(bank.length||doc.terms||showQr){ %>
+      <section
+        class="doc-paper-bottom <%= showQr?'doc-bottom-has-qr':'' %>"
+        style="--doc-bottom-text-cols: <%= Number(bank.length>0) + Number(Boolean(doc.terms)) %>"
+      >
+        <% if(bank.length){ %>
+        <div>
+          <span class="doc-paper-eyebrow">Bank details</span>
+          <dl class="doc-bank-details">
+            <% bank.forEach(([label,value])=>{ %>
+            <div class="doc-bank-entry">
+              <dt><%= label %>:</dt>
+              <dd><%= value %></dd>
+            </div>
+            <% }); %>
+          </dl>
+        </div>
+        <% } %><% if(doc.terms){ %>
+        <div>
+          <span class="doc-paper-eyebrow">Terms & conditions</span>
+          <p class="doc-preserve-lines"><%= doc.terms %></p>
+        </div>
+        <% } %><% if(showQr){ %>
+        <div class="doc-payment-qr">
+          <span class="doc-paper-eyebrow">Scan to pay</span
+          ><img src="<%= organization.paymentQrUrl %>" alt="Payment QR code" />
+        </div>
+        <% } %>
+      </section>
+      <% } %>
+      <section class="doc-paper-signoff doc-signing-section">
+        <div class="doc-signing-heading">
+          <div>
+            <% if(format.footerText){ %>
+            <p class="doc-preserve-lines"><%= format.footerText %></p>
+            <% } %><span class="doc-support-email"><%= identity.supportEmail?`Support: ${identity.supportEmail}`:organization.name %></span>
+          </div>
+          <% if(signing.length){ %><span>For <%= identity.signoffName %></span><% } %>
+        </div>
+        <% if(signing.length){ %>
+        <div
+          class="doc-signing-grid"
+          style="--doc-signing-count: <%= Math.min(signing.length, narrow?2: 3) %>; --doc-signing-height: <%= Math.max(58.67, ...signing.map(block=>block.key=== 'stamp' &&block.imageUrl?block.width: 72)) %>px"
+        >
+          <% signing.forEach(block=>{ %>
+          <div class="doc-signing-cell doc-signing-<%= block.key %>">
+            <div class="doc-signing-frame">
+              <% if(block.imageUrl){ %><img
+                src="<%= block.imageUrl %>"
+                alt="<%= block.key==='stamp'?'Company stamp':block.key==='signature'?'Primary signature':'Secondary signature' %>"
+                style="--doc-signing-image-width: <%= block.width %>px"
+              /><% } %>
+            </div>
+            <p class="doc-signing-label"><%= block.label %></p>
+          </div>
+          <% }); %>
+        </div>
+        <% } %>
+      </section>
+      <footer class="doc-paper-footer">
+        <span><%= identity.signoffName %></span><span><%= doc.number %> · <%= t.DOCUMENT_LABELS[doc.kind] %></span>
+      </footer>
+    </article>
+  </div>
+</section>
+<script type="module" src="/js/documents/preview.js"></script>
