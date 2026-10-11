@@ -38,10 +38,7 @@ const createSchema = z
     organizationId: identifier,
     sourceDocumentId: identifier,
     sourceVersion: version,
-    requestId: z
-      .string()
-      .uuid()
-      .transform((value) => value.toLowerCase()),
+    requestId: z.guid().transform((value) => value.toLowerCase()),
     ...editableFields,
     frequency: z.enum(['weekly', 'monthly', 'quarterly', 'yearly']),
     startDate: date,

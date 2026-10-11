@@ -42,7 +42,7 @@
     "mongodb": "^7.0.0",
     "pdfmake": "^0.2.23",
     "sharp": "^0.35.5",
-    "zod": "^3.24.0"
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@eslint/js": "9.39.1",

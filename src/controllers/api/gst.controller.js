@@ -16,7 +16,7 @@ export function createController(context) {
             .trim()
             .transform((value) => value.toUpperCase())
             .refine(validGstin, 'Enter a valid GSTIN.'),
-          challengeId: z.string().uuid(),
+          challengeId: z.guid(),
           captcha: z
             .string()
             .trim()

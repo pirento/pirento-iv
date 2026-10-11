@@ -1,10 +1,16 @@
 import { z } from 'zod';
 import { HttpError } from './errors.js';
+import '../services/validation/messages.js';
 import { PortalError } from '../services/integrations/gst/gst-portal.js';
 import { SandboxGstError } from '../services/integrations/gst/sandbox-gst.js';
 import { EmailQueueError } from '../services/integrations/email/mailer.js';
 import { OnlinePaymentError } from '../services/integrations/payments/online-payments.js';
 import { DatabaseBackupError } from '../services/operations/database-backup.js';
+
+// zod 4 renamed invalid_enum_value to invalid_value. Either way the rejected value is not echoed back;
+// a missing value keeps its 'Required' message (see services/validation/messages.js).
+const isChoiceIssue = (issue) =>
+  (issue.code === 'invalid_value' || issue.code === 'invalid_enum_value') && issue.message !== 'Required';
 
 /** Maps validation, service and infrastructure errors to the JSON API's HTTP responses. */
 export function createApiErrorHandler(reportError) {
@@ -19,7 +25,7 @@ export function createApiErrorHandler(reportError) {
         error: error.issues
           .map(
             (issue) =>
-              `${issue.path.join('.') || 'Input'}: ${issue.code === 'invalid_enum_value' ? 'Choose one of the supported values.' : issue.message}`,
+              `${issue.path.join('.') || 'Input'}: ${isChoiceIssue(issue) ? 'Choose one of the supported values.' : issue.message}`,
           )
           .join(' '),
       });

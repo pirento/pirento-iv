@@ -1,5 +1,6 @@
 import { contactFieldSchemas, validateContactFields } from './contacts.js';
 import { z } from 'zod';
+import './messages.js';
 import { COMPANY_NAME, STATES, calculateLineAmount } from '../../../shared/types.js';
 import { wholePaise } from '../../../shared/money.js';
 export const LEGAL_NAME = COMPANY_NAME;
