@@ -9,15 +9,15 @@ export function createController({ ledger }) {
     await pipeline(Readable.from(result.lines), res);
   }
   return {
-    getLedger: async (req, res) =>
+    list: async (req, res) =>
       res.json(await ledger.list(res.locals.user, req.query.organizationId, req.query)),
-    getLedgerCustomer: async (req, res) =>
+    statement: async (req, res) =>
       res.json(
         await ledger.statement(res.locals.user, req.query.organizationId, req.params.customerId, req.query),
       ),
-    exportLedger: async (req, res) =>
+    exportBalances: async (req, res) =>
       download(await ledger.exportCustomers(res.locals.user, req.query.organizationId, req.query), res),
-    exportLedgerCustomer: async (req, res) =>
+    exportStatement: async (req, res) =>
       download(
         await ledger.exportStatement(
           res.locals.user,

@@ -4,7 +4,7 @@ import { HttpError } from '../../middleware/errors.js';
 export function createController(context) {
   const { db, auth, mailer, online, gstStatus, getOrganization, getDocument } = context;
   return {
-    getIntegrationsStatus: async (req, res) => {
+    status: async (req, res) => {
       const user = res.locals.user;
       const documentId =
         req.query.documentId === undefined ? undefined : z.string().min(1).parse(req.query.documentId);

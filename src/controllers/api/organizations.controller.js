@@ -7,14 +7,14 @@ import { organizationSchema } from '../../services/validation/validation.js';
 export function createController(context) {
   const { db, auth, online, now, getOrganization, assertPrefixesAvailable } = context;
   return {
-    getOrganizations: async (_req, res) => {
+    list: async (_req, res) => {
       const user = res.locals.user;
       const rows = await db.models.organizations.list();
       res.json(
         auth && user?.role !== 'admin' ? rows.filter((org) => user?.organizationIds.includes(org.id)) : rows,
       );
     },
-    postOrganizations: async (req, res) => {
+    create: async (req, res) => {
       const input = organizationSchema.parse(req.body);
       const organization = await transaction(db, async () => {
         await assertPrefixesAvailable(input);
@@ -34,7 +34,7 @@ export function createController(context) {
       });
       res.status(201).json(organization);
     },
-    putOrganizationsId: async (req, res) => {
+    update: async (req, res) => {
       const input = organizationSchema.parse(req.body);
       const organization = await transaction(db, async () => {
         const current = await getOrganization(req.params.id);

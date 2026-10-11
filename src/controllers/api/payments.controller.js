@@ -5,7 +5,7 @@ export function createController(context) {
   const { db, online, now, getDocument, getPayment, addEvent, paymentDetails, updatePaymentBalance } =
     context;
   return {
-    postPaymentsIdVoid: async (req, res) => {
+    voidPayment: async (req, res) => {
       const { reason } = voidPaymentSchema.parse(req.body);
       // Historical receipts can omit organizationId; their persisted parent
       // invoice remains authoritative for choosing and checking the write scope.

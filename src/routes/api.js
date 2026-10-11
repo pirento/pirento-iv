@@ -8,17 +8,17 @@ export function registerApiRoutes(app, context) {
   app.post(
     '/api/webhooks/razorpay',
     express.raw({ type: 'application/json', limit: '1mb' }),
-    controllers.webhooks.postWebhooksRazorpay,
+    controllers.webhooks.razorpay,
   );
   app.post(
     '/api/webhooks/razorpay/:organizationId',
     express.raw({ type: 'application/json', limit: '1mb' }),
-    controllers.webhooks.postWebhooksRazorpayOrganizationId,
+    controllers.webhooks.razorpayForOrganization,
   );
   app.post(
     '/api/webhooks/cashfree/:organizationId',
     express.raw({ type: 'application/json', limit: '1mb' }),
-    controllers.webhooks.postWebhooksCashfreeOrganizationId,
+    controllers.webhooks.cashfreeForOrganization,
   );
   app.use('/api', validateResourceQueries);
   app.use('/api', (req, res, next) => {
@@ -33,74 +33,74 @@ export function registerApiRoutes(app, context) {
   app.use('/api/auth', express.json({ limit: '16kb' }));
   app.use(express.json({ limit: '12mb' }));
   if (auth) app.use('/api/auth', auth.router);
-  app.get('/api/health', controllers.health.getHealth);
-  app.get('/api/ready', controllers.health.getReady);
+  app.get('/api/health', controllers.health.status);
+  app.get('/api/ready', controllers.health.ready);
   if (auth) app.use('/api', auth.requireSession, auth.mutationGuard, createAccessGuard(db));
   if (auth) app.use('/api/backups', auth.requireAdmin);
   app.use('/api', online.router);
-  app.get('/api/backups/status', controllers.backups.getBackupsStatus);
-  app.get('/api/backups', controllers.backups.getBackups);
-  app.post('/api/backups', controllers.backups.postBackups);
-  app.get('/api/backups/:id/download', controllers.backups.getBackupsIdDownload);
-  app.get('/api/backups/:id/manifest', controllers.backups.getBackupsIdManifest);
-  app.get('/api/integrations/status', controllers.integrations.getIntegrationsStatus);
-  app.get('/api/ledger', controllers.ledger.getLedger);
-  app.get('/api/ledger/export', controllers.ledger.exportLedger);
-  app.get('/api/ledger/:customerId/export', controllers.ledger.exportLedgerCustomer);
-  app.get('/api/ledger/:customerId', controllers.ledger.getLedgerCustomer);
-  app.get('/api/reminders', controllers.reminders.getReminders);
-  app.get('/api/reminders/history', controllers.reminders.getRemindersHistory);
-  app.get('/api/reminders/policy', controllers.reminders.getRemindersPolicy);
-  app.put('/api/reminders/policy', controllers.reminders.putRemindersPolicy);
-  app.get('/api/documents/:id/reminder-preview', controllers.reminders.getDocumentsIdReminderPreview);
-  app.post('/api/documents/:id/reminders', controllers.reminders.postDocumentsIdReminders);
-  app.get('/api/recurring-invoices', controllers.recurring.getRecurringInvoices);
-  app.get('/api/recurring-invoices/sources', controllers.recurring.getRecurringSources);
-  app.get('/api/recurring-invoices/:id', controllers.recurring.getRecurringInvoicesId);
-  app.post('/api/recurring-invoices', controllers.recurring.postRecurringInvoices);
-  app.put('/api/recurring-invoices/:id', controllers.recurring.putRecurringInvoicesId);
-  app.post('/api/recurring-invoices/:id/status', controllers.recurring.postRecurringInvoicesIdStatus);
-  app.post('/api/recurring-invoices/:id/generate', controllers.recurring.postRecurringInvoicesIdGenerate);
-  app.get('/api/documents/:id/messages', controllers.documents.getDocumentsIdMessages);
-  app.post('/api/documents/:id/email', controllers.documents.postDocumentsIdEmail);
-  app.post('/api/messages/:id/retry', controllers.messages.postMessagesIdRetry);
-  app.get('/api/workspace-settings', controllers.workspaceSettings.getWorkspaceSettings);
-  app.put('/api/workspace-settings', controllers.workspaceSettings.putWorkspaceSettings);
-  app.get('/api/organizations', controllers.organizations.getOrganizations);
-  app.post('/api/organizations', controllers.organizations.postOrganizations);
-  app.put('/api/organizations/:id', controllers.organizations.putOrganizationsId);
-  app.get('/api/business-products', controllers.businessProducts.getBusinessProducts);
-  app.post('/api/business-products', controllers.businessProducts.postBusinessProducts);
-  app.put('/api/business-products/:id', controllers.businessProducts.putBusinessProductsId);
+  app.get('/api/backups/status', controllers.backups.status);
+  app.get('/api/backups', controllers.backups.list);
+  app.post('/api/backups', controllers.backups.create);
+  app.get('/api/backups/:id/download', controllers.backups.download);
+  app.get('/api/backups/:id/manifest', controllers.backups.manifest);
+  app.get('/api/integrations/status', controllers.integrations.status);
+  app.get('/api/ledger', controllers.ledger.list);
+  app.get('/api/ledger/export', controllers.ledger.exportBalances);
+  app.get('/api/ledger/:customerId/export', controllers.ledger.exportStatement);
+  app.get('/api/ledger/:customerId', controllers.ledger.statement);
+  app.get('/api/reminders', controllers.reminders.list);
+  app.get('/api/reminders/history', controllers.reminders.history);
+  app.get('/api/reminders/policy', controllers.reminders.getPolicy);
+  app.put('/api/reminders/policy', controllers.reminders.updatePolicy);
+  app.get('/api/documents/:id/reminder-preview', controllers.reminders.preview);
+  app.post('/api/documents/:id/reminders', controllers.reminders.queue);
+  app.get('/api/recurring-invoices', controllers.recurring.list);
+  app.get('/api/recurring-invoices/sources', controllers.recurring.sources);
+  app.get('/api/recurring-invoices/:id', controllers.recurring.show);
+  app.post('/api/recurring-invoices', controllers.recurring.create);
+  app.put('/api/recurring-invoices/:id', controllers.recurring.update);
+  app.post('/api/recurring-invoices/:id/status', controllers.recurring.setStatus);
+  app.post('/api/recurring-invoices/:id/generate', controllers.recurring.generate);
+  app.get('/api/documents/:id/messages', controllers.documents.listMessages);
+  app.post('/api/documents/:id/email', controllers.documents.sendEmail);
+  app.post('/api/messages/:id/retry', controllers.messages.retry);
+  app.get('/api/workspace-settings', controllers.workspaceSettings.get);
+  app.put('/api/workspace-settings', controllers.workspaceSettings.update);
+  app.get('/api/organizations', controllers.organizations.list);
+  app.post('/api/organizations', controllers.organizations.create);
+  app.put('/api/organizations/:id', controllers.organizations.update);
+  app.get('/api/business-products', controllers.businessProducts.list);
+  app.post('/api/business-products', controllers.businessProducts.create);
+  app.put('/api/business-products/:id', controllers.businessProducts.update);
   app.get('/api/catalog/lookup', controllers.catalog.lookup);
   app.get('/api/catalog/export', controllers.catalog.export);
-  app.get('/api/catalog', controllers.catalog.getCatalog);
-  app.post('/api/catalog', controllers.catalog.postCatalog);
-  app.put('/api/catalog/:id', controllers.catalog.putCatalogId);
-  app.get('/api/formats', controllers.formats.getFormats);
-  app.post('/api/formats', controllers.formats.postFormats);
-  app.put('/api/formats/:id', controllers.formats.putFormatsId);
-  app.delete('/api/formats/:id', controllers.formats.deleteFormatsId);
+  app.get('/api/catalog', controllers.catalog.list);
+  app.post('/api/catalog', controllers.catalog.create);
+  app.put('/api/catalog/:id', controllers.catalog.update);
+  app.get('/api/formats', controllers.formats.list);
+  app.post('/api/formats', controllers.formats.create);
+  app.put('/api/formats/:id', controllers.formats.update);
+  app.delete('/api/formats/:id', controllers.formats.remove);
   app.get('/api/customers/lookup', controllers.customers.lookup);
   app.get('/api/customers/export', controllers.customers.export);
-  app.get('/api/customers', controllers.customers.getCustomers);
-  app.post('/api/customers', controllers.customers.postCustomers);
-  app.put('/api/customers/:id', controllers.customers.putCustomersId);
-  app.delete('/api/customers/:id', controllers.customers.deleteCustomersId);
-  app.get('/api/documents', controllers.documents.getDocuments);
-  app.post('/api/documents', controllers.documents.postDocuments);
-  app.put('/api/documents/:id', controllers.documents.putDocumentsId);
-  app.delete('/api/documents/:id', controllers.documents.deleteDocumentsId);
-  app.post('/api/documents/:id/convert', controllers.documents.postDocumentsIdConvert);
-  app.post('/api/documents/:id/delivery-note', controllers.documents.postDocumentsIdDeliveryNote);
-  app.get('/api/documents/:id/payments', controllers.documents.getDocumentsIdPayments);
-  app.put('/api/documents/:id/installments', controllers.documents.putDocumentsIdInstallments);
-  app.post('/api/documents/:id/payments', controllers.documents.postDocumentsIdPayments);
-  app.post('/api/payments/:id/void', controllers.payments.postPaymentsIdVoid);
-  app.post('/api/documents/:id/finalize', controllers.documents.postDocumentsIdFinalize);
-  app.get('/api/gst/captcha', controllers.gst.getGstCaptcha);
-  app.post('/api/gst/lookup', controllers.gst.postGstLookup);
-  app.get('/api/gst/:gstin', controllers.gst.getGstGstin);
+  app.get('/api/customers', controllers.customers.list);
+  app.post('/api/customers', controllers.customers.create);
+  app.put('/api/customers/:id', controllers.customers.update);
+  app.delete('/api/customers/:id', controllers.customers.remove);
+  app.get('/api/documents', controllers.documents.list);
+  app.post('/api/documents', controllers.documents.create);
+  app.put('/api/documents/:id', controllers.documents.update);
+  app.delete('/api/documents/:id', controllers.documents.remove);
+  app.post('/api/documents/:id/convert', controllers.documents.convert);
+  app.post('/api/documents/:id/delivery-note', controllers.documents.createDeliveryNote);
+  app.get('/api/documents/:id/payments', controllers.documents.listPayments);
+  app.put('/api/documents/:id/installments', controllers.documents.updateInstallments);
+  app.post('/api/documents/:id/payments', controllers.documents.recordPayment);
+  app.post('/api/payments/:id/void', controllers.payments.voidPayment);
+  app.post('/api/documents/:id/finalize', controllers.documents.finalize);
+  app.get('/api/gst/captcha', controllers.gst.captcha);
+  app.post('/api/gst/lookup', controllers.gst.lookup);
+  app.get('/api/gst/:gstin', controllers.gst.lookupByGstin);
   app.use('/api', (_req, _res, next) => next(new HttpError(404, 'API endpoint not found.')));
   app.use(errorHandler);
 }
