@@ -46,7 +46,7 @@ export function createController(context) {
       const input = z
         .object({
           includePaymentLink: z.boolean().default(false),
-          requestId: z.string().uuid(),
+          requestId: z.guid(),
         })
         .parse(req.body);
       let document = await getDocument(req.params.id);
@@ -90,7 +90,7 @@ export function createController(context) {
     },
     create: async (req, res) => {
       const input = documentSchema.parse(req.body);
-      const { requestId } = z.object({ requestId: z.string().uuid().optional() }).parse(req.body);
+      const { requestId } = z.object({ requestId: z.guid().optional() }).parse(req.body);
       const result = await writer.create(input, requestId?.toLowerCase());
       res.status(result.created ? 201 : 200).json(result.document);
     },

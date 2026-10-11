@@ -115,7 +115,7 @@ const statusLabels = { overdue: 'Overdue', due_today: 'Due today', upcoming: 'Up
     <h2>Open payment dates</h2>
     <span class="muted"><%= page.total %> matching dates</span>
   </div>
-  <div class="table-wrap">
+  <div tabindex="0" role="region" aria-label="Open payment dates" class="table-wrap">
     <table class="finance-table" data-reminder-table>
       <thead>
         <tr>
@@ -176,7 +176,7 @@ const statusLabels = { overdue: 'Overdue', due_today: 'Due today', upcoming: 'Up
     <span class="muted"><%= historyPage.total %> messages</span>
   </div>
   <p class="finance-basis">Manual reminder requests for the same payment date on the same Indian business day return the existing message. An attempted delivery may finish even after a payment or policy change.</p>
-  <div class="table-wrap">
+  <div tabindex="0" role="region" aria-label="Reminder history" class="table-wrap">
     <table class="finance-table" data-reminder-history>
       <thead>
         <tr>

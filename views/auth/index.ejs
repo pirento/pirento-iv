@@ -1,11 +1,11 @@
 <section class="auth-layout">
-  <aside class="auth-story">
+  <div class="auth-story">
     <a class="auth-brand" href="/"
       ><span class="brand-mark">V</span><span>VENTURECORE<small>BUSINESS WORKSPACE</small></span></a
     >
     <div>
       <span class="eyebrow">ONE WORKSPACE. EVERY BUSINESS.</span>
-      <h1>A clearer view<br />of your business.</h1>
+      <p class="auth-tagline">A clearer view<br />of your business.</p>
       <p>
         Bring invoices, quotations, customers and payments together. Keep every business organized, with the
         right access for your team.
@@ -15,11 +15,11 @@
       </div>
     </div>
     <small>Venturecore Solutions Private Limited</small>
-  </aside>
+  </div>
   <div class="auth-panel">
     <div class="auth-form-wrap">
       <span class="eyebrow">YOUR WORKSPACE</span>
-      <h2><%= data.pageTitle %></h2>
+      <h1><%= data.pageTitle %></h1>
       <p class="muted"><%= ({ login: 'Enter your account details to continue.', signup: 'Request access. An administrator will review and activate your account.', 'forgot-password': 'Enter your account email to request a password reset link.', 'reset-password': 'Choose a new password for your account.' })[data.authView] %></p>
       <form id="auth-form" class="stack" data-mode="<%= data.authView %>">
         <div class="alert alert-error" data-form-error hidden role="alert"></div>

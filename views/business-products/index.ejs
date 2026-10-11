@@ -14,7 +14,7 @@ const invalid = route.action && (route.action === 'delete' || (route.action === 
   <a class="button secondary" data-resume-document hidden>Resume document</a>
   <% if (invalid) { %>
   <section class="mg-card">
-    <h2><%= route.action === 'delete' ? 'Archive products from the product directory' : 'Business product not found' %></h2>
+    <h1><%= route.action === 'delete' ? 'Archive products from the product directory' : 'Business product not found' %></h1>
     <p>This product may no longer be available in <%= organization.name %>.</p>
     <a class="button secondary" href="<%= base %>" data-manager-link>Back to business products</a>
   </section>
@@ -24,7 +24,7 @@ const invalid = route.action && (route.action === 'delete' || (route.action === 
     <header class="mg-card-heading">
       <div>
         <span class="mg-eyebrow">YOUR PRODUCT’S IDENTITY</span>
-        <h2><%= route.action === 'edit' ? 'Edit' : 'Add' %> business product</h2>
+        <h1><%= route.action === 'edit' ? 'Edit' : 'Add' %> business product</h1>
         <p><%= organization.name %></p>
       </div>
     </header>
@@ -103,7 +103,7 @@ const invalid = route.action && (route.action === 'delete' || (route.action === 
   <section class="mg-intro">
     <div>
       <span class="mg-eyebrow">ONE ECOSYSTEM. EVERY PRODUCT.</span>
-      <h2>A place for each business product.</h2>
+      <h1>A place for each business product.</h1>
       <p>Organize <%= organization.name %>’s product lines, with their own identity and offerings.</p>
       <a class="button primary" href="<%= base %>/new" data-manager-link>Add business product</a>
     </div>

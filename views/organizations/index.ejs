@@ -194,7 +194,7 @@ if(source) form.billingProfile=helpers.billingProfileFor(source);
     <% if(helpers.safeImage(organization.logoUrl)){ %><img src="<%= organization.logoUrl %>" alt="" /><% }else{ %>
     <div class="business-avatar"><%= helpers.initials(organization.name) %></div>
     <% } %>
-    <h3><%= organization.name %></h3>
+    <h2><%= organization.name %></h2>
     <p><%= organization.legalName %></p>
     <div class="summary-line">
       <span class="muted">Relationship</span><span><%= helpers.isIndependentBusiness(organization)?'Independent':'Division' %></span>

@@ -110,6 +110,7 @@ for (const [name, leaderIgnoresTerm] of [
             try {
               process.kill(pid, 'SIGKILL');
             } catch (error) {
+              // eslint-disable-next-line no-unsafe-finally -- surface unexpected kill failures
               if (error.code !== 'ESRCH') throw error;
             }
           }

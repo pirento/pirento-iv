@@ -87,7 +87,7 @@ const listUrl = extra => helpers.pageUrl(data, 'ledger', { ...query, ...extra })
     <h2>Customer accounts</h2>
     <span class="muted"><%= ledger.total %> matching accounts</span>
   </div>
-  <div class="table-wrap">
+  <div tabindex="0" role="region" aria-label="Customer accounts" class="table-wrap">
     <table class="finance-table" data-ledger-table>
       <thead>
         <tr>

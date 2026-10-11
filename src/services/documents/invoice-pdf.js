@@ -1,4 +1,4 @@
-import pdfMake from 'pdfmake/build/pdfmake.js';
+import pdfmake from 'pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts.js';
 import sharp from 'sharp';
 import {
@@ -8,6 +8,22 @@ import {
   pdfFileName,
 } from '../../../shared/pdf.js';
 import { getDocumentFormat } from '../../../shared/types.js';
+
+// Fonts come from pdfmake's bundled virtual file system and images are inline data, so the
+// renderer never needs the network or local files (pdfmake 0.3 can fetch both by default).
+for (const [name, data] of Object.entries(pdfFonts))
+  pdfmake.virtualfs.writeFileSync(name, Buffer.from(data, 'base64'));
+pdfmake.setFonts({
+  Roboto: {
+    normal: 'Roboto-Regular.ttf',
+    bold: 'Roboto-Medium.ttf',
+    italics: 'Roboto-Italic.ttf',
+    bolditalics: 'Roboto-MediumItalic.ttf',
+  },
+});
+pdfmake.setUrlAccessPolicy(() => false);
+pdfmake.setLocalAccessPolicy(() => false);
+
 export async function renderInvoiceAttachment(doc) {
   const format = getDocumentFormat(doc);
   const sources = [
@@ -56,9 +72,9 @@ export async function renderInvoiceAttachment(doc) {
       color: '#66736a',
       margin: [0, 8, 0, 0],
     });
+  const stream = await pdfmake.createPdf(definition).getStream();
   const buffer = await new Promise((resolve, reject) => {
     try {
-      const stream = pdfMake.createPdf(definition, undefined, undefined, pdfFonts).getStream();
       const chunks = [];
       let size = 0;
       stream.on('data', (chunk) => {

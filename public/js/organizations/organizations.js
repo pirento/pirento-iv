@@ -1,5 +1,5 @@
 import { api, sendJson, formValues, showError, setBusy } from '../core/api.js';
-import { getPageData, workspacePath, rememberToast } from '../core/page.js';
+import { getPageData, rememberToast } from '../core/page.js';
 import { bindImageFields } from '../core/images.js';
 import { COMPANY_NAME } from '/shared/types.js';
 const data = getPageData();

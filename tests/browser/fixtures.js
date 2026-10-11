@@ -5,6 +5,8 @@ import { attachPageRoutes } from '../../src/routes/pages.js';
 import { indiaBusinessDate } from '../../shared/business-date.js';
 
 export const test = base.extend({
+  // Playwright requires an object pattern for fixtures that use no other fixtures.
+  // eslint-disable-next-line no-empty-pattern
   app: async ({}, use) => {
     if (!process.env.MONGODB_TEST_URI?.trim()) {
       throw new Error(

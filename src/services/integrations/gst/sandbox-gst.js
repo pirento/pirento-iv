@@ -23,6 +23,7 @@ function object(value) {
 }
 function credential(value) {
   const trimmed = value?.trim() ?? '';
+  // eslint-disable-next-line no-control-regex -- rejects control characters on purpose
   return trimmed && trimmed.length <= 2048 && !/[\x00-\x20\x7f]/.test(trimmed) ? trimmed : '';
 }
 function providerFailure(code, authentication = false) {

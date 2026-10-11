@@ -32,7 +32,7 @@
 .doc-page-heading p {
   margin: 0;
   font-size: 12px;
-  color: #71807b;
+  color: #6a7873;
 }
 .doc-page-heading p span {
   margin: 0 5px;
@@ -156,14 +156,14 @@
 .doc-customer-card p {
   font-size: 11px;
   line-height: 1.5;
-  color: #74827a;
+  color: #67736c;
   margin: 5px 0;
   white-space: pre-line;
 }
 .doc-customer-card small {
   display: block;
   font-size: 10px;
-  color: #74827a;
+  color: #67736c;
   line-height: 1.6;
   margin-top: 4px;
 }
@@ -210,7 +210,7 @@
   padding: 10px 12px;
   font-size: 11px;
   line-height: 1.6;
-  color: #887334;
+  color: #847033;
 }
 .doc-bottom-grid {
   display: grid;
@@ -237,7 +237,7 @@
   border: 1px solid #e5ece1;
   border-radius: 9px;
   font-size: 12px;
-  color: #728077;
+  color: #67746c;
   display: grid;
   gap: 15px;
 }
@@ -384,7 +384,7 @@
 }
 .doc-preview-heading > div > span {
   font-size: 10px;
-  color: #859285;
+  color: #6c786c;
 }
 .doc-preview-actions {
   display: flex;
@@ -395,7 +395,7 @@
   padding: 5px 8px;
   border-radius: 5px;
   background: #f0f3ec;
-  color: #6c7c64;
+  color: #62715b;
   font-size: 9px;
   text-transform: capitalize;
   letter-spacing: 0.2px;
@@ -481,7 +481,7 @@
 }
 .doc-brand-block p {
   margin: 3px 0 0;
-  color: #90988e;
+  color: #6f776d;
   font-size: 8px;
   letter-spacing: 0.3px;
 }
@@ -1108,7 +1108,7 @@
 .doc-help,
 .doc-total-banner small,
 .doc-page-footer > p {
-  color: #6d7a67;
+  color: #687462;
 }
 @media print {
   .doc-paper-header {

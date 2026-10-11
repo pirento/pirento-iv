@@ -33,7 +33,7 @@ const invalid = route.action && (route.action === 'delete' || (route.action === 
   <a class="button secondary" data-resume-document hidden>Resume document</a>
   <% if (invalid) { %>
   <section class="mg-card">
-    <h2><%= route.action === 'delete' ? 'Archive items from your catalog' : 'Catalog item not found' %></h2>
+    <h1><%= route.action === 'delete' ? 'Archive items from your catalog' : 'Catalog item not found' %></h1>
     <p>This item may no longer be available in <%= organization.name %>.</p>
     <a class="button secondary" href="<%= base %>" data-manager-link
       >Back to products & services</a
@@ -47,7 +47,7 @@ const invalid = route.action && (route.action === 'delete' || (route.action === 
     <header class="mg-card-heading">
       <div>
         <span class="mg-eyebrow">YOUR OFFERINGS, ORGANIZED</span>
-        <h2><%= route.action === 'edit' ? 'Edit' : 'Add' %> <%= form.type %></h2>
+        <h1><%= route.action === 'edit' ? 'Edit' : 'Add' %> <%= form.type %></h1>
         <p>Save to <%= organization.name %>’s catalog.</p>
       </div>
     </header>
@@ -151,7 +151,7 @@ const invalid = route.action && (route.action === 'delete' || (route.action === 
   <section class="mg-intro">
     <div>
       <span class="mg-eyebrow">YOUR OFFERINGS, ORGANIZED</span>
-      <h2>Save it once. Invoice it in seconds.</h2>
+      <h1>Save it once. Invoice it in seconds.</h1>
       <p>A reusable library of everything <%= organization.name %> offers.</p>
       <div class="mg-actions">
         <a

@@ -13,6 +13,7 @@
     "dev": "node --use-env-proxy --watch server.js",
     "build": "node scripts/check.js",
     "check": "node scripts/check.js",
+    "lint": "eslint .",
     "test": "node --test --test-concurrency=1 tests/*.test.js",
     "test:integration": "node scripts/run-integration-tests.js",
     "db:backup": "node scripts/database.js backup",
@@ -29,22 +30,25 @@
     "test:integration:optional": "node scripts/run-integration-tests.js --optional",
     "test:browser": "playwright test",
     "test:browser:install": "playwright install chromium",
-    "verify:release": "npm run check && npm test && npm run test:integration && npm run test:browser && npm run audit:readiness",
+    "verify:release": "npm run check && npm run lint && npm test && npm run test:integration && npm run test:browser && npm run audit:readiness",
     "verify:local": "node scripts/with-test-database.js -- npm run verify:release"
   },
   "dependencies": {
     "@fontsource/dm-sans": "^5.3.0",
     "@fontsource/manrope": "^5.3.0",
     "dotenv": "^17.2.0",
-    "ejs": "^3.1.10",
+    "ejs": "^7.0.1",
     "express": "^5.1.0",
     "mongodb": "^7.0.0",
-    "pdfmake": "^0.2.23",
+    "pdfmake": "^0.3.11",
     "sharp": "^0.35.5",
-    "zod": "^3.24.0"
+    "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@eslint/js": "9.39.1",
     "@playwright/test": "1.64.0",
+    "eslint": "9.39.1",
+    "globals": "16.5.0",
     "prettier": "3.9.9"
   }
 }

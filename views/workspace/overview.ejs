@@ -44,7 +44,7 @@ const chartMax=Math.max(1,...monthly.map(month=>month.total));
         <a href="<%= helpers.url(data,'invoices') %>" class="text-button">View invoices →</a>
       </div>
       <% if(recent.length){ %>
-      <div class="table-wrap">
+      <div tabindex="0" role="region" aria-label="Recent documents" class="table-wrap">
         <table>
           <thead>
             <tr>
@@ -89,7 +89,7 @@ const chartMax=Math.max(1,...monthly.map(month=>month.total));
         ><% } %>
       </div>
       <% if(scheduled.length){ %>
-      <div class="table-wrap">
+      <div tabindex="0" role="region" aria-label="Upcoming installments" class="table-wrap">
         <table>
           <thead>
             <tr>
