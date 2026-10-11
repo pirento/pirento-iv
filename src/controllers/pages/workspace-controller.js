@@ -34,6 +34,32 @@ const adminViews = new Set([
   'dashboard_branding',
   'integrations',
 ]);
+// Document screens share one ordered set; the order matches the former single documents.css cascade.
+const documentStyles = [
+  'documents/editor',
+  'documents/paper',
+  'documents/pages',
+  'documents/pricing',
+  'documents/payments',
+  'documents/online-payments',
+  'documents/messaging',
+  'documents/forms',
+];
+/** Page-specific stylesheets, loaded after the global app.css and management.css. */
+const pageStylesheets = {
+  'documents/editor': documentStyles,
+  'documents/preview': documentStyles,
+  'documents/email': documentStyles,
+  'payments/panel': documentStyles,
+  'workspace/documents': ['document-list'],
+  'ledger/index': ['receivables'],
+  'ledger/statement': ['receivables'],
+  'reminders/index': ['receivables'],
+  'recurring/index': ['recurring'],
+  'team/index': ['security'],
+  'security/sessions': ['security'],
+  'security/activity': ['security'],
+};
 const documentKinds = {
   invoices: 'invoice',
   quotations: 'quotation',
@@ -203,7 +229,8 @@ export function createPageController(backend) {
     }
     if (!bodyView) return renderError(res, 404, 'This page is not available.', data);
     res.set('Cache-Control', 'no-store');
-    return res.render('layouts/workspace', { data, helpers, bodyView });
+    const stylesheets = (pageStylesheets[bodyView] || []).map((name) => `/css/${name}.css`);
+    return res.render('layouts/workspace', { data, helpers, bodyView, stylesheets });
   }
 
   return {

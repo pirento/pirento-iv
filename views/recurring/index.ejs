@@ -13,7 +13,6 @@ const formatTime = value => new Intl.DateTimeFormat('en-IN',{dateStyle:'medium',
 const detailUrl = id => `${base}/edit/${encodeURIComponent(id)}`;
 const historyUrl = (key,value) => `${detailUrl(schedule.id)}?${new URLSearchParams({historyPage:String(recurring.historyPage),eventPage:String(recurring.eventPage),[key]:String(value)})}`;
 %>
-<link rel="stylesheet" href="/css/recurring.css" />
 <div class="recurring-page">
   <header class="page-header">
     <div>

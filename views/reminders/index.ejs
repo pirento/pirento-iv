@@ -19,7 +19,6 @@ const offsetLabel = offset => offset === 0
 const choices = [...new Set([-14, -7, -3, -1, 0, 3, 7, 14, 30, ...policy.offsets])].sort((a, b) => a - b);
 const statusLabels = { overdue: 'Overdue', due_today: 'Due today', upcoming: 'Upcoming' };
 %>
-<link rel="stylesheet" href="/css/receivables.css" />
 <header class="page-header">
   <div>
     <span class="eyebrow">RECEIVABLES</span>
