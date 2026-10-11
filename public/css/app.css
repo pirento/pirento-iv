@@ -28,7 +28,7 @@
 }
 :root {
   --ink: #202d29;
-  --muted: #748079;
+  --muted: #67716b;
   --green: #26705b;
   --green-dark: #1b5646;
   --green-soft: #eaf2ed;
@@ -223,7 +223,7 @@ hr {
 .nav-label {
   display: block;
   text-transform: uppercase;
-  color: #8e9790;
+  color: #6b756d;
   font-weight: 600;
   font-size: 9px;
   letter-spacing: 1.4px;
@@ -365,7 +365,7 @@ hr {
   margin: 0 36px;
   padding: 18px 0;
   border-top: 1px solid var(--line);
-  color: #8c958d;
+  color: #687169;
   font-size: 10px;
 }
 .mobile-menu,
@@ -584,6 +584,12 @@ input[type='color'] {
   background: #edf6ed;
   border-color: #d3e5d1;
 }
+/* Links inside running text must not rely on colour alone. */
+.alert a,
+.text-link {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
 .alert-info {
   color: #59686a;
   background: #f0f5f5;
@@ -597,7 +603,7 @@ input[type='color'] {
   padding: 4px 8px;
   background: #f0f2ed;
   border-radius: 4px;
-  color: #69766c;
+  color: #636f66;
   white-space: nowrap;
 }
 .badge-paid,
@@ -617,7 +623,7 @@ input[type='color'] {
 .badge-partially_paid,
 .badge-dispatched {
   background: #eef1fc;
-  color: #5474a5;
+  color: #4f6d9b;
 }
 .badge-pending {
   background: #fcf4df;
@@ -635,7 +641,7 @@ table {
 th {
   font-size: 10px;
   letter-spacing: 0.4px;
-  color: #899388;
+  color: #6b746a;
   font-weight: 600;
   background: #f9faf6;
   border-bottom: 1px solid var(--line);
@@ -785,7 +791,7 @@ tbody tr:hover {
 }
 .metric-hint {
   font-size: 10px;
-  color: #8a9489;
+  color: #6d776c;
 }
 .dashboard-grid {
   display: grid;
@@ -839,7 +845,11 @@ tbody tr:hover {
   font-weight: 600;
   margin-bottom: 18px;
 }
-.business-card h3 {
+/* Card titles sit directly under the page h1, styled at the h3 scale. */
+.business-card h2 {
+  font-size: 16px;
+  line-height: inherit;
+  letter-spacing: normal;
   margin-bottom: 4px;
 }
 .business-card p {
@@ -935,9 +945,12 @@ tbody tr:hover {
   font-size: 8px;
   letter-spacing: 2px;
   margin-top: 3px;
-  color: #82907a;
+  color: #636e5c;
 }
-.auth-story h1 {
+/* Decorative tagline; the form title is the page h1 because this panel is hidden on phones. */
+.auth-story .auth-tagline {
+  max-width: none;
+  color: inherit;
   font-family: Georgia, serif;
   font-size: clamp(32px, 4.2vw, 61px);
   line-height: 1.14;
@@ -947,7 +960,7 @@ tbody tr:hover {
 }
 .auth-story p {
   max-width: 340px;
-  color: #7a8774;
+  color: #646e5f;
   font-size: 13px;
   line-height: 1.9;
 }
@@ -966,7 +979,7 @@ tbody tr:hover {
 }
 .auth-story > small {
   font-size: 10px;
-  color: #91a087;
+  color: #627059;
 }
 .auth-panel {
   padding: 60px 35px;
@@ -978,8 +991,9 @@ tbody tr:hover {
   width: 100%;
   max-width: 365px;
 }
-.auth-form-wrap h2 {
+.auth-form-wrap h1 {
   font-size: 29px;
+  line-height: 1.3;
   margin: 11px 0;
   letter-spacing: -0.7px;
 }

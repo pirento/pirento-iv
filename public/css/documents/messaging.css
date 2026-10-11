@@ -23,7 +23,7 @@
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 1.3px;
-  color: #6c7f9c;
+  color: #637693;
   margin: 0 0 5px;
 }
 .messaging-header h1 {
@@ -31,7 +31,7 @@
   margin: 0 0 5px;
 }
 .messaging-header span {
-  color: #8290a6;
+  color: #66768f;
   font-size: 12px;
 }
 .messaging-body {
@@ -93,7 +93,7 @@
 }
 .messaging-recipient span {
   font-size: 11px;
-  color: #7e8ca4;
+  color: #64738e;
   margin-bottom: 7px;
 }
 .messaging-recipient strong {
@@ -102,7 +102,7 @@
 }
 .messaging-recipient small {
   font-size: 11px;
-  color: #8591a5;
+  color: #66738a;
   margin-top: 6px;
 }
 .messaging-compose {
@@ -115,7 +115,7 @@
 }
 .messaging-compose p {
   font-size: 12px;
-  color: #728099;
+  color: #66758e;
   line-height: 1.7;
   margin: 0 0 14px;
 }
@@ -193,7 +193,7 @@
 .messaging-automation p {
   margin: 6px 0 0;
   font-size: 11px;
-  color: #74849d;
+  color: #607088;
   line-height: 1.7;
 }
 .messaging-section-heading {
@@ -226,7 +226,7 @@
 }
 .messaging-subtle {
   font-size: 11px !important;
-  color: #8a97ab !important;
+  color: #66768f !important;
   line-height: 1.6;
 }
 .messaging-history ol {
@@ -279,12 +279,12 @@
 .messaging-history li > p {
   font-size: 12px;
   margin: 10px 0 5px;
-  color: #6b7a92;
+  color: #67758c;
 }
 .messaging-history li > small {
   display: block;
   font-size: 10px;
-  color: #93a0b2;
+  color: #65768e;
   margin-top: 5px;
   line-height: 1.6;
 }
@@ -298,7 +298,7 @@
 }
 .messaging-message-error {
   font-size: 11px !important;
-  color: #a47521 !important;
+  color: #996d1f !important;
   line-height: 1.6;
 }
 .messaging-retry {

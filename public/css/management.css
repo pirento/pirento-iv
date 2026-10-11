@@ -8,12 +8,15 @@
 .mg-page [hidden] {
   display: none !important;
 }
+.mg-page h1,
 .mg-page h2,
 .mg-page h3,
 .mg-page h4,
 .mg-page p {
   margin-top: 0;
 }
+/* Page titles are h1 for document structure; they keep the section-heading scale. */
+.mg-page h1,
 .mg-page h2 {
   font-size: clamp(23px, 2.5vw, 32px);
   line-height: 1.25;
@@ -35,7 +38,7 @@
 .mg-page small {
   font-size: 12px;
   line-height: 1.55;
-  color: #68786e;
+  color: #627168;
 }
 .mg-page a {
   text-underline-offset: 3px;
@@ -204,7 +207,7 @@
   color: #354c37;
 }
 .mg-hint {
-  color: #65765f;
+  color: #63735d;
   font-size: 12px !important;
   line-height: 1.65;
 }
@@ -356,7 +359,7 @@
 .mg-empty p {
   margin: 0 auto 15px;
   max-width: 520px;
-  color: #697963;
+  color: #677661;
 }
 .mg-grid {
   display: grid;
@@ -371,7 +374,7 @@
 }
 .mg-suggestion span {
   font-size: 12px;
-  color: #6b7c65;
+  color: #697963;
 }
 .mg-suggestion:hover {
   border-color: #8db49a;
@@ -448,7 +451,7 @@
   float: right;
   font-size: 12px;
   font-weight: 400;
-  color: #73826b;
+  color: #6a7863;
 }
 .mg-inline-filter {
   max-width: 360px;
@@ -661,7 +664,7 @@
   cursor: pointer;
 }
 .mg-color-options output {
-  color: #6d7b65;
+  color: #6b7863;
   font-size: 11px;
 }
 .mg-live-preview {
@@ -680,7 +683,7 @@
   gap: 6px;
   margin-bottom: 17px;
   font-size: 10px;
-  color: #728166;
+  color: #65735b;
 }
 .mg-preview-caption strong {
   letter-spacing: 0.8px;
@@ -771,7 +774,7 @@
   flex-wrap: wrap;
   gap: 10px 20px;
   margin: -3px 0 20px;
-  color: #73806b;
+  color: #6c7864;
   font-size: 11px;
 }
 .mg-org-options {
@@ -869,7 +872,7 @@
   border-bottom: 1px solid #e9eddf;
 }
 .mg-details dt {
-  color: #76816a;
+  color: #6d7762;
 }
 .mg-details dd {
   margin: 0;

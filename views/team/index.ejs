@@ -5,14 +5,14 @@ const placeholder = {id:'',name:'',email:'',company:'',status:'pending',role:'st
 <div class="mg-page" id="team-page">
   <% if (data.user.role !== 'admin') { %>
   <section class="mg-empty">
-    <h2>Administrator access required</h2>
+    <h1>Administrator access required</h1>
     <p>Team approvals and access are available to workspace administrators.</p>
   </section>
   <% } else { %>
   <section class="mg-intro">
     <div>
       <span class="mg-eyebrow">WORKSPACE ADMINISTRATION</span>
-      <h2>The right access for every person.</h2>
+      <h1>The right access for every person.</h1>
       <p>
         New signups wait here for administrator approval. Give staff access to the organizations they work
         with, or assign an administrator to manage the whole workspace. Organization access applies to

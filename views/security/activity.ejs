@@ -63,7 +63,7 @@ const accessLabel = state => {
       <h2>Recorded activity</h2>
       <span class="security-muted" data-security-total><%= page.total %> matching <%= page.total === 1 ? 'event' : 'events' %></span>
     </header>
-    <div class="table-wrap">
+    <div tabindex="0" role="region" aria-label="Recorded activity" class="table-wrap">
       <table class="security-table" data-security-events>
         <thead>
           <tr><th>Time (IST)</th><th>Activity</th><th>Performed by</th><th>Affected account</th><th>Details</th></tr>

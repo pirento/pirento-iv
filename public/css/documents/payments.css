@@ -49,14 +49,14 @@
 }
 .payment-header p {
   font-size: 11px;
-  color: #7d8a80;
+  color: #6c786e;
   margin: 0;
 }
 .payment-header .payment-eyebrow {
   font-size: 8px;
   letter-spacing: 1.7px;
   font-weight: 650;
-  color: #7b9170;
+  color: #677a5e;
 }
 .payment-icon-button {
   display: grid;
@@ -95,7 +95,7 @@
 }
 .payment-customer > div > span {
   font-size: 11px;
-  color: #8c978a;
+  color: #6c776a;
 }
 .payment-state {
   display: flex;
@@ -107,7 +107,7 @@
   border: 1px solid #e2e7da;
   border-radius: 20px;
   background: #f7f9f1;
-  color: #71835c;
+  color: #657653;
   padding: 6px 10px;
 }
 .payment-summary {
@@ -131,7 +131,7 @@
 }
 .payment-summary span {
   font-size: 10px;
-  color: #8b967e;
+  color: #68725d;
 }
 .payment-summary strong {
   font-size: 20px;
@@ -187,7 +187,7 @@
 .payment-info {
   background: #f6f7f2;
   border: 1px solid #e2e6d9;
-  color: #7a856c;
+  color: #69735d;
 }
 .payment-loading {
   padding: 60px 15px;
@@ -250,7 +250,7 @@
 .payment-section-heading p {
   font-size: 11px;
   line-height: 1.7;
-  color: #8e9a82;
+  color: #6d7861;
   margin: 0;
 }
 .payment-section-heading > svg {
@@ -337,7 +337,7 @@
 }
 .payment-secondary {
   background: white;
-  color: #6a7d59;
+  color: #677a57;
   border: 1px solid #dce4d3;
 }
 .payment-secondary:hover:not(:disabled) {
@@ -384,7 +384,7 @@
 }
 .payment-entry-amount > span {
   font-size: 9px;
-  color: #749352;
+  color: #627c45;
 }
 .payment-entry-note {
   font-size: 11px;
@@ -399,7 +399,7 @@
   gap: 5px;
   align-items: center;
   font-size: 9px !important;
-  color: #9ba78c;
+  color: #6c785c;
   border: 0;
   background: transparent;
   margin: 10px 0 0 46px;
@@ -528,7 +528,7 @@
   align-items: center;
   font-size: 9px;
   line-height: 1.6;
-  color: #a0ae8e;
+  color: #6b7a57;
 }
 .payment-footer > span svg {
   flex-shrink: 0;
@@ -689,12 +689,12 @@
 .payment-plan-empty strong {
   font-size: 12px;
   font-weight: 550;
-  color: #617d4f;
+  color: #5f7a4d;
 }
 .payment-plan-empty p {
   font-size: 10px;
   line-height: 1.7;
-  color: #96a585;
+  color: #687758;
   margin: 6px 0 0;
 }
 .payment-plan-empty > button {

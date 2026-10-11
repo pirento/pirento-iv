@@ -38,7 +38,7 @@ const list=data.documentList;
     ><% } %><button type="submit" class="button" data-apply-document-filters>Search</button>
     <span class="muted" data-document-count><%= list.total ? `${(list.page-1)*list.pageSize+1}–${(list.page-1)*list.pageSize+documents.length} of ${list.total}` : '0' %> documents</span>
   </form>
-  <div class="table-wrap">
+  <div tabindex="0" role="region" aria-label="<%= data.pageTitle %>" class="table-wrap">
     <table>
       <thead>
         <tr>

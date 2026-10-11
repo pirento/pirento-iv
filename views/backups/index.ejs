@@ -8,14 +8,14 @@ const unavailable = status?.available === false;
 <div class="mg-page" id="backups-page">
   <% if (data.user.role !== 'admin') { %>
   <section class="mg-empty">
-    <h2>Administrator access required</h2>
+    <h1>Administrator access required</h1>
     <p>Database backups are available to workspace administrators.</p>
   </section>
   <% } else { %>
   <section class="mg-intro">
     <div>
       <span class="mg-eyebrow">WORKSPACE ADMINISTRATION</span>
-      <h2>Back up every organization’s records</h2>
+      <h1>Back up every organization’s records</h1>
       <p>
         Each database snapshot includes all organizations, contacts, invoices, payments and account settings.
         Uploaded files outside the database need their own backup.

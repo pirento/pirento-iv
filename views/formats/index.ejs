@@ -23,14 +23,14 @@ const options = [['showLogo','Organization logo','Use this format’s logo or in
   <a class="button secondary" data-resume-document hidden>Resume document</a>
   <% if (invalid) { %>
   <section class="mg-card">
-    <h2>Invoice format not found</h2>
+    <h1>Invoice format not found</h1>
     <p>This format may no longer be available in <%= organization.name %>.</p>
     <a class="button secondary" href="<%= base %>" data-manager-link>Back to invoice formats</a>
   </section>
   <% } else if (route.action === 'delete') { %>
   <section class="mg-card mg-editor">
     <a class="button secondary" href="<%= base %>" data-manager-link>← Back to invoice formats</a>
-    <h2>Delete <%= source.name %>?</h2>
+    <h1>Delete <%= source.name %>?</h1>
     <p>
       Saved documents keep their original design. This format will no longer be available for new documents.
     </p>
@@ -57,7 +57,7 @@ const options = [['showLogo','Organization logo','Use this format’s logo or in
     <header class="mg-card-heading">
       <div>
         <span class="mg-eyebrow">DESIGNED FOR YOUR BUSINESS</span>
-        <h2><%= editing ? 'Edit invoice format' : duplicate ? 'Duplicate invoice format' : 'Create invoice format' %></h2>
+        <h1><%= editing ? 'Edit invoice format' : duplicate ? 'Duplicate invoice format' : 'Create invoice format' %></h1>
         <p><%= organization.name %></p>
       </div>
     </header>
@@ -235,7 +235,7 @@ const options = [['showLogo','Organization logo','Use this format’s logo or in
             ></label
           >
         </div>
-        <aside class="mg-live-preview">
+        <section class="mg-live-preview" aria-label="Live format preview">
           <div class="mg-preview-caption">
             <strong>SAMPLE PREVIEW</strong
             ><span data-paper-label
@@ -252,7 +252,7 @@ const options = [['showLogo','Organization logo','Use this format’s logo or in
             <p><%= organization.legalName %></p>
             <p><%= helpers.organizationSupportEmail(organization) %></p>
           </div>
-        </aside>
+        </section>
       </div>
       <div data-error class="mg-message error" role="alert" tabindex="-1" hidden></div>
       <footer class="mg-actions">
@@ -266,7 +266,7 @@ const options = [['showLogo','Organization logo','Use this format’s logo or in
   <section class="mg-intro">
     <div>
       <span class="mg-eyebrow">MAKE EVERY DOCUMENT YOURS</span>
-      <h2>Your brand, on every page.</h2>
+      <h1>Your brand, on every page.</h1>
       <p>Design, save and reuse document formats for <%= organization.name %>.</p>
       <a class="button primary" href="<%= base %>/new" data-manager-link>Create format</a>
       <p class="mg-hint">
