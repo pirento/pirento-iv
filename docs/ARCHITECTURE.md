@@ -20,7 +20,7 @@ This is one Express application. EJS renders the initial HTML, and browser ES mo
 | Browser     | `public/js/`                                                    | DOM interactions, API calls, preview, downloads and draft state.                            |
 | Shared      | `shared/`                                                       | Pure calculations, document structures, identity and PDF composition used in both runtimes. |
 
-`src/services/backend.js` is the composition root for backend features. It retains shared service wiring so HTTP controller modules do not create independent database clients, payment adapters or mail queues. Domain controllers are split by organizations, contacts, documents, payments, catalog, products, formats, GST, integrations and operations.
+`src/services/backend.js` is the composition root for backend features. It retains shared service wiring so HTTP controller modules do not create independent database clients, payment adapters or mail queues. Domain controllers are split by organizations, contacts, documents, payments, catalog, products, formats, GST, integrations and operations. GST provider selection lives in `src/services/integrations/gst/gst-config.js`, and `src/middleware/api-errors.js` maps validation, service and infrastructure errors to API responses.
 
 ## Native MongoDB model
 

@@ -7,11 +7,11 @@ export function createController(context) {
   const { db, now, getOrganization, getBusinessProduct, assertProductCodeAvailable, scopedOrganization } =
     context;
   return {
-    getBusinessProducts: async (req, res) => {
+    list: async (req, res) => {
       const organization = await scopedOrganization(req.query.organizationId);
       res.json(await db.models.businessProducts.list(organization.id));
     },
-    postBusinessProducts: async (req, res) => {
+    create: async (req, res) => {
       const input = businessProductSchema.parse(req.body);
       const product = await transaction(
         db,
@@ -32,7 +32,7 @@ export function createController(context) {
       );
       res.status(201).json(product);
     },
-    putBusinessProductsId: async (req, res) => {
+    update: async (req, res) => {
       const input = businessProductSchema.parse(req.body);
       const product = await transactionForRecord(
         db,

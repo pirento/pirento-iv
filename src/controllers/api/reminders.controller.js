@@ -31,29 +31,29 @@ export function createController({ reminders, auth, scopedOrganization, getDocum
   }
 
   return {
-    getReminders: async (req, res) => {
+    list: async (req, res) => {
       const organization = await scope(res, req.query.organizationId);
       res.json(await reminders.list(organization.id, req.query));
     },
-    getRemindersHistory: async (req, res) => {
+    history: async (req, res) => {
       const organization = await scope(res, req.query.organizationId);
       res.json(await reminders.history(organization.id, req.query));
     },
-    getRemindersPolicy: async (req, res) => {
+    getPolicy: async (req, res) => {
       const organization = await scope(res, req.query.organizationId);
       res.json({ policy: await reminders.getPolicy(organization.id) });
     },
-    putRemindersPolicy: async (req, res) => {
+    updatePolicy: async (req, res) => {
       const organization = await scope(res, req.body?.organizationId, true);
       res.json({
         policy: await reminders.updatePolicy(organization.id, req.body, res.locals.user?.id),
       });
     },
-    getDocumentsIdReminderPreview: async (req, res) => {
+    preview: async (req, res) => {
       const document = await documentScope(req, res);
       res.json(await reminders.preview(document.id, req.query));
     },
-    postDocumentsIdReminders: async (req, res) => {
+    queue: async (req, res) => {
       const document = await documentScope(req, res);
       res.status(202).json(await reminders.enqueueManual(document.id, req.body));
     },

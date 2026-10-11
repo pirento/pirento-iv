@@ -16,11 +16,11 @@ export function createController(context) {
   } = context;
   return {
     ...directoryReaders(context, 'catalog'),
-    getCatalog: async (req, res) => {
+    list: async (req, res) => {
       const organization = await scopedOrganization(req.query.organizationId);
       res.json(await db.models.catalog.list(organization.id));
     },
-    postCatalog: async (req, res) => {
+    create: async (req, res) => {
       const input = catalogSchema.parse(req.body);
       const item = await transaction(
         db,
@@ -42,7 +42,7 @@ export function createController(context) {
       );
       res.status(201).json(item);
     },
-    putCatalogId: async (req, res) => {
+    update: async (req, res) => {
       const input = catalogSchema.parse(req.body);
       const item = await transactionForRecord(
         db,

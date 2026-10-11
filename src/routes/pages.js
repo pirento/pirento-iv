@@ -17,6 +17,12 @@ export function attachPageRoutes(backend) {
       `/${folder}`,
       express.static(resolve(root, 'public', folder), { dotfiles: 'deny', index: false, fallthrough: true }),
     );
+  const favicon = resolve(root, 'public', 'favicon.svg');
+  // Browsers also request /favicon.ico directly, regardless of the <link rel="icon"> tag.
+  app.get(['/favicon.svg', '/favicon.ico'], (_req, res) => {
+    res.set('Cache-Control', 'public, max-age=86400');
+    res.type('image/svg+xml').sendFile(favicon);
+  });
   app.use('/shared', express.static(resolve(root, 'shared'), { dotfiles: 'deny', index: false }));
   app.use(
     '/vendor',

@@ -1,0 +1,329 @@
+.doc-editor-page .doc-section-heading {
+  font-size: 18px;
+  line-height: 1.4;
+  margin: 0 0 18px;
+}
+.doc-editor-page .doc-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+.doc-editor-page .doc-form-grid .doc-wide {
+  grid-column: 1 / -1;
+}
+.doc-editor-page .doc-line-card {
+  padding: 20px;
+  border: 1px solid #dce4df;
+  border-radius: 12px;
+  margin: 16px 0;
+  background: #fff;
+}
+.doc-editor-page .doc-line-card .doc-label-row {
+  margin-bottom: 16px;
+}
+.doc-editor-page .doc-line-card > .doc-line-fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.doc-editor-page .doc-line-card .doc-form-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.doc-editor-page .doc-line-card .doc-form-grid .doc-wide {
+  grid-column: 1 / -1;
+}
+.doc-editor-page .doc-line-card output {
+  display: block;
+  padding: 11px 12px;
+  border-radius: 7px;
+  color: #173c2e;
+  background: #f1f6f3;
+  font-weight: 650;
+}
+.doc-editor-page .doc-line-pricing {
+  padding-top: 14px;
+  margin-top: 16px;
+  border-top: 1px solid #e4e9e5;
+}
+.doc-editor-page .doc-line-pricing summary {
+  color: #365f4c;
+  cursor: pointer;
+  font-size: 13px;
+}
+.doc-editor-page .doc-line-pricing .pricing-fields {
+  margin-top: 12px;
+}
+.doc-editor-page .doc-search-input {
+  width: 100%;
+  margin: 10px 0;
+  min-height: 40px;
+  border: 1px solid #d9e2dc;
+  border-radius: 7px;
+  padding: 10px 12px;
+  background: #fff;
+}
+.doc-editor-page .doc-catalog-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  max-height: 340px;
+  overflow: auto;
+  margin-top: 16px;
+}
+.doc-editor-page .doc-catalog-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 15px;
+  text-align: left;
+  border: 1px solid #dce5dd;
+  border-radius: 9px;
+  background: white;
+  min-width: 0;
+}
+.doc-editor-page .doc-catalog-choice:hover {
+  border-color: #719d81;
+  background: #f6faf7;
+}
+.doc-editor-page .doc-catalog-choice strong {
+  font-size: 13px;
+  color: #243e31;
+}
+.doc-editor-page .doc-catalog-choice span {
+  color: #68766d;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.doc-editor-page .doc-catalog-choice span:last-child {
+  color: #246046;
+  font-weight: 650;
+}
+.doc-editor-page .doc-catalog-choice b {
+  font-size: 13px;
+  color: #1a563c;
+}
+.doc-editor-page .doc-image-preview {
+  min-height: 12px;
+  margin: 12px 0;
+}
+.doc-editor-page .doc-image-preview img {
+  max-width: 160px;
+  max-height: 120px;
+  object-fit: contain;
+}
+.doc-editor-page .doc-branding-image-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.doc-editor-page .doc-branding-image-grid > section {
+  min-width: 0;
+  border: 1px solid #e1e7e2;
+  border-radius: 9px;
+  padding: 16px;
+}
+.doc-editor-page .doc-branding-image-grid input[type='file'] {
+  font-size: 11px;
+  max-width: 100%;
+  padding: 8px;
+}
+.doc-editor-page .doc-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0;
+  font-size: 13px;
+}
+.doc-editor-page .doc-checkbox input {
+  width: auto;
+}
+.doc-editor-page .doc-shipping-section {
+  padding: 24px;
+}
+.doc-editor-page .doc-shipping-section > summary {
+  cursor: pointer;
+}
+.doc-editor-page .doc-shipping-section > .doc-text-button {
+  margin-bottom: 16px;
+}
+.doc-editor-page .doc-field input,
+.doc-editor-page .doc-field select,
+.doc-editor-page .doc-field textarea {
+  min-width: 0;
+  width: 100%;
+}
+.doc-editor-page .doc-content-fieldset:disabled {
+  opacity: 0.85;
+}
+.doc-editor-page .doc-branding-fields {
+  min-width: 0;
+}
+.doc-action-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.doc-draft-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 30px;
+  border-bottom: 1px solid #e8eeeb;
+  background: #fafbf8;
+}
+.doc-draft-tools > p {
+  font-size: 12px;
+  color: #607169;
+  line-height: 1.6;
+}
+.doc-draft-tools > button {
+  flex: 0 0 auto;
+}
+.doc-reset-dialog {
+  width: min(520px, calc(100vw - 32px));
+  max-height: calc(100dvh - 40px);
+  overflow: auto;
+  padding: 24px;
+  border: 1px solid #d6e1d9;
+  border-radius: 14px;
+  background: #fff;
+  color: #182b28;
+  box-shadow: 0 20px 70px #14271740;
+}
+.doc-reset-dialog::backdrop {
+  background: #14271770;
+}
+.doc-reset-dialog h2 {
+  margin: 0 0 12px;
+  font-size: 20px;
+}
+.doc-reset-dialog > p {
+  margin: 0 0 18px;
+  line-height: 1.7;
+}
+.doc-reset-dialog .doc-button {
+  white-space: normal;
+  min-height: 42px;
+}
+body.draft-dialog-open {
+  overflow: hidden;
+}
+@media (max-width: 650px) {
+  .doc-draft-tools {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px 20px;
+  }
+}
+@media print {
+  .doc-draft-tools,
+  .doc-reset-dialog {
+    display: none !important;
+  }
+}
+.payment-panel .payment-record-section {
+  margin: 24px 0;
+  padding: 24px;
+  border: 1px solid #e0e7e2;
+  border-radius: 14px;
+}
+.payment-panel h2,
+.messaging-panel h2 {
+  font-size: 18px;
+  line-height: 1.4;
+}
+.payment-panel .payment-record-section h2 {
+  margin-bottom: 5px;
+}
+.payment-panel .payment-record-section form {
+  margin-top: 15px;
+}
+.payment-panel .payment-primary,
+.payment-panel .payment-secondary,
+.payment-panel .payment-danger,
+.messaging-panel .messaging-refresh {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+.payment-panel #payment-record-button {
+  margin-top: 16px;
+}
+.payment-panel #payment-feedback {
+  white-space: pre-wrap;
+}
+.payment-panel #payment-audit-list ol {
+  padding: 0;
+  list-style: none;
+}
+.payment-panel .payment-plan-edit-row {
+  grid-template-columns: minmax(120px, 1.6fr) minmax(120px, 1fr) minmax(100px, 1fr) auto;
+}
+.payment-panel .payment-plan-edit-row .payment-icon-button {
+  width: auto;
+  min-width: 55px;
+  font-size: 11px;
+  padding: 8px;
+}
+.payment-panel .payment-schedule .doc-action-row {
+  margin-top: 15px;
+}
+.messaging-panel .messaging-compose h2 {
+  margin-bottom: 12px;
+}
+@media (max-width: 850px) {
+  .doc-editor-page .doc-catalog-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .doc-editor-page .doc-line-card .doc-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .doc-editor-page .doc-form-grid,
+  .doc-editor-page .doc-branding-image-grid,
+  .doc-editor-page .doc-catalog-cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .doc-editor-page .doc-line-card,
+  .doc-editor-page .doc-shipping-section,
+  .payment-panel .payment-record-section {
+    padding: 16px;
+  }
+  .payment-panel .payment-plan-edit-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .payment-panel .payment-plan-edit-row > label:first-child {
+    grid-column: 1 / -1;
+  }
+  .payment-panel .payment-plan-edit-row .payment-icon-button {
+    width: fit-content;
+  }
+}
+@media print {
+  .doc-preview-page #doc-preview-feedback {
+    display: none !important;
+  }
+  .doc-paper-viewport {
+    overflow: visible !important;
+  }
+}
+.doc-preview-page .doc-print-hint {
+  color: #68786e;
+}
+
+/* Search navigation wraps on phones without expanding the document editor. */
+.doc-picker-navigation {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-top: 8px;
+}
+.doc-picker-navigation button {
+  min-height: 36px;
+}

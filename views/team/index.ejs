@@ -2,8 +2,6 @@
 const users = [...(data.teamUsers || [])].sort((a,b) => Number(b.status === 'pending') - Number(a.status === 'pending') || b.createdAt.localeCompare(a.createdAt));
 const placeholder = {id:'',name:'',email:'',company:'',status:'pending',role:'staff',organizationIds:[],createdAt:null,lastLoginAt:null};
 %>
-<link rel="stylesheet" href="/css/management.css" />
-<link rel="stylesheet" href="/css/security.css" />
 <div class="mg-page" id="team-page">
   <% if (data.user.role !== 'admin') { %>
   <section class="mg-empty">

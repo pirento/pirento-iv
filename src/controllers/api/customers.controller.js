@@ -8,11 +8,11 @@ export function createController(context) {
   const { db, getOrganization, getCustomer, scopedOrganization } = context;
   return {
     ...directoryReaders(context, 'customers'),
-    getCustomers: async (req, res) => {
+    list: async (req, res) => {
       const organization = await scopedOrganization(req.query.organizationId);
       res.json((await db.models.customers.list(organization.id)).map((row) => normalizeContact(row)));
     },
-    postCustomers: async (req, res) => {
+    create: async (req, res) => {
       const input = customerSchema.parse(req.body);
       const customer = await db.transaction(
         async () => {
@@ -25,7 +25,7 @@ export function createController(context) {
       );
       res.status(201).json(customer);
     },
-    putCustomersId: async (req, res) => {
+    update: async (req, res) => {
       const input = customerSchema.parse(req.body);
       const customer = await transactionForRecord(
         db,
@@ -40,7 +40,7 @@ export function createController(context) {
       );
       res.json(customer);
     },
-    deleteCustomersId: async (req, res) => {
+    remove: async (req, res) => {
       await transactionForRecord(
         db,
         () => getCustomer(req.params.id),

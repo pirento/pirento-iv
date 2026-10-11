@@ -6,11 +6,11 @@ import { HttpError } from '../../middleware/errors.js';
 export function createController(context) {
   const { db, now, getOrganization, getFormat, saveFormat, scopedOrganization } = context;
   return {
-    getFormats: async (req, res) => {
+    list: async (req, res) => {
       const organization = await scopedOrganization(req.query.organizationId);
       res.json(await db.models.formats.list(organization.id));
     },
-    postFormats: async (req, res) => {
+    create: async (req, res) => {
       const input = formatSchema.parse(req.body);
       const format = await transaction(
         db,
@@ -30,7 +30,7 @@ export function createController(context) {
       );
       res.status(201).json(format);
     },
-    putFormatsId: async (req, res) => {
+    update: async (req, res) => {
       const input = formatSchema.parse(req.body);
       const format = await transactionForRecord(
         db,
@@ -51,7 +51,7 @@ export function createController(context) {
       );
       res.json(format);
     },
-    deleteFormatsId: async (req, res) => {
+    remove: async (req, res) => {
       await transactionForRecord(
         db,
         () => getFormat(req.params.id),

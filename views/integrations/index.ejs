@@ -12,7 +12,6 @@ const prefix = settings?.environmentPrefix || helpers.integrationEnvironmentPref
 const webhook = settings?.webhookPath || `/api/webhooks/${cashfree ? 'cashfree' : 'razorpay'}/${encodeURIComponent(organization.id)}`;
 const support = helpers.organizationSupportEmail(organization);
 %>
-<link rel="stylesheet" href="/css/management.css" />
 <div
   class="mg-page"
   id="integrations-page"

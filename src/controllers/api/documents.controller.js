@@ -38,11 +38,11 @@ export function createController(context) {
   } = context;
   const writer = createDocumentWriter({ db, now, newDocument, getOrganization, getCustomer });
   return {
-    getDocumentsIdMessages: async (req, res) => {
+    listMessages: async (req, res) => {
       await getDocument(req.params.id);
       res.json(await mailer.listMessages(req.params.id));
     },
-    postDocumentsIdEmail: async (req, res) => {
+    sendEmail: async (req, res) => {
       const input = z
         .object({
           includePaymentLink: z.boolean().default(false),
@@ -77,7 +77,7 @@ export function createController(context) {
         message,
       });
     },
-    getDocuments: async (req, res) => {
+    list: async (req, res) => {
       const organization = await scopedOrganization(req.query.organizationId);
       const kind =
         req.query.kind === undefined
@@ -88,13 +88,13 @@ export function createController(context) {
         : await db.models.documents.list(organization.id);
       res.json(rows);
     },
-    postDocuments: async (req, res) => {
+    create: async (req, res) => {
       const input = documentSchema.parse(req.body);
       const { requestId } = z.object({ requestId: z.string().uuid().optional() }).parse(req.body);
       const result = await writer.create(input, requestId?.toLowerCase());
       res.status(result.created ? 201 : 200).json(result.document);
     },
-    putDocumentsId: async (req, res) => {
+    update: async (req, res) => {
       const input = documentSchema.parse(req.body);
       const { version } = z
         .object({ version: z.number().int().nonnegative().safe().optional() })
@@ -244,7 +244,7 @@ export function createController(context) {
       );
       res.json(result);
     },
-    deleteDocumentsId: async (req, res) => {
+    remove: async (req, res) => {
       await transactionForRecord(
         db,
         () => getDocument(req.params.id),
@@ -267,7 +267,7 @@ export function createController(context) {
         ok: true,
       });
     },
-    postDocumentsIdConvert: async (req, res) => {
+    convert: async (req, res) => {
       let created = false;
       const invoice = await transactionForRecord(
         db,
@@ -329,7 +329,7 @@ export function createController(context) {
       );
       res.status(created ? 201 : 200).json(invoice);
     },
-    postDocumentsIdDeliveryNote: async (req, res) => {
+    createDeliveryNote: async (req, res) => {
       let created = false;
       const document = await transactionForRecord(
         db,
@@ -398,13 +398,13 @@ export function createController(context) {
       );
       res.status(created ? 201 : 200).json(document);
     },
-    getDocumentsIdPayments: async (req, res) => {
+    listPayments: async (req, res) => {
       const document = await getDocument(req.params.id);
       if (document.kind !== 'invoice')
         throw new HttpError(400, 'Payments can be recorded only against invoices.');
       res.json(await paymentDetails(document.id));
     },
-    putDocumentsIdInstallments: async (req, res) => {
+    updateInstallments: async (req, res) => {
       const { plan, version } = z
         .object({
           plan: installmentPlanSchema.nullable(),
@@ -437,7 +437,7 @@ export function createController(context) {
       );
       res.json(details);
     },
-    postDocumentsIdPayments: async (req, res) => {
+    recordPayment: async (req, res) => {
       const input = paymentSchema.parse(req.body);
       if (/^(razorpay|cashfree):/.test(input.requestId))
         throw new HttpError(400, 'This receipt identifier is reserved for verified gateway payments.');
@@ -460,7 +460,7 @@ export function createController(context) {
       );
       res.status(result.created ? 201 : 200).json(result.details);
     },
-    postDocumentsIdFinalize: async (req, res) => {
+    finalize: async (req, res) => {
       const details = await transactionForRecord(
         db,
         () => getDocument(req.params.id),

@@ -5,10 +5,10 @@ import { lookupResultSchema, validGstin } from '../../services/validation/valida
 export function createController(context) {
   const { portal, gstProvider, sandboxGst, lookupUrl, apiKey, fetcher } = context;
   return {
-    getGstCaptcha: async (req, res) => {
+    captcha: async (req, res) => {
       res.json(await portal.captcha(req.ip ?? 'local'));
     },
-    postGstLookup: async (req, res) => {
+    lookup: async (req, res) => {
       const input = z
         .object({
           gstin: z
@@ -32,7 +32,7 @@ export function createController(context) {
         );
       res.json(normalized.data);
     },
-    getGstGstin: async (req, res) => {
+    lookupByGstin: async (req, res) => {
       const number = req.params.gstin.trim().toUpperCase();
       if (!validGstin(number))
         throw new HttpError(400, 'Enter a valid 15-character GSTIN, including its check digit.');

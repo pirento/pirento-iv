@@ -25,32 +25,32 @@ export function createController({ recurringInvoices, auth }) {
     return { organizationId, actorId, input };
   }
   return {
-    getRecurringInvoices: async (req, res) => {
+    list: async (req, res) => {
       const { organizationId } = authorize(res, req.query.organizationId);
       res.json(await recurringInvoices.list(organizationId, req.query));
     },
-    getRecurringSources: async (req, res) => {
+    sources: async (req, res) => {
       const { organizationId } = authorize(res, req.query.organizationId);
       res.json(await recurringInvoices.sourceCandidates(organizationId, req.query.q || ''));
     },
-    getRecurringInvoicesId: async (req, res) => {
+    show: async (req, res) => {
       const { organizationId } = authorize(res, req.query.organizationId);
       res.json(await recurringInvoices.get(organizationId, req.params.id, req.query));
     },
-    postRecurringInvoices: async (req, res) => {
+    create: async (req, res) => {
       const { actorId } = authorize(res, req.body?.organizationId, true);
       const result = await recurringInvoices.create(req.body, actorId);
       res.status(result.created ? 201 : 200).json(result);
     },
-    putRecurringInvoicesId: async (req, res) => {
+    update: async (req, res) => {
       const { organizationId, actorId, input } = mutation(req, res);
       res.json(await recurringInvoices.update(organizationId, req.params.id, input, actorId));
     },
-    postRecurringInvoicesIdStatus: async (req, res) => {
+    setStatus: async (req, res) => {
       const { organizationId, actorId, input } = mutation(req, res);
       res.json(await recurringInvoices.setStatus(organizationId, req.params.id, input, actorId));
     },
-    postRecurringInvoicesIdGenerate: async (req, res) => {
+    generate: async (req, res) => {
       const { organizationId, actorId, input } = mutation(req, res);
       const result = await recurringInvoices.generate(organizationId, req.params.id, input, actorId);
       res

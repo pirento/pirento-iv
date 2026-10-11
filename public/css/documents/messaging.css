@@ -1,0 +1,372 @@
+/* Invoice email page: compose, delivery history and retry. */
+.messaging-panel {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 1080px;
+  min-width: 0;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid #e5eaf2;
+  border-radius: 18px;
+  color: #22304a;
+}
+.messaging-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 24px 26px;
+  border-bottom: 1px solid #e8edf4;
+}
+.messaging-header p {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.3px;
+  color: #6c7f9c;
+  margin: 0 0 5px;
+}
+.messaging-header h1 {
+  font-size: 20px;
+  margin: 0 0 5px;
+}
+.messaging-header span {
+  color: #8290a6;
+  font-size: 12px;
+}
+.messaging-body {
+  padding: 24px 26px;
+  min-width: 0;
+}
+.messaging-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: #fff9eb;
+  color: #845d13;
+  border: 1px solid #f1e4bd;
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 16px;
+  font-size: 12px;
+  line-height: 1.65;
+}
+.messaging-alert svg {
+  flex: none;
+  margin-top: 1px;
+}
+.messaging-alert strong {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 13px;
+}
+.messaging-alert-error {
+  background: #fff1f2;
+  border-color: #f5d1d8;
+  color: #a53349;
+}
+.messaging-alert-success {
+  background: #edf9f3;
+  border-color: #cdebdc;
+  color: #24774e;
+}
+.messaging-loading {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  min-height: 180px;
+  color: #7a879d;
+  font-size: 13px;
+}
+.messaging-recipient {
+  border: 1px solid #e5eaf3;
+  border-radius: 12px;
+  padding: 17px;
+  margin-bottom: 18px;
+  background: #fbfcfe;
+}
+.messaging-recipient span,
+.messaging-recipient strong,
+.messaging-recipient small {
+  display: block;
+}
+.messaging-recipient span {
+  font-size: 11px;
+  color: #7e8ca4;
+  margin-bottom: 7px;
+}
+.messaging-recipient strong {
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+.messaging-recipient small {
+  font-size: 11px;
+  color: #8591a5;
+  margin-top: 6px;
+}
+.messaging-compose {
+  padding-bottom: 20px;
+}
+.messaging-compose h3,
+.messaging-history h3 {
+  font-size: 15px;
+  margin: 0 0 10px;
+}
+.messaging-compose p {
+  font-size: 12px;
+  color: #728099;
+  line-height: 1.7;
+  margin: 0 0 14px;
+}
+.messaging-checkbox {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+  border: 1px solid #e0e7f4;
+  border-radius: 11px;
+  padding: 14px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.messaging-checkbox input {
+  accent-color: #3266d9;
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+}
+.messaging-checkbox span {
+  flex: 1;
+}
+.messaging-checkbox small {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  color: #8190a6;
+  line-height: 1.6;
+  margin-top: 5px;
+}
+.messaging-checkbox > svg {
+  color: #8091ae;
+  flex: none;
+}
+.messaging-primary {
+  border: 0;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #315cd2;
+  color: #fff;
+  padding: 12px 17px;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+}
+.messaging-panel button:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+.messaging-panel button:focus-visible,
+.messaging-panel input:focus-visible,
+.messaging-panel a:focus-visible {
+  outline: 3px solid #95b6ff;
+  outline-offset: 3px;
+}
+.messaging-automation {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  background: #f2f6fc;
+  border-radius: 12px;
+  margin-bottom: 24px;
+}
+.messaging-automation svg {
+  flex: none;
+  color: #5c7caf;
+}
+.messaging-automation strong {
+  font-size: 12px;
+}
+.messaging-automation p {
+  margin: 6px 0 0;
+  font-size: 11px;
+  color: #74849d;
+  line-height: 1.7;
+}
+.messaging-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.messaging-section-heading h3 {
+  margin: 0;
+}
+.messaging-section-heading h3 span {
+  font-size: 11px;
+  color: #8191aa;
+  margin-left: 7px;
+}
+.messaging-refresh,
+.messaging-retry {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #dce4f2;
+  background: #fff;
+  color: #4d6caa;
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.messaging-subtle {
+  font-size: 11px !important;
+  color: #8a97ab !important;
+  line-height: 1.6;
+}
+.messaging-history ol {
+  list-style: none;
+  padding: 0;
+  margin: 14px 0 0;
+}
+.messaging-history li {
+  border: 1px solid #e4eaf3;
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 10px;
+  overflow-wrap: anywhere;
+}
+.messaging-message-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.messaging-message-top strong {
+  font-size: 12px;
+}
+.messaging-status {
+  font-size: 9px;
+  font-weight: 700;
+  border-radius: 6px;
+  padding: 5px 7px;
+  white-space: nowrap;
+  background: #f0f3f8;
+  color: #6d7f98;
+}
+.messaging-status-sent {
+  background: #ebf8f0;
+  color: #277954;
+}
+.messaging-status-failed {
+  background: #fff0f2;
+  color: #b14357;
+}
+.messaging-status-held {
+  background: #fff6e2;
+  color: #936916;
+}
+.messaging-status-queued,
+.messaging-status-sending {
+  background: #eaf1ff;
+  color: #4b71bf;
+}
+.messaging-history li > p {
+  font-size: 12px;
+  margin: 10px 0 5px;
+  color: #6b7a92;
+}
+.messaging-history li > small {
+  display: block;
+  font-size: 10px;
+  color: #93a0b2;
+  margin-top: 5px;
+  line-height: 1.6;
+}
+.messaging-link-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  color: #5375ae;
+  margin-top: 8px;
+}
+.messaging-message-error {
+  font-size: 11px !important;
+  color: #a47521 !important;
+  line-height: 1.6;
+}
+.messaging-retry {
+  margin-top: 12px;
+}
+.messaging-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 140px;
+  color: #9aabc4;
+}
+.messaging-empty p {
+  font-size: 12px;
+}
+@keyframes messaging-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (max-width: 600px) {
+  .messaging-header {
+    padding: 20px 17px;
+    gap: 10px;
+  }
+  .messaging-header h1 {
+    font-size: 17px;
+  }
+  .messaging-body {
+    padding: 20px 17px;
+  }
+  .messaging-primary {
+    width: 100%;
+  }
+  .messaging-message-top {
+    align-items: flex-start;
+  }
+  .messaging-message-top strong {
+    line-height: 1.5;
+  }
+}
+
+.messaging-page .messaging-header {
+  align-items: flex-start;
+}
+.messaging-page .messaging-header h1,
+.messaging-page .messaging-header span {
+  overflow-wrap: anywhere;
+}
+.messaging-page .messaging-page-back {
+  margin-left: auto;
+  flex: none;
+}
+.messaging-page .messaging-recipient small {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 600px) {
+  .messaging-page .messaging-header {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .messaging-page .messaging-page-back {
+    order: -1;
+    width: 100%;
+    justify-content: flex-start;
+    margin: 0;
+  }
+}
+
+/* EJS forms use native controls; browser modules enhance these server-rendered fields. */

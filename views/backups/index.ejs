@@ -5,7 +5,6 @@ const date = value => value ? new Intl.DateTimeFormat('en-IN', {year:'numeric',m
 const interval = minutes => minutes % 60 === 0 ? `Every ${minutes / 60} ${minutes === 60 ? 'hour' : 'hours'}` : `Every ${minutes} minutes`;
 const unavailable = status?.available === false;
 %>
-<link rel="stylesheet" href="/css/management.css" />
 <div class="mg-page" id="backups-page">
   <% if (data.user.role !== 'admin') { %>
   <section class="mg-empty">
