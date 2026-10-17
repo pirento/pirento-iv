@@ -305,6 +305,8 @@ export function createModels(context) {
       update('auth_users', { id }, { password_hash, updated_at }),
     deleteUserResets: (user_id) => remove('auth_password_resets', { user_id }),
     deleteUserSessions: (user_id) => remove('auth_sessions', { user_id }),
+    deleteOtherSessions: (user_id, token_hash) =>
+      remove('auth_sessions', { user_id, token_hash: { $ne: token_hash } }),
     countUsers: async (role, status) => ({
       count: await collection('auth_users').countDocuments({ role, status }, options()),
     }),

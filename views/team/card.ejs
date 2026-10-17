@@ -68,4 +68,12 @@ const date = value => value ? new Intl.DateTimeFormat('en-IN', { year:'numeric',
     <p class="mg-hint">End this person's current sessions. They can sign in again while their account remains active.</p>
     <button class="button secondary" type="button" data-user-revoke-sessions>Sign out all sessions</button>
   </footer>
+  <form class="security-team-password" data-password-form <%= member.id === data.user.id ? 'hidden' : '' %>>
+    <label class="mg-field"
+      >Set a new password for this person<input name="password" type="password" autocomplete="new-password" minlength="12" maxlength="256" required
+    /></label>
+    <div data-error class="mg-message error" role="alert" tabindex="-1" hidden></div>
+    <p class="mg-hint">They are signed out everywhere. Share the password privately and ask them to change it from My sessions.</p>
+    <button class="button secondary" type="submit">Set new password</button>
+  </form>
 </article>

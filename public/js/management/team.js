@@ -1,6 +1,6 @@
 /**
  * Team access page (views/team/index.ejs, admin only): approve/disable accounts, set role and
- * assigned businesses, and sign out a member's sessions.
+ * assigned businesses, sign out a member's sessions and set a new password for them.
  */
 
 import { getPageData } from '../core/page.js';
@@ -144,6 +144,24 @@ if (data.user.role === 'admin') {
       });
     });
     updateAccess(card, user);
+    const passwordForm = card.querySelector('[data-password-form]');
+    passwordForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      showError('', passwordForm);
+      await withBusy(passwordForm, async () => {
+        try {
+          const result = await api(
+            `/auth/users/${encodeURIComponent(user.id)}/password`,
+            sendJson('POST', { password: passwordForm.elements.namedItem('password').value }),
+          );
+          passwordForm.reset();
+          setMessage(root.querySelector('[data-notice]'), `${user.name}: ${result.message}`);
+        } catch (error) {
+          if (error.status === 401) location.assign('/login');
+          else showError(error.message, passwordForm);
+        }
+      });
+    });
   }
 
   function createCard(user) {
@@ -153,6 +171,7 @@ if (data.user.role === 'admin') {
     card.querySelector('[data-user-name]').textContent = user.name;
     card.querySelector('[data-user-email]').textContent = user.email;
     card.querySelector('[data-user-self]').hidden = user.id !== data.user.id;
+    card.querySelector('[data-password-form]').hidden = user.id === data.user.id;
     card.querySelector('[data-user-status]').textContent =
       user.status === 'pending' ? 'Awaiting approval' : user.status === 'active' ? 'Active' : 'Disabled';
     const company = card.querySelector('[data-user-company]');

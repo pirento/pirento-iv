@@ -457,3 +457,94 @@ test(
     assert.equal(await backend.db.collection('auth_sessions').countDocuments(), 0);
   },
 );
+
+test(
+  'Passwords can be changed by their owner and set by an administrator, ending the right sessions',
+  native,
+  async (t) => {
+    const { backend, base } = await createFixture(t, { environment: ownerEnvironment });
+    const owner = await login(base);
+    const ownerElsewhere = await login(base);
+    const post = (path, cookie, body) => request(base, path, { method: 'POST', cookie, body });
+    const staffEmail = 'password-staff@example.test';
+    await post('/signup', '', {
+      name: 'Password Staff',
+      email: staffEmail,
+      password: 'StaffFirstPassword2026',
+    });
+    const staff = await backend.db.models.auth.userByEmail(staffEmail);
+    const approved = await request(base, `/users/${staff.id}`, {
+      method: 'PATCH',
+      cookie: owner.cookie,
+      body: { role: 'staff', status: 'active', organizationIds: ['pipeline2-legal'] },
+    });
+    assert.equal(approved.status, 200, JSON.stringify(approved.data));
+    const staffSession = await post('/login', '', { email: staffEmail, password: 'StaffFirstPassword2026' });
+    assert.equal(staffSession.status, 200);
+
+    const newOwnerPassword = 'OwnerChangedPassword2026!';
+    const wrong = await post('/password', owner.cookie, {
+      currentPassword: 'not-the-current-password',
+      newPassword: newOwnerPassword,
+    });
+    assert.equal(wrong.status, 400);
+    assert.match(wrong.data.error, /current password is incorrect/);
+    const short = await post('/password', owner.cookie, {
+      currentPassword: ownerEnvironment.INITIAL_ADMIN_PASSWORD,
+      newPassword: 'short',
+    });
+    assert.equal(short.status, 400);
+    assert.match(short.data.error, /12 characters/);
+    const changed = await post('/password', owner.cookie, {
+      currentPassword: ownerEnvironment.INITIAL_ADMIN_PASSWORD,
+      newPassword: newOwnerPassword,
+    });
+    assert.equal(changed.status, 200, JSON.stringify(changed.data));
+    assert.ok(
+      (await request(base, '/me', { cookie: owner.cookie })).data.user,
+      'this session stays signed in',
+    );
+    assert.equal((await request(base, '/me', { cookie: ownerElsewhere.cookie })).data.user, null);
+    const ownerEmail = ownerEnvironment.INITIAL_ADMIN_EMAIL;
+    assert.equal(
+      (await post('/login', '', { email: ownerEmail, password: ownerEnvironment.INITIAL_ADMIN_PASSWORD }))
+        .status,
+      401,
+    );
+    assert.equal((await post('/login', '', { email: ownerEmail, password: newOwnerPassword })).status, 200);
+
+    const byStaff = await post(`/users/${owner.user.id}/password`, staffSession.cookie, {
+      password: 'StaffCannotSetThis2026',
+    });
+    assert.equal(byStaff.status, 403);
+    const ownAccount = await post(`/users/${owner.user.id}/password`, owner.cookie, {
+      password: 'AnotherOwnerPassword2026',
+    });
+    assert.equal(ownAccount.status, 409);
+    const set = await post(`/users/${staff.id}/password`, owner.cookie, {
+      password: 'StaffSecondPassword2026',
+    });
+    assert.equal(set.status, 200, JSON.stringify(set.data));
+    assert.equal((await request(base, '/me', { cookie: staffSession.cookie })).data.user, null);
+    assert.equal(
+      (await post('/login', '', { email: staffEmail, password: 'StaffFirstPassword2026' })).status,
+      401,
+    );
+    assert.equal(
+      (await post('/login', '', { email: staffEmail, password: 'StaffSecondPassword2026' })).status,
+      200,
+    );
+
+    const actions = await backend.db
+      .collection('auth_audit')
+      .find({ action: { $in: ['password-changed', 'password-set-by-admin'] } })
+      .toArray();
+    assert.deepEqual(
+      actions.map((row) => [row.action, row.user_id, row.actor_id]),
+      [
+        ['password-changed', owner.user.id, owner.user.id],
+        ['password-set-by-admin', staff.id, owner.user.id],
+      ],
+    );
+  },
+);

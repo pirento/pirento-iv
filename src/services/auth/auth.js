@@ -551,6 +551,79 @@ export function createAuth(db, options = {}) {
       );
     },
   );
+
+  // --- Passwords: change your own (current password required) or, as an administrator, set another person's ---
+  router.post('/password', requireSession, rateLimit('login'), async (req, res) => {
+    const input = z
+      .object({ currentPassword: z.string().min(1).max(256), newPassword: password })
+      .strict()
+      .safeParse(req.body);
+    if (!input.success) {
+      const issue = input.error.issues.find((item) => item.path[0] === 'newPassword');
+      res.status(400).json({ error: issue?.message ?? 'Enter your current password and a new password.' });
+      return;
+    }
+    const user = res.locals.user;
+    const row = await userById(user.id);
+    if (!row || !(await verifyPassword(input.data.currentPassword, row.password_hash))) {
+      res.status(400).json({ error: 'Your current password is incorrect.' });
+      return;
+    }
+    if (await verifyPassword(input.data.newPassword, row.password_hash)) {
+      res.status(400).json({ error: 'Choose a new password that is different from your current one.' });
+      return;
+    }
+    const hash = await hashPassword(input.data.newPassword);
+    const changed = await db.transaction(async () => {
+      const latest = await userById(user.id);
+      if (latest?.status !== 'active' || latest.password_hash !== row.password_hash) return false;
+      await db.models.auth.updatePassword(hash, new Date(now()).toISOString(), user.id);
+      await db.models.auth.deleteUserResets(user.id);
+      await db.models.auth.deleteOtherSessions(user.id, currentTokenHash(req));
+      await audit('password-changed', user.id, user.id);
+      return true;
+    });
+    if (!changed) {
+      res.status(409).json({ error: 'Your password was changed elsewhere. Sign in again, then retry.' });
+      return;
+    }
+    res.json({ message: 'Password changed. Your other sessions were signed out.' });
+  });
+  router.post('/users/:id/password', requireSession, requireAdmin, async (req, res) => {
+    const input = z.object({ password }).strict().safeParse(req.body);
+    if (!input.success) {
+      res.status(400).json({ error: input.error.issues[0].message });
+      return;
+    }
+    const actor = res.locals.user;
+    const target = await userById(String(req.params.id));
+    if (!target) {
+      res.status(404).json({ error: 'Account not found.' });
+      return;
+    }
+    if (target.id === actor.id) {
+      res.status(409).json({ error: 'Change your own password from My sessions.' });
+      return;
+    }
+    const hash = await hashPassword(input.data.password);
+    const saved = await db.transaction(async () => {
+      const currentActor = await userById(actor.id);
+      if (currentActor?.status !== 'active' || currentActor.role !== 'admin') return false;
+      await db.models.auth.updatePassword(hash, new Date(now()).toISOString(), target.id);
+      await db.models.auth.deleteUserResets(target.id);
+      await db.models.auth.deleteUserSessions(target.id);
+      await audit('password-set-by-admin', target.id, actor.id);
+      return true;
+    });
+    if (!saved) {
+      res.status(403).json({ error: 'Administrator access is required.' });
+      return;
+    }
+    res.json({
+      message:
+        'New password saved and all of their sessions were signed out. Share it privately and ask them to change it after signing in.',
+    });
+  });
   router.get('/audit', requireSession, requireAdmin, async (req, res) => {
     res.json(await security.listAudit(res.locals.user, req.query));
   });
