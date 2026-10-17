@@ -170,6 +170,32 @@ function navigation(data) {
   return groups;
 }
 
+/**
+ * WhatsApp link (wa.me) with the document summary, addressed to the customer's saved phone.
+ * 10-digit numbers get the +91 country code; without a usable number WhatsApp asks for a contact.
+ */
+export function whatsappShareUrl(doc, paymentUrl = '') {
+  const digits = String(doc.customerSnapshot?.phone ?? '').replace(/\D/g, '');
+  const phone =
+    digits.length === 10
+      ? `91${digits}`
+      : digits.length === 11 && digits.startsWith('0')
+        ? `91${digits.slice(1)}`
+        : digits.length >= 11 && digits.length <= 15
+          ? digits
+          : '';
+  const due = pdf.documentDueDate(doc);
+  const balance = doc.kind === 'invoice' ? types.balanceDue(doc) : doc.totals.total;
+  const lines = [
+    `${types.DOCUMENT_LABELS[doc.kind] ?? 'Document'} ${doc.number} from ${doc.organizationSnapshot.name}`,
+    `Amount: ${types.money(doc.totals.total)}`,
+    ...(balance !== doc.totals.total ? [`Balance due: ${types.money(balance)}`] : []),
+    ...(due ? [`${pdf.documentDueLabel(doc)}: ${displayDate(due)}`] : []),
+    ...(paymentUrl ? [`Pay online: ${paymentUrl}`] : []),
+  ];
+  return `https://wa.me/${phone}?text=${encodeURIComponent(lines.join('\n'))}`;
+}
+
 /** Everything templates can call as helpers.<name>. Shared business constants are spread in too. */
 export const helpers = {
   ...types,
@@ -192,6 +218,7 @@ export const helpers = {
   navigation,
   workspaceUrl,
   documentViews,
+  whatsappShareUrl,
   statusLabel: (status) => (status === 'overdue' ? 'Overdue' : types.STATUS_LABELS[status] || status),
   escapeHtml: (value) =>
     String(value ?? '').replace(

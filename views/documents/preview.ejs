@@ -68,6 +68,12 @@ const styles = `--doc-accent:${colors.accent};--doc-on-accent:${colors.onAccent}
         href="<%= base %>/email/<%= encodeURIComponent(doc.id) %>"
         class="doc-button doc-button-secondary"
         >Email</a
+      ><% } %> <% if(!delivery&&!['draft','cancelled'].includes(doc.status)){ %><a
+        href="<%= helpers.whatsappShareUrl(doc, data.paymentLinkUrl) %>"
+        class="doc-button doc-button-secondary"
+        target="_blank"
+        rel="noopener noreferrer"
+        >WhatsApp</a
       ><% } %>
       <button type="button" class="doc-button doc-button-secondary" data-preview-action="print">Print</button>
       <button type="button" class="doc-button doc-button-primary" data-preview-action="pdf">

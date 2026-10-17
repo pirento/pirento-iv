@@ -114,6 +114,14 @@ export function createWorkspacePageData({
           throw new HttpError(404, 'This document is unavailable in the selected business.');
         return document;
       });
+      // The invoice's open online payment link, for the WhatsApp message on the preview page.
+      if (kind === 'invoice' && route.action === 'preview')
+        read('paymentLinkUrl', async () => {
+          const { links } = await online.getDocumentPayments(route.id).catch(() => ({ links: [] }));
+          return (
+            links.find((link) => ['created', 'partially_paid'].includes(link.state) && link.url)?.url ?? ''
+          );
+        });
     } else if (kind && !route.action) {
       tasks.push(
         (async () => {
