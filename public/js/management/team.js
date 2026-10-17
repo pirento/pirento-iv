@@ -1,6 +1,7 @@
 /**
  * Team access page (views/team/index.ejs, admin only): approve/disable accounts, set role and
- * assigned businesses and staff permission, sign out a member's sessions and set a new password.
+ * assigned businesses and staff permission, sign out a member's sessions, set a new password and
+ * remove two-step login for someone who lost their phone.
  */
 
 import { getPageData } from '../core/page.js';
@@ -36,6 +37,34 @@ if (data.user.role === 'admin') {
     sessionsDialog.querySelector('[data-session-submit]').textContent = 'Sign out all sessions';
     showError('', sessionsForm);
     sessionsDialog.showModal();
+  });
+  container.addEventListener('click', async (event) => {
+    const button = event.target.closest('[data-user-two-step-remove]');
+    if (!button) return;
+    const card = button.closest('[data-user-card]');
+    const member = users.find((user) => user.id === card?.dataset.userCard);
+    if (
+      !member ||
+      !confirm(
+        `Remove two-step login for ${member.name}? They will sign in with only their password until they set it up again.`,
+      )
+    )
+      return;
+    button.disabled = true;
+    try {
+      const result = await api(
+        `/auth/users/${encodeURIComponent(member.id)}/two-step/remove`,
+        sendJson('POST', {}),
+      );
+      users = users.map((user) => (user.id === member.id ? { ...user, twoStepEnabled: false } : user));
+      card.querySelector('[data-two-step-admin]').hidden = true;
+      setMessage(root.querySelector('[data-notice]'), `${member.name}: ${result.message}`);
+    } catch (error) {
+      if (error.status === 401) location.assign('/login');
+      else showError(error.message, card);
+    } finally {
+      button.disabled = false;
+    }
   });
   sessionsDialog
     .querySelector('[data-session-cancel]')
@@ -176,6 +205,7 @@ if (data.user.role === 'admin') {
     card.querySelector('[data-user-email]').textContent = user.email;
     card.querySelector('[data-user-self]').hidden = user.id !== data.user.id;
     card.querySelector('[data-password-form]').hidden = user.id === data.user.id;
+    card.querySelector('[data-two-step-admin]').hidden = !user.twoStepEnabled || user.id === data.user.id;
     card.querySelector('[data-user-status]').textContent =
       user.status === 'pending' ? 'Awaiting approval' : user.status === 'active' ? 'Active' : 'Disabled';
     const company = card.querySelector('[data-user-company]');

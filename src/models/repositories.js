@@ -307,6 +307,26 @@ export function createModels(context) {
     deleteUserSessions: (user_id) => remove('auth_sessions', { user_id }),
     deleteOtherSessions: (user_id, token_hash) =>
       remove('auth_sessions', { user_id, token_hash: { $ne: token_hash } }),
+    // Two-step login: a pending key during setup, the active key, and the last accepted code step.
+    setTwoStepPending: (totp_pending, updated_at, id) =>
+      update('auth_users', { id }, { totp_pending, updated_at }),
+    enableTwoStep: (totp_secret, totp_last_step, updated_at, id) =>
+      update('auth_users', { id }, { totp_secret, totp_last_step, totp_pending: null, updated_at }),
+    disableTwoStep: (updated_at, id) =>
+      update(
+        'auth_users',
+        { id },
+        { totp_secret: null, totp_pending: null, totp_last_step: null, updated_at },
+      ),
+    // Accepts a code's step only once, even when two sign-ins race with the same code.
+    useTwoStepCode: async (step, id) => {
+      const result = await collection('auth_users').updateOne(
+        { id, $or: [{ totp_last_step: null }, { totp_last_step: { $lt: step } }] },
+        { $set: { totp_last_step: step } },
+        options(),
+      );
+      return { changes: result.modifiedCount };
+    },
     countUsers: async (role, status) => ({
       count: await collection('auth_users').countDocuments({ role, status }, options()),
     }),

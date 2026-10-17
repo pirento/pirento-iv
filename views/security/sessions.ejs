@@ -74,6 +74,31 @@ const listUrl = pageNumber => helpers.pageUrl(data, 'sessions', { page: pageNumb
       <button class="button primary" type="submit">Change password</button>
     </form>
   </section>
+  <section class="mg-card security-password" aria-labelledby="two-step-title" data-two-step-card>
+    <h2 id="two-step-title">Two-step login</h2>
+    <div data-error class="mg-message error" role="alert" tabindex="-1" hidden></div>
+    <% if (data.user.twoStepEnabled) { %>
+    <p>On. Each sign-in asks for a 6-digit code from your authenticator app after your password.</p>
+    <form data-two-step-form data-action="disable">
+      <label class="mg-field"
+        >Current code from your app<input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required
+      /></label>
+      <button class="button" type="submit">Turn off two-step login</button>
+    </form>
+    <% } else { %>
+    <p>Off. Turn it on to ask for a 6-digit code from an authenticator app (Google Authenticator, Microsoft Authenticator or similar) after your password. Recommended for administrators.</p>
+    <button class="button primary" type="button" data-two-step-setup>Set up two-step login</button>
+    <form data-two-step-form data-action="enable" hidden>
+      <p>1. Scan this QR code with your authenticator app, or enter the key by hand.</p>
+      <img class="security-qr" data-two-step-qr alt="QR code to add this account to an authenticator app" width="200" height="200" />
+      <p>Key: <code data-two-step-secret></code> · <a data-two-step-link href="#">Open in authenticator app</a></p>
+      <label class="mg-field"
+        >2. Enter the 6-digit code the app shows<input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required
+      /></label>
+      <button class="button primary" type="submit">Turn on two-step login</button>
+    </form>
+    <% } %>
+  </section>
   <p class="security-muted">If you do not recognise a session, sign it out and change your password. Signing out prevents future requests from that session; work already accepted may finish.</p>
   <%- include('session-confirmation') %>
 </div>

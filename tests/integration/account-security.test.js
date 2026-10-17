@@ -7,6 +7,7 @@ import express from 'express';
 import { createAuth } from '../../src/services/auth/auth.js';
 import { createAuthSecurity } from '../../src/services/auth/security.js';
 import { createAccountRateLimiter } from '../../src/services/auth/account-rate-limit.js';
+import { twoStepCode } from '../../src/services/auth/two-step.js';
 import { createFixture, integrationEnabled } from './fixture.js';
 
 const native = {
@@ -622,5 +623,102 @@ test(
         .permission,
       'full',
     );
+  },
+);
+
+test(
+  'Two-step login asks for an authenticator code, accepts each code once and can be removed',
+  native,
+  async (t) => {
+    let instant = new Date();
+    const { backend, base } = await createFixture(t, { environment: ownerEnvironment, now: () => instant });
+    const post = (path, cookie, body) => request(base, path, { method: 'POST', cookie, body });
+    const step = () => Math.floor(instant.getTime() / 30_000);
+    const nextStep = () => {
+      instant = new Date(instant.getTime() + 30_000);
+    };
+    const owner = await login(base);
+    const credentials = {
+      email: ownerEnvironment.INITIAL_ADMIN_EMAIL,
+      password: ownerEnvironment.INITIAL_ADMIN_PASSWORD,
+    };
+
+    const setup = await post('/two-step/setup', owner.cookie, {});
+    assert.equal(setup.status, 200);
+    const { secret } = setup.data;
+    assert.match(secret, /^[A-Z2-7]{32}$/);
+    assert.match(setup.data.qrSvg, /^<svg /);
+    const right = twoStepCode(secret, step());
+    const wrong = right === '000000' ? '000001' : '000000';
+    assert.equal((await post('/two-step/enable', owner.cookie, { code: wrong })).status, 400);
+    assert.equal((await post('/two-step/enable', owner.cookie, { code: right })).status, 200);
+    assert.equal((await request(base, '/me', { cookie: owner.cookie })).data.user.twoStepEnabled, true);
+    const stored = await backend.db.models.auth.userById(owner.user.id);
+    assert.equal(stored.totp_pending, null);
+    assert.equal(
+      JSON.stringify((await request(base, '/users', { cookie: owner.cookie })).data).includes(secret),
+      false,
+    );
+
+    const noCode = await post('/login', '', credentials);
+    assert.equal(noCode.status, 401);
+    assert.equal(noCode.data.code, 'TWO_STEP_REQUIRED');
+    assert.equal(noCode.cookie, '', 'no session without the code');
+    const reused = await post('/login', '', { ...credentials, code: right });
+    assert.equal(reused.status, 401, 'the code used to turn it on cannot sign in');
+    assert.equal(reused.data.code, 'TWO_STEP_REQUIRED');
+    nextStep();
+    const fresh = twoStepCode(secret, step());
+    const signedIn = await post('/login', '', { ...credentials, code: fresh });
+    assert.equal(signedIn.status, 200, JSON.stringify(signedIn.data));
+    assert.equal(
+      (await post('/login', '', { ...credentials, code: fresh })).status,
+      401,
+      'a code works once',
+    );
+    assert.equal(
+      (await post('/login', '', { ...credentials, password: 'not-the-password', code: fresh })).data.code,
+      undefined,
+      'a wrong password does not reveal that two-step login is on',
+    );
+
+    const staffEmail = 'two-step-staff@example.test';
+    const staffPassword = 'TwoStepStaffPassword2026';
+    await post('/signup', '', { name: 'Two Step Staff', email: staffEmail, password: staffPassword });
+    const staff = await backend.db.models.auth.userByEmail(staffEmail);
+    await request(base, `/users/${staff.id}`, {
+      method: 'PATCH',
+      cookie: signedIn.cookie,
+      body: { role: 'staff', status: 'active', organizationIds: ['pipeline2-legal'] },
+    });
+    const staffSession = await post('/login', '', { email: staffEmail, password: staffPassword });
+    const staffSecret = (await post('/two-step/setup', staffSession.cookie, {})).data.secret;
+    assert.equal(
+      (await post('/two-step/enable', staffSession.cookie, { code: twoStepCode(staffSecret, step()) }))
+        .status,
+      200,
+    );
+    assert.equal((await post(`/users/${staff.id}/two-step/remove`, staffSession.cookie, {})).status, 403);
+    assert.equal((await post(`/users/${owner.user.id}/two-step/remove`, signedIn.cookie, {})).status, 409);
+    assert.equal((await post(`/users/${staff.id}/two-step/remove`, signedIn.cookie, {})).status, 200);
+    assert.equal((await post('/login', '', { email: staffEmail, password: staffPassword })).status, 200);
+
+    nextStep();
+    const off = await post('/two-step/disable', signedIn.cookie, { code: twoStepCode(secret, step()) });
+    assert.equal(off.status, 200, JSON.stringify(off.data));
+    assert.equal((await post('/login', '', credentials)).status, 200);
+    const actions = (
+      await backend.db
+        .collection('auth_audit')
+        .find({ action: /^two-step/ })
+        .sort({ created_at: 1, _id: 1 })
+        .toArray()
+    ).map((row) => row.action);
+    assert.deepEqual(actions, [
+      'two-step-enabled',
+      'two-step-enabled',
+      'two-step-removed-by-admin',
+      'two-step-disabled',
+    ]);
   },
 );

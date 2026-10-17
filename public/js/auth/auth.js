@@ -1,6 +1,7 @@
 /**
  * Login / signup / forgot-password / reset-password page (views/auth/index.ejs).
  * Shows/hides the password and submits the form to /api/auth/<mode>, then redirects or shows the result.
+ * When two-step login is on, the server asks for the authenticator code and the field is shown.
  */
 
 import { api, sendJson, formValues, showError, setBusy } from '../core/api.js';
@@ -25,7 +26,12 @@ form.addEventListener('submit', async (event) => {
   setBusy(button, true, 'Please wait…');
   try {
     let payload;
-    if (mode === 'login') payload = { email: values.email, password: values.password };
+    if (mode === 'login')
+      payload = {
+        email: values.email,
+        password: values.password,
+        ...(values.code ? { code: values.code } : {}),
+      };
     if (mode === 'signup')
       payload = {
         name: values.name,
@@ -50,6 +56,12 @@ form.addEventListener('submit', async (event) => {
     notice.hidden = false;
     form.reset();
   } catch (error) {
+    if (mode === 'login' && error.code === 'TWO_STEP_REQUIRED') {
+      form.querySelector('[data-two-step]').hidden = false;
+      form.elements.code.required = true;
+      form.elements.code.value = '';
+      form.elements.code.focus();
+    }
     showError(form, error.message);
   } finally {
     setBusy(button, false);

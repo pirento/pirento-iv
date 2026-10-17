@@ -164,3 +164,10 @@
 .security-team-password .button {
   justify-self: start;
 }
+.security-qr {
+  display: block;
+  width: 200px;
+  height: 200px;
+  margin: 8px 0;
+  image-rendering: pixelated;
+}

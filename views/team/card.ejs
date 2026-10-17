@@ -74,6 +74,10 @@ const date = value => value ? new Intl.DateTimeFormat('en-IN', { year:'numeric',
     <p class="mg-hint">End this person's current sessions. They can sign in again while their account remains active.</p>
     <button class="button secondary" type="button" data-user-revoke-sessions>Sign out all sessions</button>
   </footer>
+  <footer class="security-team-sessions" data-two-step-admin <%= member.twoStepEnabled && member.id !== data.user.id ? '' : 'hidden' %>>
+    <p class="mg-hint">Two-step login is on. If this person lost their phone, remove it so they can sign in with their password and set it up again.</p>
+    <button class="button secondary" type="button" data-user-two-step-remove>Remove two-step login</button>
+  </footer>
   <form class="security-team-password" data-password-form <%= member.id === data.user.id ? 'hidden' : '' %>>
     <label class="mg-field"
       >Set a new password for this person<input name="password" type="password" autocomplete="new-password" minlength="12" maxlength="256" required

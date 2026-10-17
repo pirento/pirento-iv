@@ -14,6 +14,7 @@ import express from 'express';
 import { z } from 'zod';
 import { createAccountRateLimiter } from './account-rate-limit.js';
 import { createAuthSecurity } from './security.js';
+import { newTwoStepSecret, qrSvg, twoStepSetupUrl, verifyTwoStepCode } from './two-step.js';
 // Session cookie name, session length (12 h) and password-reset link lifetime (30 min).
 const COOKIE = 'venturecore_session';
 const SESSION_MS = 12 * 60 * 60 * 1000;
@@ -38,7 +39,14 @@ const login = z
   .object({
     email,
     password: z.string().min(1).max(256),
+    code: z.string().max(10).optional(),
   })
+  .strict();
+// Error code the login page uses to show the authenticator-code field.
+const TWO_STEP_REQUIRED = 'TWO_STEP_REQUIRED';
+const TWO_STEP_ISSUER = 'Venturecore Workspace';
+const twoStepInput = z
+  .object({ code: z.string().regex(/^\d{6}$/, 'Enter the 6-digit code from your authenticator app.') })
   .strict();
 // Staff permission levels (administrators always have full access); a missing value means 'full'.
 export const STAFF_PERMISSIONS = ['full', 'no-delete', 'view'];
@@ -89,6 +97,7 @@ function safeUser(row) {
     status: row.status,
     organizationIds: row.organization_ids,
     permission: row.permission ?? 'full',
+    twoStepEnabled: Boolean(row.totp_secret),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     lastLoginAt: row.last_login_at,
@@ -281,6 +290,13 @@ export function createAuth(db, options = {}) {
     const matches = row
       ? await verifyPassword(input.data.password, row.password_hash)
       : (await derive(input.data.password, Buffer.alloc(16)), false);
+    if (matches && row.status === 'active' && row.totp_secret && !input.data.code) {
+      res.status(401).json({
+        error: 'Enter the 6-digit code from your authenticator app.',
+        code: TWO_STEP_REQUIRED,
+      });
+      return;
+    }
     const token = randomBytes(32).toString('hex');
     // A known password mismatch cannot create a session and must not acquire the
     // exclusive workspace transaction used for successful account changes.
@@ -297,6 +313,16 @@ export function createAuth(db, options = {}) {
             latest.password_hash !== row?.password_hash
           )
             return null;
+          if (latest.totp_secret) {
+            const step = verifyTwoStepCode(
+              latest.totp_secret,
+              input.data.code,
+              now(),
+              latest.totp_last_step ?? -1,
+            );
+            if (step === null || !(await db.models.auth.useTwoStepCode(step, latest.id)).changes)
+              return { codeRejected: true };
+          }
           const oldToken = sessionToken(req);
           if (oldToken) await db.models.auth.deleteSession(tokenHash(oldToken));
           await db.models.auth.deleteExpiredSessions(now());
@@ -305,6 +331,14 @@ export function createAuth(db, options = {}) {
           await audit('login', row.id, row.id);
           return safeUser(await userById(row.id));
         });
+    if (authenticated?.codeRejected) {
+      await accountRateLimit.recordLoginFailure(req.accountAttempt, row.id);
+      res.status(401).json({
+        error: 'That code is not valid. Enter the newest code from your authenticator app.',
+        code: TWO_STEP_REQUIRED,
+      });
+      return;
+    }
     if (!authenticated) {
       await accountRateLimit.recordLoginFailure(req.accountAttempt, row?.id ?? null);
       res.status(401).json({
@@ -634,6 +668,97 @@ export function createAuth(db, options = {}) {
         'New password saved and all of their sessions were signed out. Share it privately and ask them to change it after signing in.',
     });
   });
+
+  // --- Two-step login: authenticator-app codes, turned on and off by the account owner ---
+  const codeMismatch = 'That code did not match. Check the time on your phone and use the newest code.';
+  router.post('/two-step/setup', requireSession, async (_req, res) => {
+    const user = res.locals.user;
+    if (user.twoStepEnabled) {
+      res.status(409).json({ error: 'Two-step login is already on for your account.' });
+      return;
+    }
+    const secret = newTwoStepSecret();
+    await db.models.auth.setTwoStepPending(secret, new Date(now()).toISOString(), user.id);
+    const url = twoStepSetupUrl(secret, user.email, TWO_STEP_ISSUER);
+    res.json({ secret, url, qrSvg: qrSvg(url) });
+  });
+  router.post('/two-step/enable', requireSession, rateLimit('login'), async (req, res) => {
+    const input = twoStepInput.safeParse(req.body);
+    if (!input.success) {
+      res.status(400).json({ error: input.error.issues[0].message });
+      return;
+    }
+    const user = res.locals.user;
+    const enabled = await db.transaction(async () => {
+      const row = await userById(user.id);
+      const step = row?.totp_pending ? verifyTwoStepCode(row.totp_pending, input.data.code, now()) : null;
+      if (step === null) return false;
+      await db.models.auth.enableTwoStep(row.totp_pending, step, new Date(now()).toISOString(), user.id);
+      await audit('two-step-enabled', user.id, user.id);
+      return true;
+    });
+    if (!enabled) {
+      res.status(400).json({ error: codeMismatch });
+      return;
+    }
+    res.json({ message: 'Two-step login is on. You will be asked for a code each time you sign in.' });
+  });
+  router.post('/two-step/disable', requireSession, rateLimit('login'), async (req, res) => {
+    const input = twoStepInput.safeParse(req.body);
+    if (!input.success) {
+      res.status(400).json({ error: input.error.issues[0].message });
+      return;
+    }
+    const user = res.locals.user;
+    const disabled = await db.transaction(async () => {
+      const row = await userById(user.id);
+      const step = row?.totp_secret
+        ? verifyTwoStepCode(row.totp_secret, input.data.code, now(), row.totp_last_step ?? -1)
+        : null;
+      if (step === null) return false;
+      await db.models.auth.disableTwoStep(new Date(now()).toISOString(), user.id);
+      await audit('two-step-disabled', user.id, user.id);
+      return true;
+    });
+    if (!disabled) {
+      res.status(400).json({ error: codeMismatch });
+      return;
+    }
+    res.json({ message: 'Two-step login is off.' });
+  });
+  // Administrator recovery for a person who lost their phone.
+  router.post(
+    '/users/:id/two-step/remove',
+    requireSession,
+    requireAdmin,
+    noActionFields,
+    async (req, res) => {
+      const actor = res.locals.user;
+      const target = await userById(String(req.params.id));
+      if (!target) {
+        res.status(404).json({ error: 'Account not found.' });
+        return;
+      }
+      if (target.id === actor.id) {
+        res.status(409).json({ error: 'Turn off your own two-step login from My sessions.' });
+        return;
+      }
+      const removed = await db.transaction(async () => {
+        const currentActor = await userById(actor.id);
+        if (currentActor?.status !== 'active' || currentActor.role !== 'admin') return false;
+        await db.models.auth.disableTwoStep(new Date(now()).toISOString(), target.id);
+        await audit('two-step-removed-by-admin', target.id, actor.id);
+        return true;
+      });
+      if (!removed) {
+        res.status(403).json({ error: 'Administrator access is required.' });
+        return;
+      }
+      res.json({
+        message: 'Two-step login removed. They can sign in with their password and set it up again.',
+      });
+    },
+  );
   router.get('/audit', requireSession, requireAdmin, async (req, res) => {
     res.json(await security.listAudit(res.locals.user, req.query));
   });

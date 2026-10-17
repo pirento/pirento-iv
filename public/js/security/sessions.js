@@ -1,6 +1,6 @@
 /**
  * My sessions page (views/security/sessions.ejs): confirm and sign out one session or all other
- * sessions, and change your own password.
+ * sessions, change your own password and turn two-step login on or off.
  */
 
 import { getPageData } from '../core/page.js';
@@ -93,6 +93,47 @@ passwordForm.addEventListener('submit', async (event) => {
     } catch (error) {
       if (error.status === 401) location.assign('/login');
       else showError(error.message, passwordForm);
+    }
+  });
+});
+
+const twoStepCard = root.querySelector('[data-two-step-card]');
+const twoStepForm = twoStepCard.querySelector('[data-two-step-form]');
+twoStepCard.querySelector('[data-two-step-setup]')?.addEventListener('click', async (event) => {
+  const button = event.currentTarget;
+  button.disabled = true;
+  showError('', twoStepCard);
+  try {
+    const setup = await api('/auth/two-step/setup', sendJson('POST', {}));
+    twoStepForm.querySelector('[data-two-step-qr]').src =
+      'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(setup.qrSvg);
+    twoStepForm.querySelector('[data-two-step-secret]').textContent = setup.secret.match(/.{1,4}/g).join(' ');
+    twoStepForm.querySelector('[data-two-step-link]').href = setup.url;
+    twoStepForm.hidden = false;
+    button.hidden = true;
+    twoStepForm.elements.code.focus();
+  } catch (error) {
+    if (error.status === 401) location.assign('/login');
+    else showError(error.message, twoStepCard);
+    button.disabled = false;
+  }
+});
+twoStepForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  showError('', twoStepCard);
+  await withBusy(twoStepForm, async () => {
+    try {
+      const result = await api(
+        `/auth/two-step/${twoStepForm.dataset.action}`,
+        sendJson('POST', { code: twoStepForm.elements.code.value }),
+      );
+      try {
+        sessionStorage.setItem('vc:toast', result.message);
+      } catch {}
+      location.reload();
+    } catch (error) {
+      if (error.status === 401) location.assign('/login');
+      else showError(error.message, twoStepCard);
     }
   });
 });

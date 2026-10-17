@@ -22,6 +22,9 @@ export const SECURITY_ACTIONS = Object.freeze([
   { value: 'password-reset-completed', label: 'Password reset completed' },
   { value: 'password-changed', label: 'Password changed' },
   { value: 'password-set-by-admin', label: 'Password set by administrator' },
+  { value: 'two-step-enabled', label: 'Two-step login turned on' },
+  { value: 'two-step-disabled', label: 'Two-step login turned off' },
+  { value: 'two-step-removed-by-admin', label: 'Two-step login removed by administrator' },
   { value: 'owner-provisioned', label: 'Initial administrator provisioned' },
   { value: 'other', label: 'Other account activity' },
 ]);
