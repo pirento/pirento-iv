@@ -1,3 +1,8 @@
+/**
+ * Recurring invoices page (views/recurring/index.ejs): create/edit a schedule with a preview of the
+ * next dates, pause/resume, and "Generate now". Handles version conflicts from other tabs.
+ */
+
 import { api, sendJson } from '/js/core/api.js';
 import { getPageData } from '/js/core/page.js';
 import {

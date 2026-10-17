@@ -1,3 +1,5 @@
+/** Integration tests: payment reminder eligibility, policy changes, sending and route permissions. */
+
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import test from 'node:test';

@@ -1,3 +1,5 @@
+/** Integration tests: which invoices are picked for automatic reminders (indexed due-date queries). */
+
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import test from 'node:test';

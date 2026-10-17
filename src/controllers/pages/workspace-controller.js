@@ -1,8 +1,18 @@
+/**
+ * Page controller for all server-rendered screens (login pages and /workspace/...).
+ *
+ * For a workspace URL it: checks the session, parses the route
+ * (/workspace/<businessId>/<view>/<action>/<id>), enforces admin-only pages, loads the
+ * page data (src/services/pages/workspace-data.js), picks the EJS view and its
+ * stylesheets, and renders views/layouts/workspace.ejs. CSV downloads are streamed here too.
+ */
+
 import { helpers } from './view-helpers.js';
 import { readWorkspaceRoute, safeWorkspaceReturn } from '../../../public/js/core/workspace-route.js';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 
+// Browser tab / page heading for each workspace view.
 const titles = {
   overview: 'Overview',
   invoices: 'Invoices',
@@ -26,6 +36,7 @@ const titles = {
   dashboard_branding: 'Workspace branding',
   help: 'Workspace help',
 };
+// Views only administrators may open.
 const adminViews = new Set([
   'team',
   'security',
@@ -60,6 +71,7 @@ const pageStylesheets = {
   'security/sessions': ['security'],
   'security/activity': ['security'],
 };
+// Workspace sections that show documents, mapped to the stored document kind.
 const documentKinds = {
   invoices: 'invoice',
   quotations: 'quotation',
@@ -67,6 +79,7 @@ const documentKinds = {
   shipping: 'delivery_note',
 };
 
+/** Reads the last selected business from the vc_organization cookie (validated ID or undefined). */
 function rememberedOrganization(req) {
   const value = (req.headers.cookie || '')
     .split(';')
@@ -81,6 +94,7 @@ function rememberedOrganization(req) {
   }
 }
 
+/** Returns the Express handlers used by src/routes/pages.js: home, authentication, workspace, notFound, error. */
 export function createPageController(backend) {
   const { app, auth } = backend;
   const sessionUser = (req) =>

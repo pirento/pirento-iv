@@ -9,6 +9,7 @@ export const RECURRENCE_LABELS = Object.freeze({
 const dayMilliseconds = 86_400_000;
 const monthSteps = { monthly: 1, quarterly: 3, yearly: 12 };
 
+// true for a real YYYY-MM-DD calendar date between 2000-01-01 and 2199-12-31.
 export function validRecurrenceDate(value) {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   if (value < '2000-01-01' || value > '2199-12-31') return false;
@@ -20,6 +21,7 @@ function requireDate(value) {
   if (!validRecurrenceDate(value)) throw new RangeError('Use a valid calendar date between 2000 and 2199.');
 }
 
+// Adds whole days to a YYYY-MM-DD date; null when the result leaves the supported range.
 export function addCalendarDays(value, days) {
   requireDate(value);
   if (!Number.isSafeInteger(days)) throw new RangeError('Use a whole number of calendar days.');
@@ -48,6 +50,7 @@ export function recurrenceDate(anchorDate, frequency, index) {
   return `${nextYear}-${String(nextMonth + 1).padStart(2, '0')}-${String(Math.min(day, lastDay)).padStart(2, '0')}`;
 }
 
+// Date of occurrence `index` of a recurring schedule; null after maxOccurrences or endDate.
 export function scheduledDate(schedule, index = schedule.nextIndex) {
   if (
     schedule.maxOccurrences !== null &&

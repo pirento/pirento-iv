@@ -61,6 +61,7 @@ class Decimal {
 
 const invalid = new Decimal(null, 0);
 
+// Wraps a Number (or returns an existing Decimal); non-finite input gives an invalid Decimal.
 export function decimal(value) {
   if (value instanceof Decimal) return value;
   if (!Number.isFinite(value)) return invalid;

@@ -1,3 +1,9 @@
+/**
+ * Online payment front door: picks Razorpay or Cashfree for each business (its gateway setting)
+ * and forwards payment-link and webhook calls to the matching module.
+ * Used by the API as `online` (createPaymentLink, syncDocument, cancelPaymentLink, webhooks).
+ */
+
 import { flatMapAsync } from '../../async-collections.js';
 import { createHash } from 'node:crypto';
 import { Router } from 'express';
@@ -24,6 +30,7 @@ const disabled = () => ({
   webhookConfigured: false,
   mode: 'unconfigured',
 });
+/** Creates the gateway router; provider modules are created per business on first use. */
 export function createPaymentGateways(options) {
   const env = options.env ?? process.env;
   const request = options.fetch ?? fetch;

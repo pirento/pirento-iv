@@ -1,13 +1,20 @@
+/**
+ * Request limits for login, signup, forgot-password and reset-password, per client IP address.
+ * Counters are stored in MongoDB, so the limits hold across restarts and multiple servers.
+ */
+
 import { createHash } from 'node:crypto';
 import { normalizedClientAddress } from '../../config/trusted-proxy.js';
 import { HttpError } from '../../middleware/errors.js';
 
+// Allowed requests per window: login 20 / 15 min, signup 10 / hour, forgot 8 / hour, reset 15 / hour.
 export const ACCOUNT_LIMITS = Object.freeze({
   login: { maximum: 20, windowMs: 15 * 60 * 1000 },
   signup: { maximum: 10, windowMs: 60 * 60 * 1000 },
   forgot: { maximum: 8, windowMs: 60 * 60 * 1000 },
   reset: { maximum: 15, windowMs: 60 * 60 * 1000 },
 });
+// When the counter cannot be read in time, the request fails with 503 instead of skipping the limit.
 export const ACCOUNT_LIMIT_TIMEOUT_MS = 2000;
 
 /** A late counter write is harmless: it consumes an attempt but can never authorize a request. */
@@ -25,6 +32,7 @@ async function boundedOperation(operation, timeoutMs) {
   }
 }
 
+/** Returns { middleware(scope), take, recordLoginFailure } used by src/services/auth/auth.js. */
 export function createAccountRateLimiter({ db, observe, timeoutMs = ACCOUNT_LIMIT_TIMEOUT_MS }) {
   const counters = db.collection('auth_rate_limits');
   const writeOptions = () => ({ timeoutMS: timeoutMs, writeConcern: { w: 'majority' } });

@@ -1,3 +1,5 @@
+/** Customer ledger pages (views/ledger/index.ejs, statement.ejs): filter form and Print statement. */
+
 const filterForm = document.querySelector('[data-ledger-filters]');
 
 function currentFilters() {

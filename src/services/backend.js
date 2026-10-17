@@ -1,3 +1,12 @@
+/**
+ * Composition root: creates every service once and wires them together.
+ *
+ * Order: database -> logging/readiness -> backups -> GST provider -> workspace service ->
+ * mailer -> accounts (auth) -> payment gateways -> ledger, reminders, recurring invoices ->
+ * page data -> API controllers and routes. The resulting object (app + services + close())
+ * is used by src/app.js, the tests and the preview launcher.
+ */
+
 import { createApiControllers } from '../controllers/api/index.js';
 import { registerApiRoutes } from '../routes/api.js';
 import { createWorkspaceService } from './workspace-service.js';
@@ -25,6 +34,11 @@ import { createAutomationRunner } from './operations/automation-runner.js';
 import { createCustomerLedger } from './ledger/customer-ledger.js';
 import { createPaymentReminders } from './integrations/email/payment-reminders.js';
 import { createRecurringInvoices } from './recurring/recurring-invoices.js';
+
+/**
+ * Builds the API application: returns the Express app with the services on app.locals.services
+ * and startup work on app.locals.initialize(). createBackend() below wraps it for callers.
+ */
 export async function createApp(options = {}) {
   const environment = options.environment ?? process.env;
   const db =

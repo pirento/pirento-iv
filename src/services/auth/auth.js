@@ -1,15 +1,29 @@
+/**
+ * Accounts and sign-in: the /api/auth routes plus the session middleware used by every API call.
+ *
+ * - Passwords are stored as scrypt hashes; sessions are random tokens in an HttpOnly cookie
+ *   (only a SHA-256 hash of the token is stored in the database). Sessions last 12 hours.
+ * - New signups wait for administrator approval; the first administrator comes from
+ *   INITIAL_ADMIN_EMAIL / INITIAL_ADMIN_PASSWORD (initializeOwner).
+ * - Login/signup/reset requests are rate limited (account-rate-limit.js) and every account
+ *   change is written to the security activity log (security.js).
+ */
+
 import { createHash, randomBytes, randomUUID, scrypt, timingSafeEqual } from 'node:crypto';
 import express from 'express';
 import { z } from 'zod';
 import { createAccountRateLimiter } from './account-rate-limit.js';
 import { createAuthSecurity } from './security.js';
+// Session cookie name, session length (12 h) and password-reset link lifetime (30 min).
 const COOKIE = 'venturecore_session';
 const SESSION_MS = 12 * 60 * 60 * 1000;
 const RESET_MS = 30 * 60 * 1000;
+// The same message is shown whether or not the email exists, so accounts cannot be discovered.
 const GENERIC_SIGNUP =
   'Your request has been received. New accounts require administrator approval before signing in.';
 const GENERIC_RESET =
   'If an active account exists for this email and email delivery is configured, a password reset link will be sent.';
+// Request body schemas for /api/auth endpoints.
 const email = z.string().trim().toLowerCase().email().max(254);
 const password = z.string().min(12, 'Use at least 12 characters for your password.').max(256);
 const signup = z
@@ -34,6 +48,7 @@ const access = z
   })
   .strict();
 const tokenHash = (value) => createHash('sha256').update(value).digest('hex');
+// scrypt key derivation (memory-hard, so stolen hashes are slow to crack).
 function derive(password, salt) {
   return new Promise((resolve, reject) =>
     scrypt(
@@ -60,6 +75,7 @@ async function verifyPassword(password, stored) {
     return false;
   return timingSafeEqual(await derive(password, Buffer.from(salt, 'hex')), Buffer.from(digest, 'hex'));
 }
+// The account fields that may be sent to the browser (never the password hash).
 function safeUser(row) {
   return {
     id: row.id,
@@ -74,6 +90,10 @@ function safeUser(row) {
     lastLoginAt: row.last_login_at,
   };
 }
+/**
+ * Creates the auth service. Returns { router (mounted at /api/auth), requireSession,
+ * requireAdmin, getSessionUser, initializeOwner, mutationGuard, listUsers, sessionPage, listAudit }.
+ */
 export function createAuth(db, options = {}) {
   const environment = options.environment ?? process.env;
   const production = options.production ?? environment.NODE_ENV === 'production';
@@ -96,6 +116,7 @@ export function createAuth(db, options = {}) {
   const accountRateLimit = createAccountRateLimiter({ db, observe: security.observe });
   const userById = async (id) => await db.models.auth.userById(id);
   const userByEmail = async (address) => await db.models.auth.userByEmail(address);
+  // --- Sessions ---
   function sessionToken(req) {
     const values = (req.headers.cookie ?? '')
       .split(';')
@@ -111,6 +132,7 @@ export function createAuth(db, options = {}) {
     const row = await db.models.auth.sessionUser(tokenHash(token), now(), 'active');
     return row ? safeUser(row) : null;
   }
+  // Middleware: 401 unless a valid session cookie is present; puts the user in res.locals.user.
   const requireSession = async (req, res, next) => {
     const user = await getSessionUser(req);
     res.set('Cache-Control', 'no-store');
@@ -123,6 +145,7 @@ export function createAuth(db, options = {}) {
     res.locals.user = user;
     next();
   };
+  // Middleware: 403 unless the signed-in user is an administrator.
   const requireAdmin = (_req, res, next) => {
     if (res.locals.user?.role !== 'admin') {
       res.status(403).json({
@@ -133,6 +156,7 @@ export function createAuth(db, options = {}) {
     next();
   };
   const rateLimit = (scope) => accountRateLimit.middleware(scope);
+  // Cross-site request protection: changes must be JSON and come from this website's own origin.
   const mutationGuard = (req, res, next) => {
     res.set('Cache-Control', 'no-store');
     if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
@@ -156,6 +180,8 @@ export function createAuth(db, options = {}) {
     next();
   };
   router.use(mutationGuard);
+  // Creates the first administrator from INITIAL_ADMIN_* settings. If that email already belongs to an
+  // active administrator nothing changes (the password is never reset); any other existing account is an error.
   async function initializeOwner() {
     const configuredEmail = environment.INITIAL_ADMIN_EMAIL;
     const configuredPassword = environment.INITIAL_ADMIN_PASSWORD;
@@ -200,6 +226,7 @@ export function createAuth(db, options = {}) {
     });
   }
 
+  // --- Routes: /api/auth/... ---
   router.get('/me', async (req, res) =>
     res.json({
       user: await getSessionUser(req),
@@ -296,6 +323,7 @@ export function createAuth(db, options = {}) {
       message: 'Signed out.',
     });
   });
+  // Password reset: emails a one-time link (only when email sending is configured).
   router.post('/forgot-password', rateLimit('forgot'), async (req, res) => {
     const input = z
       .object({
@@ -386,6 +414,7 @@ export function createAuth(db, options = {}) {
       message: 'Password updated. Please sign in with your new password.',
     });
   });
+  // --- Team access (administrators): list accounts, approve/disable, assign businesses ---
   router.get('/users', requireSession, requireAdmin, async (_req, res) => {
     const rows = await db.models.auth.listUsers();
     res.json(rows.map(safeUser));
@@ -482,6 +511,7 @@ export function createAuth(db, options = {}) {
     res.json(safeUser(await userById(target.id)));
   });
 
+  // --- My sessions and security activity ---
   const currentTokenHash = (req) => {
     const token = sessionToken(req);
     return token ? tokenHash(token) : undefined;

@@ -1,3 +1,12 @@
+/**
+ * Database backups and restore files.
+ *
+ * A backup is a MongoDB Extended JSON snapshot of every collection (read in one consistent
+ * session) plus a manifest with its SHA-256 checksum, stored in DATABASE_BACKUP_DIR with
+ * private file permissions. Downloads re-verify the checksum; old backups are pruned to
+ * BACKUP_RETENTION_COUNT. Restore tooling is in scripts/database.js.
+ */
+
 import { BSON } from 'mongodb';
 const { EJSON } = BSON;
 import {
@@ -25,6 +34,7 @@ const ID_PATTERN =
   /^snapshot-\d{8}T\d{9}Z-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const SHA_PATTERN = /^[0-9a-f]{64}$/;
 const directoryQueues = new Map();
+/** Backup failure with a safe message and a code ('configuration', 'not_found', ...). */
 export class DatabaseBackupError extends Error {
   code;
   constructor(code, message) {
@@ -41,6 +51,7 @@ function integerSetting(value, fallback, maximum, label) {
     throw new DatabaseBackupError('configuration', `${label} is outside its allowed range.`);
   return number;
 }
+/** Reads BACKUP_ENABLED, DATABASE_BACKUP_DIR, BACKUP_INTERVAL_MINUTES (default 1440) and BACKUP_RETENTION_COUNT (default 7). */
 export function parseDatabaseBackupConfig(environment, databasePath = '.data/workspace.mongodb') {
   const enabled = environment.BACKUP_ENABLED?.trim().toLowerCase() || 'false';
   if (enabled !== 'true' && enabled !== 'false')
@@ -261,6 +272,10 @@ function toMetadata(manifest, verified = true) {
     verification: verified ? 'verified' : 'on_download',
   };
 }
+/**
+ * Returns { createBackup, listBackups, listBackupMetadata, verifyBackup, getVerifiedDatabasePath,
+ * waitForIdle }. Operations on one backup directory run one at a time.
+ */
 export function createDatabaseBackupService(options) {
   const directory = resolve(options.directory);
   const retention = options.retention ?? 7;

@@ -1,9 +1,15 @@
+/**
+ * Integration status API (GET /api/integrations/status): shows which payment, email and GST
+ * settings are configured for a business. Never returns secret values.
+ */
+
 import { integrationEnvironmentPrefix } from '../../../shared/business-identity.js';
 import { z } from 'zod';
 import { HttpError } from '../../middleware/errors.js';
 export function createController(context) {
   const { db, auth, mailer, online, gstStatus, getOrganization, getDocument } = context;
   return {
+    // GET /api/integrations/status
     status: async (req, res) => {
       const user = res.locals.user;
       const documentId =

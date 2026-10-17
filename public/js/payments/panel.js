@@ -1,3 +1,9 @@
+/**
+ * Payments page for one invoice (views/payments/panel.ejs): record a manual receipt, void a receipt,
+ * installment plan (schedule.js), online payment link (online.js) and the payment history.
+ * Keeps all sections in sync and reacts to version conflicts with other tabs.
+ */
+
 import { api, sendJson } from '/js/core/api.js';
 import { getPageData } from '/js/core/page.js';
 import { balanceDue, money, paidAmount, PAYMENT_METHODS, STATUS_LABELS } from '/shared/types.js';

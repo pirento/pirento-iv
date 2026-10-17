@@ -1,3 +1,8 @@
+/**
+ * Payment reminders page (views/reminders/index.ejs): save the automatic reminder policy (admin),
+ * preview a reminder in a dialog and confirm sending it.
+ */
+
 import { api, sendJson, setBusy, showError } from '../core/api.js';
 import { getPageData, rememberToast } from '../core/page.js';
 import { money } from '/shared/types.js';

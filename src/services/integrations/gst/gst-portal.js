@@ -1,7 +1,14 @@
+/**
+ * GST taxpayer lookup through the public government portal (services.gst.gov.in).
+ * The user types the CAPTCHA shown by the portal; the server keeps the portal session for
+ * 3 minutes and never tries to bypass the CAPTCHA.
+ */
+
 import { randomUUID } from 'node:crypto';
 const CAPTCHA_URL = 'https://services.gst.gov.in/services/captcha';
 const LOOKUP_URL = 'https://services.gst.gov.in/services/api/search/taxpayerDetails';
 const SESSION_LIFETIME_MS = 3 * 60 * 1000;
+/** Lookup failure with an HTTP status and a message safe to show the user. */
 export class PortalError extends Error {
   status;
   constructor(status, message) {
@@ -9,6 +16,7 @@ export class PortalError extends Error {
     this.status = status;
   }
 }
+/** Reads a response body up to maxBytes (larger responses are rejected). */
 export async function readLimited(response, maxBytes) {
   if (!response.body) throw new Error('Empty provider response');
   const reader = response.body.getReader();
@@ -67,6 +75,7 @@ function normalizePortalResult(data, gstin) {
       : {}),
   };
 }
+/** Returns { captcha, lookup } for the CAPTCHA-based portal lookup, with a per-client rate limit. */
 export function createGstPortal(fetcher = globalThis.fetch) {
   const sessions = new Map();
   const requests = new Map();

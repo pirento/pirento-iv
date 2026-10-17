@@ -1,3 +1,5 @@
+/** Chooses the GST taxpayer lookup provider from the environment (GST_PROVIDER, GST_LOOKUP_URL, GST_API_KEY). */
+
 import { createGstPortal } from './gst-portal.js';
 import { createSandboxGst } from './sandbox-gst.js';
 

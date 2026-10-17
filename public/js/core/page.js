@@ -1,6 +1,9 @@
+/** Access to the page's server-provided data (<script id="page-data">) and workspace URL helpers. */
+
 import { rememberNotice } from './optional-storage.js';
 
 let cached;
+/** The JSON data the server rendered into the page (read once, then cached). */
 export function getPageData() {
   if (!cached) cached = JSON.parse(document.getElementById('page-data')?.textContent || '{}');
   return cached;
@@ -21,6 +24,7 @@ export function safeReturn(value, fallback = '/') {
   }
 }
 
+/** URL of a workspace page in the current business, e.g. workspacePath('invoices', 'edit', id). */
 export function workspacePath(view, action, id, extra = {}) {
   const organizationId = getPageData().route?.organizationId;
   const path = `/workspace/${encodeURIComponent(organizationId)}/${view}${action ? `/${action}${id ? `/${encodeURIComponent(id)}` : ''}` : ''}`;
@@ -28,6 +32,7 @@ export function workspacePath(view, action, id, extra = {}) {
   return path + (params.size ? `?${params}` : '');
 }
 
+/** Shows `message` as a toast after the next navigation. */
 export function rememberToast(message) {
   rememberNotice(message);
 }

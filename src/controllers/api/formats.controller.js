@@ -1,3 +1,8 @@
+/**
+ * Invoice formats API (/api/formats): layout, colours, columns and paper settings per business.
+ * A business always keeps at least one format and exactly one default format.
+ */
+
 import { randomUUID } from 'node:crypto';
 import { transaction } from '../../config/database.js';
 import { transactionForRecord } from '../../services/transaction-ownership.js';
@@ -6,10 +11,12 @@ import { HttpError } from '../../middleware/errors.js';
 export function createController(context) {
   const { db, now, getOrganization, getFormat, saveFormat, scopedOrganization } = context;
   return {
+    // GET /api/formats
     list: async (req, res) => {
       const organization = await scopedOrganization(req.query.organizationId);
       res.json(await db.models.formats.list(organization.id));
     },
+    // POST /api/formats
     create: async (req, res) => {
       const input = formatSchema.parse(req.body);
       const format = await transaction(
@@ -30,6 +37,7 @@ export function createController(context) {
       );
       res.status(201).json(format);
     },
+    // PUT /api/formats/:id
     update: async (req, res) => {
       const input = formatSchema.parse(req.body);
       const format = await transactionForRecord(
@@ -51,6 +59,7 @@ export function createController(context) {
       );
       res.json(format);
     },
+    // DELETE /api/formats/:id
     remove: async (req, res) => {
       await transactionForRecord(
         db,

@@ -1,3 +1,10 @@
+/**
+ * Cashfree payment links for invoices (one module per business).
+ *
+ * Same flow as online-payments.js (Razorpay): create link -> sync / webhook -> verify the order
+ * with Cashfree -> record a receipt. Webhooks are verified with the client secret.
+ */
+
 import { mapAsync } from '../../async-collections.js';
 import { createHash, createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { Router } from 'express';
@@ -15,6 +22,7 @@ function paymentId(value) {
       ? value
       : undefined;
 }
+/** Converts a Cashfree rupee amount (max 2 decimals) to whole paise; returns NaN for anything invalid. */
 export function cashfreeAmountPaise(value) {
   const text =
     typeof value === 'number' && Number.isFinite(value)
@@ -27,6 +35,7 @@ export function cashfreeAmountPaise(value) {
   const amount = Number(whole) * 100 + Number(fraction.padEnd(2, '0'));
   return Number.isSafeInteger(amount) ? amount : NaN;
 }
+/** Checks a Cashfree webhook signature (timestamp + body, HMAC-SHA256 with the client secret). */
 export function verifyCashfreeSignature(body, signature, timestamp, secret) {
   if (
     !secret ||
@@ -40,6 +49,7 @@ export function verifyCashfreeSignature(body, signature, timestamp, secret) {
   const supplied = Buffer.from(signature, 'base64');
   return supplied.length === expected.length && timingSafeEqual(expected, supplied);
 }
+/** Returns the Cashfree module for one business (status, links, sync, webhooks). */
 export function createCashfreePayments(options) {
   const { db, organizationId, recordVerifiedPayment } = options;
   const env = options.env ?? process.env;

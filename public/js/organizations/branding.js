@@ -1,3 +1,5 @@
+/** Workspace branding page (views/settings/branding.ejs): company name and dashboard logo. */
+
 import { api, sendJson, formValues, showError, setBusy } from '../core/api.js';
 import { workspacePath, rememberToast } from '../core/page.js';
 import { bindImageFields } from '../core/images.js';

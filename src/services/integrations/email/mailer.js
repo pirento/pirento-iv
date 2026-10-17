@@ -1,3 +1,13 @@
+/**
+ * Email delivery (Resend HTTP API) through a durable outbox.
+ *
+ * Emails (invoices with PDF attachment, payment receipts, reminders, password resets) are first
+ * saved to the email_outbox collection; a worker then claims each message with a 5-minute lease
+ * and sends it. Each message keeps one provider idempotency key, so a retry can never send a
+ * second copy. Failed sends retry up to 6 times within 23 hours; cancelled documents are held.
+ * Per-business sender settings come from src/config/business-config.js.
+ */
+
 import { mapAsync } from '../../async-collections.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
@@ -22,6 +32,7 @@ import {
   reminderSubject,
   reminderTargets,
 } from './reminder-rules.js';
+// Retry limits: attempts per message, worker lease length, and the window in which a retry is safe.
 const MAX_ATTEMPTS = 6;
 const LEASE_MS = 5 * 60_000;
 const SAFE_RETRY_WINDOW_MS = 23 * 60 * 60_000;
@@ -71,6 +82,7 @@ const escaped = (value) =>
 const textLines = (value) => escaped(value).replace(/\r?\n/g, '<br>');
 // eslint-disable-next-line no-control-regex -- rejects control characters on purpose
 const heading = (value) => value.replace(/[\r\n\x00-\x1f\x7f]/g, ' ').slice(0, 200);
+/** Email error with an HTTP status and a message safe to show the user. */
 export class EmailQueueError extends Error {
   status;
   constructor(message, status = 400) {
@@ -79,6 +91,7 @@ export class EmailQueueError extends Error {
     this.name = 'EmailQueueError';
   }
 }
+/** True only for an https:// payment link on a Razorpay or Cashfree host (no login info or custom port). */
 export function validPaymentEmailUrl(value) {
   try {
     const url = new URL(value);
@@ -126,6 +139,7 @@ function supportAddress(org) {
       ? 'support@shrisarraf.com'
       : 'support@pirento.com';
 }
+// --- Email content (HTML bodies for each message type) ---
 function emailFrame(title, body, company, support = 'support@pirento.com') {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escaped(title)}</title></head><body style="margin:0;padding:24px 12px;background:#f3f5f9;color:#182339;font-family:Arial,Helvetica,sans-serif"><main style="max-width:700px;margin:auto;background:#fff;padding:28px;border-radius:16px"><p style="font-size:12px;letter-spacing:1px;color:#576783">${escaped(company)}</p><h1 style="font-size:25px;line-height:1.3">${escaped(title)}</h1>${body}<hr style="border:0;border-top:1px solid #e4e9f1;margin-top:28px"><p style="font-size:12px;color:#68758b">This email records the invoice or payment status at the time it was created. Contact the issuing organization for any correction.</p><p style="font-size:12px;color:#68758b">Issued by ${escaped(company)}. Support: <a href="mailto:${escaped(support)}">${escaped(support)}</a></p></main></body></html>`;
 }
@@ -258,6 +272,11 @@ function paymentReminderPayload(document, reminder, asOf) {
     text: `${title}\n\n${summary}\nPlease use the payment instructions on your invoice or contact the issuing business. If you have just paid, please share the payment reference so the balance can be checked.\n\n${content.text}\n\nIssued by ${legalIdentity(document.organizationSnapshot)}. Support: ${supportAddress(document.organizationSnapshot)}`,
   };
 }
+/**
+ * Creates the mailer. Returns { status, get, listMessages, listReminderMessages, enqueueInvoice,
+ * enqueueReminder, enqueuePayment, enqueuePasswordReset, holdCancelledDocument, retry,
+ * processQueue (the worker loop), stop }.
+ */
 export function createMailer(db, options = {}) {
   const env = options.env ?? process.env,
     fetcher = options.fetch ?? fetch,
@@ -276,6 +295,7 @@ export function createMailer(db, options = {}) {
   let stopping = false;
   let activeRun = null;
   let stopPromise = null;
+  // --- Worker claims and leases ---
   function trackLease(row) {
     const controller = new AbortController();
     const signal = AbortSignal.any([controller.signal, shutdown.signal]);
@@ -368,6 +388,7 @@ export function createMailer(db, options = {}) {
     lease.finish();
     return true;
   }
+  // --- Sender configuration per business ---
   async function configuration(organizationId, snapshot) {
     const org = organizationId
       ? options.getOrganization
@@ -622,6 +643,7 @@ export function createMailer(db, options = {}) {
         !(await firstDeliveryHoldReason(row)),
     };
   }
+  // --- Reading messages for the UI ---
   async function get(id) {
     const row = await db.models.email.findById(id);
     return row ? await serialize(row) : null;
@@ -644,6 +666,7 @@ export function createMailer(db, options = {}) {
     const rows = await db.models.email.listReminders(organizationId, (page - 1) * pageSize, pageSize);
     return { messages: await mapAsync(rows, serialize), pagination: { page, pageSize, total, pageCount } };
   }
+  // --- Queueing messages ---
   async function enqueue(
     kind,
     to,
@@ -814,6 +837,7 @@ export function createMailer(db, options = {}) {
       null,
     );
   }
+  // --- Retry and delivery (worker) ---
   async function retry(id) {
     return await messageTransaction(id, async (row) => {
       if (!row) throw new EmailQueueError('Email not found.', 404);

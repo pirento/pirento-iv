@@ -1,6 +1,15 @@
+/**
+ * Safe document creation and version checks.
+ *
+ * - A browser save carries a requestId; repeating the same request returns the same document
+ *   instead of creating a duplicate (e.g. after a lost network response).
+ * - Updates must carry the version the user edited; a newer saved version wins (409 conflict).
+ */
+
 import { createHash } from 'node:crypto';
 import { HttpError } from '../../middleware/errors.js';
 
+// Error codes sent to the browser so the editor can show the right conflict message.
 export const DOCUMENT_VERSION_CONFLICT = 'DOCUMENT_VERSION_CONFLICT';
 export const DOCUMENT_REQUEST_CONFLICT = 'DOCUMENT_REQUEST_CONFLICT';
 
@@ -24,6 +33,7 @@ function canonicalValue(value) {
   return value;
 }
 
+/** Throws 409 (DOCUMENT_VERSION_CONFLICT) unless the client's expected version matches the saved one. */
 export function assertDocumentVersion(expectedVersion, document) {
   if (expectedVersion === undefined || expectedVersion !== document.version)
     throw new HttpError(

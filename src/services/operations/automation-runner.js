@@ -1,5 +1,11 @@
+/**
+ * Background automation loop: once a minute it runs due recurring-invoice schedules and
+ * automatic payment reminders. Started with the HTTP server, stopped on shutdown.
+ */
+
 import { performance } from 'node:perf_hooks';
 
+// How often due schedules and reminders are checked.
 export const AUTOMATION_INTERVAL_MS = 60_000;
 
 /** One bounded pass per minute; each feature keeps its durable cross-process guards. */

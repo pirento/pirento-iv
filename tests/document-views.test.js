@@ -1,3 +1,5 @@
+/** Unit tests: server-rendered document preview, editor, payment and email pages (EJS output). */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';

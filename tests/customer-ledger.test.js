@@ -1,3 +1,5 @@
+/** Unit tests: customer ledger filters, opening/closing balances, integer-paise totals and CSV export. */
+
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { buildCustomerStatement, invoiceLedgerTotals } from '../src/services/ledger/ledger-statement.js';

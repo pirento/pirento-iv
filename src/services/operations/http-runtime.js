@@ -1,5 +1,11 @@
+/**
+ * Runs the HTTP server and the background workers (email queue, backups, automations) and
+ * shuts them down gracefully: stop new work, finish requests in progress, then close the database.
+ */
+
 import { performance } from 'node:perf_hooks';
 
+// Maximum time a graceful shutdown waits before forcing connections closed.
 export const SHUTDOWN_GRACE_MS = 30_000;
 
 const invoke = (operation) => {

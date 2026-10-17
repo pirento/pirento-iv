@@ -1,3 +1,11 @@
+/**
+ * Loads the data each workspace page needs (the "model" side of the EJS pages).
+ *
+ * Every page gets the user's allowed businesses, the selected business and workspace settings;
+ * then only what that view shows is loaded (e.g. one page of 50 invoices, or one document for
+ * the editor), so normal navigation stays fast. Also provides the document CSV export.
+ */
+
 import { HttpError } from '../../middleware/errors.js';
 import { normalizeContact } from '../validation/contacts.js';
 import { integrationEnvironmentPrefix } from '../../../shared/business-identity.js';
@@ -26,6 +34,7 @@ export function createWorkspacePageData({
   const queries = createWorkspaceQueries(db);
   const directories = createDirectoryQueries(db);
 
+  // Data every page needs; throws 403 if the requested business is not assigned to this user.
   async function base(user, requestedOrganizationId) {
     if (auth && (!user || user.status !== 'active')) throw new HttpError(401, 'Please sign in to continue.');
     const allOrganizations = await db.models.organizations.list();
@@ -51,6 +60,7 @@ export function createWorkspacePageData({
     };
   }
 
+  // Full page data for a route ({ view, action, id, query }) - one branch per workspace view.
   async function load(user, requestedOrganizationId, route) {
     const result = await base(user, requestedOrganizationId);
     const organizationId = result.organization.id;
@@ -216,6 +226,7 @@ export function createWorkspacePageData({
     return result;
   }
 
+  // Streams the CSV for /workspace/<business>/<invoices|quotations|...>?download=csv.
   async function exportDocuments(user, organizationId, route) {
     const kind = DOCUMENT_KINDS[route.view];
     if (!kind || route.action) throw new HttpError(404, 'This document export is unavailable.');

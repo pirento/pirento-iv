@@ -1,3 +1,11 @@
+/**
+ * Page routes: the server-rendered EJS screens and the static browser assets.
+ *
+ * Serves /css, /js, /fonts (from public/), /shared (modules shared by server and browser),
+ * /vendor (the pdfmake browser build) and the favicon, then the login and /workspace pages.
+ * Page logic itself lives in src/controllers/pages/workspace-controller.js.
+ */
+
 import express from 'express';
 import ejs from 'ejs';
 import { resolve } from 'node:path';

@@ -1,3 +1,8 @@
+/**
+ * Builds a customer statement from invoices and receipts: dated rows, opening/closing balances
+ * and notices where older records lack dates (shown, never guessed).
+ */
+
 import { balanceDue, installmentBalances, paidAmount } from '../../../shared/types.js';
 import { HttpError } from '../../middleware/errors.js';
 import {
@@ -12,6 +17,7 @@ import {
   validLedgerDate,
 } from './ledger-values.js';
 
+// Issued invoices count as receivables; drafts and cancelled invoices do not.
 export const isReceivableInvoice = (document) =>
   document.kind === 'invoice' && ['sent', 'partially_paid', 'paid'].includes(document.status);
 const isVoided = (payment) => payment.voidedAt !== null && payment.voidedAt !== undefined;

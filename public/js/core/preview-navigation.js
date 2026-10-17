@@ -1,3 +1,5 @@
+/** Synthetic preview only: blocks links that would leave the preview website. */
+
 /** Browser navigation has no role in contacting live services in the synthetic preview. */
 export function isAllowedPreviewLink(href, currentUrl, download = false) {
   try {
@@ -16,6 +18,7 @@ export function isAllowedPreviewLink(href, currentUrl, download = false) {
   }
 }
 
+/** Intercepts clicks on links to other origins and calls onBlocked() instead. Returns an uninstall function. */
 export function installPreviewNavigationGuard(onBlocked) {
   const blockExternalAnchor = (event) => {
     const target = event.target;

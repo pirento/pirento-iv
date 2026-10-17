@@ -1,3 +1,8 @@
+/**
+ * Payments & email page (views/integrations/index.ejs): shows which payment, email and GST settings
+ * are configured for the business, the setting names to fill and the webhook URLs. Never shows secrets.
+ */
+
 import { getPageData } from '../core/page.js';
 import { api, showError } from './common.js';
 

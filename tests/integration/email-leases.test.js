@@ -1,3 +1,5 @@
+/** Integration tests: email outbox claim leases, heartbeat renewal and shutdown recovery. */
+
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';

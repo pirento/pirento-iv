@@ -1,3 +1,5 @@
+/** Integration tests: recurring schedules, draft generation, concurrency, failures and catch-up. */
+
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import test from 'node:test';

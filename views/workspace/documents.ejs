@@ -1,3 +1,4 @@
+<%# Document list for invoices, quotations, proformas or shipping (/<view>) with filters and CSV. Script: /js/workspace/documents.js. -%>
 <%
 const kind=({invoices:'invoice',quotations:'quotation',proformas:'proforma',shipping:'delivery_note'})[data.route.view];
 const documents=data.documents.filter(document=>document.kind===kind).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));

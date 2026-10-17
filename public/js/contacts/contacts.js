@@ -1,3 +1,8 @@
+/**
+ * Contacts page (views/contacts/index.ejs): list filters and CSV export, and the add/edit form
+ * including GST lookup (portal CAPTCHA or configured provider) to fill a contact from its GSTIN.
+ */
+
 import { api, sendJson, formValues, showError, showToast, setBusy } from '../core/api.js';
 import { getPageData, workspacePath, safeReturn, rememberToast } from '../core/page.js';
 import { bindDirectoryFilters } from '../core/directory-filters.js';

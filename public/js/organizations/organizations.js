@@ -1,3 +1,8 @@
+/**
+ * Business settings page (views/organizations/index.ejs): tabbed settings form, GST registrations
+ * (add/remove), logo/signature/QR uploads and save.
+ */
+
 import { api, sendJson, formValues, showError, setBusy } from '../core/api.js';
 import { getPageData, rememberToast } from '../core/page.js';
 import { bindImageFields } from '../core/images.js';

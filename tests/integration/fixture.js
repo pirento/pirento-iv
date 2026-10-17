@@ -1,3 +1,5 @@
+/** Integration test fixture: a fresh MongoDB database, backup folder and app instance per test. */
+
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { mkdtemp, rm } from 'node:fs/promises';
@@ -7,6 +9,7 @@ import { MongoClient } from 'mongodb';
 import { createBackend } from '../../src/services/backend.js';
 import { createLogger } from '../../src/services/operations/logger.js';
 
+// Integration tests run only when MONGODB_TEST_URI points to a test replica set.
 export const integrationEnabled = Boolean(process.env.MONGODB_TEST_URI);
 
 /**

@@ -1,3 +1,9 @@
+/**
+ * Workspace URL rules shared by the server (page routing) and the browser.
+ * URL shape: /workspace/<businessId>/<view>/<action>/<id>?role=&itemType=&documentId=...
+ */
+
+// Every valid <view> in a workspace URL.
 export const WORKSPACE_VIEWS = [
   'overview',
   'invoices',
@@ -21,10 +27,15 @@ export const WORKSPACE_VIEWS = [
   'dashboard_branding',
   'help',
 ];
+// Browser event fired after changeLocation() switches the URL without a page load.
 export const ROUTE_EVENT = 'venturecore:route';
 const validPart = (value) => value.length <= 200 && /^[a-zA-Z0-9_-]+$/.test(value);
 const managerViews = new Set(['customers', 'catalog', 'formats', 'business_products']);
 const documentViews = new Set(['invoices', 'quotations', 'proformas', 'shipping']);
+/**
+ * Parses and validates a workspace URL into { organizationId, view, action?, id?, ...query }.
+ * Returns null for auth pages and { view: 'not_found' } for anything invalid.
+ */
 export function readWorkspaceRoute(pathname, search = '') {
   if (pathname === '/' || ['/login', '/signup', '/forgot-password', '/reset-password'].includes(pathname))
     return null;
@@ -104,6 +115,7 @@ export function readWorkspaceRoute(pathname, search = '') {
     ...(documentId && validPart(documentId) ? { documentId } : {}),
   };
 }
+/** Builds a workspace URL from a route object (the reverse of readWorkspaceRoute). */
 export function workspaceUrl(route) {
   const params = new URLSearchParams();
   for (const key of ['role', 'itemType', 'suggestion', 'businessProductId', 'documentId'])
@@ -111,12 +123,14 @@ export function workspaceUrl(route) {
   const path = `/workspace/${encodeURIComponent(route.organizationId)}/${route.view}${route.action ? `/${route.action}${route.id ? `/${encodeURIComponent(route.id)}` : ''}` : ''}`;
   return `${path}${params.size ? `?${params}` : ''}`;
 }
+/** A "returnTo" value is only accepted when it is a valid workspace URL; otherwise null. */
 export function safeWorkspaceReturn(value) {
   if (!value.startsWith('/workspace/') || value.startsWith('//')) return null;
   const [path, query = ''] = value.split('?');
   const route = readWorkspaceRoute(path, query);
   return route && route.view !== 'not_found' ? workspaceUrl(route) : null;
 }
+/** Changes the URL within this site without reloading (history.pushState) and fires ROUTE_EVENT. */
 export function changeLocation(url, replace = false) {
   const target = new URL(url, window.location.origin);
   if (target.origin !== window.location.origin || !url.startsWith('/') || url.startsWith('//'))

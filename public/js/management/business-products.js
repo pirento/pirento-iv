@@ -1,3 +1,5 @@
+/** Business products page (views/business-products/index.ejs): live preview card, logo upload and save/archive. */
+
 import { getPageData } from '../core/page.js';
 import {
   api,

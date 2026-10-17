@@ -1,3 +1,8 @@
+/**
+ * Optional browser storage (sessionStorage). Used only for conveniences such as a toast shown after a
+ * page change; if the browser blocks storage, saving and signing out still work.
+ */
+
 /** Optional notices must never turn a committed save or sign-out into a failed action. */
 export function optionalSessionStorage() {
   try {
@@ -7,6 +12,7 @@ export function optionalSessionStorage() {
   }
 }
 
+/** Remembers a toast message to show on the next page. */
 export function rememberNotice(message, storage = optionalSessionStorage()) {
   try {
     storage?.setItem('vc:toast', String(message || ''));
@@ -15,6 +21,7 @@ export function rememberNotice(message, storage = optionalSessionStorage()) {
   }
 }
 
+/** Removes all of this app's stored values (keys starting with "vc:") on sign-out. */
 export function clearWorkspaceStorage(storage = optionalSessionStorage()) {
   try {
     if (!storage) return;

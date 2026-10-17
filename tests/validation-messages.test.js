@@ -1,3 +1,5 @@
+/** Unit tests: API validation messages keep their existing wording (src/services/validation/messages.js). */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { z } from 'zod';

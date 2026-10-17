@@ -1,3 +1,5 @@
+/** ESLint 9 flat config used by `npm run lint`: recommended rules, Node globals, browser globals for public/js. */
+
 import js from '@eslint/js';
 import globals from 'globals';
 

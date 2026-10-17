@@ -1,3 +1,5 @@
+/** Unit tests: invoice editor browser state - contact hand-off, local drafts and unsaved-request recovery. */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {

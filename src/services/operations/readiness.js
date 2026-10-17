@@ -1,5 +1,11 @@
+/**
+ * Readiness state for GET /api/ready: starting -> ready -> draining -> stopped, plus a live check
+ * that MongoDB answers and no database recovery hold is active.
+ */
+
 import { performance } from 'node:perf_hooks';
 
+// Total time budget for one readiness check.
 export const READINESS_TIMEOUT_MS = 1_500;
 
 /** Liveness is separate; this probe checks whether this process can serve workspace data. */

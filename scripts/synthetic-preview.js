@@ -1,3 +1,5 @@
+/** `npm run start:synthetic-preview` - starts the disposable test preview (src/services/preview/synthetic-preview.js). */
+
 import { loadEnvironmentValues } from '../src/config/environment.js';
 import {
   createSyntheticPreviewApplication,

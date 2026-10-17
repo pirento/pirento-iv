@@ -1,3 +1,5 @@
+/** Unit tests: `npm run audit:readiness` findings (scripts/readiness-audit.js). */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { auditProject } from '../scripts/readiness-audit.js';

@@ -1,3 +1,9 @@
+/**
+ * Loaded on every page (layouts/public.ejs and layouts/workspace.ejs): toast after navigation,
+ * mobile navigation menu (focus trap, Escape to close), business switcher, sign-out, and the
+ * synthetic-preview link guard.
+ */
+
 import { api, sendJson, showToast, setBusy } from './api.js';
 import { getPageData } from './page.js';
 import { clearWorkspaceStorage } from './optional-storage.js';

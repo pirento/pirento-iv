@@ -1,3 +1,5 @@
+/** My sessions page (views/security/sessions.ejs): confirm and sign out one session or all other sessions. */
+
 import { getPageData } from '../core/page.js';
 import { api, sendJson, showError, withBusy, dateTime } from '../management/common.js';
 

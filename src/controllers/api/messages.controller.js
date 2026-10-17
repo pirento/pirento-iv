@@ -1,7 +1,10 @@
+/** Email message API: POST /api/messages/:id/retry re-queues a failed invoice email. */
+
 import { HttpError } from '../../middleware/errors.js';
 export function createController(context) {
   const { auth, mailer, getDocument } = context;
   return {
+    // POST /api/messages/:id/retry
     retry: async (req, res) => {
       const message = await mailer.get(req.params.id);
       if (!message) throw new HttpError(404, 'Email not found.');

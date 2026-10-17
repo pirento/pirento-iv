@@ -1,3 +1,5 @@
+/** Unit tests: receipt and installment amounts in whole paise, and Indian business dates. */
+
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { indiaBusinessDate } from '../shared/business-date.js';

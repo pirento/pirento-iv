@@ -1,12 +1,16 @@
+/** Installment plan section of the payments page: create/edit the schedule and record a payment for a row. */
+
 import { installmentBalances, money, paidAmount } from '/shared/types.js';
 import { wholePaise } from '/shared/money.js';
 import { escape, indiaDate, readableDate } from '/js/documents/document-ui.js';
 
+/** True for a real YYYY-MM-DD date. */
 export function validScheduleDate(value) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const parsed = new Date(`${value}T12:00:00Z`);
   return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
 }
+/** Date of installment `index` (weekly, or monthly keeping the day, shortened in short months). */
 export function recurringDate(start, index, frequency) {
   const date = new Date(`${start}T12:00:00Z`);
   if (frequency === 'weekly') date.setUTCDate(date.getUTCDate() + index * 7);
@@ -27,6 +31,7 @@ const positiveAmount = (value) => {
   return Boolean(String(value).trim()) && Number.isSafeInteger(amount) && amount >= 1;
 };
 
+/** Renders and controls the installment section of the payments page. */
 export function createScheduleController({ getDocument, isBusy, isManualBlocked, onSave, onRecord }) {
   const section = document.querySelector('#payment-schedule');
   const view = document.querySelector('#payment-schedule-view');

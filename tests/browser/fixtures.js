@@ -1,3 +1,8 @@
+/**
+ * Playwright fixtures: each browser test gets its own test database and running server (`app`),
+ * plus helpers to sign in, call the API and build customer/catalog/invoice inputs.
+ */
+
 import { randomUUID } from 'node:crypto';
 import { test as base, expect } from '@playwright/test';
 import { createFixture } from '../integration/fixture.js';
@@ -63,11 +68,13 @@ export const test = base.extend({
 
 export { expect };
 
+// Signs the test owner in through the real login API (the page shares the cookie).
 export async function signIn(page, app) {
   const response = await page.request.post(`${app.base}/api/auth/login`, { data: app.credentials });
   expect(response.status()).toBe(200);
 }
 
+// Calls /api<path> with the page's session and fails the test on a non-2xx response.
 export async function api(page, app, path, method = 'GET', data) {
   const response = await page.request.fetch(`${app.base}/api${path}`, { method, data });
   const body = await response.json();
@@ -75,6 +82,7 @@ export async function api(page, app, path, method = 'GET', data) {
   return body;
 }
 
+// Valid request bodies for creating a customer, catalog item and invoice.
 export function customerInput(organizationId, name = 'Browser Customer') {
   return {
     organizationId,
@@ -131,6 +139,7 @@ export function invoiceInput(organizationId, customerId, extra = {}) {
   };
 }
 
+// Inserts `count` customers and catalog items directly in MongoDB to test directory paging.
 export async function seedDirectory(app, count = 121) {
   const now = new Date().toISOString();
   const customers = Array.from({ length: count }, (_, index) => ({

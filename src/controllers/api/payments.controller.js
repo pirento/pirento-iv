@@ -1,3 +1,8 @@
+/**
+ * Receipt correction API: POST /api/payments/:id/void cancels a manual receipt with a reason.
+ * The receipt stays in history (never deleted) and the invoice balance is recalculated.
+ */
+
 import { transactionForRecord } from '../../services/transaction-ownership.js';
 import { voidPaymentSchema } from '../../services/validation/validation.js';
 import { HttpError } from '../../middleware/errors.js';
@@ -5,6 +10,7 @@ export function createController(context) {
   const { db, online, now, getDocument, getPayment, addEvent, paymentDetails, updatePaymentBalance } =
     context;
   return {
+    // POST /api/payments/:id/void
     voidPayment: async (req, res) => {
       const { reason } = voidPaymentSchema.parse(req.body);
       // Historical receipts can omit organizationId; their persisted parent

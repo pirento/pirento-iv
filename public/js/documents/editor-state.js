@@ -1,3 +1,8 @@
+/**
+ * Local draft safety for the invoice editor: unsaved edits are kept in sessionStorage so a reload or
+ * a trip to "Add contact" does not lose them, and the new contact returns to the same draft.
+ */
+
 /** Session storage contains browser drafts only; the server remains the source of saved documents. */
 export function readStoredDraft(storage, key) {
   try {
@@ -7,6 +12,7 @@ export function readStoredDraft(storage, key) {
   }
 }
 
+/** Saves a draft copy (ignores storage errors). */
 export function writeStoredDraft(storage, key, value) {
   try {
     storage.setItem(key, JSON.stringify(value));
@@ -16,6 +22,7 @@ export function writeStoredDraft(storage, key, value) {
   }
 }
 
+/** Deletes a draft copy (ignores storage errors). */
 export function removeStoredDraft(storage, key) {
   try {
     storage.removeItem(key);
@@ -53,6 +60,7 @@ export function canRestoreDraft(saved, document, organizationId, kind) {
   );
 }
 
+// URL parameter carrying the token that links "Add contact" back to the draft that opened it.
 export const CONTACT_HANDOFF_PARAM = 'contactHandoff';
 const contactKey = (token) => `vc:contact-handoff:${token}`;
 const handoffLifetime = 2 * 60 * 60 * 1000;

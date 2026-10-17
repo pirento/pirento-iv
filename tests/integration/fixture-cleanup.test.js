@@ -1,3 +1,5 @@
+/** Integration tests: the test fixture always removes its own database and files, even after errors. */
+
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';

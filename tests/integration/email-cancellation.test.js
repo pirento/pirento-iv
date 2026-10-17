@@ -1,3 +1,5 @@
+/** Integration tests: email delivery rules for cancelled documents and frozen retries. */
+
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import test from 'node:test';

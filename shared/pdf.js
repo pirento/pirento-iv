@@ -1,3 +1,10 @@
+/**
+ * Document layout for PDFs, shared by the server (email attachments) and the browser
+ * ("Download PDF"). buildDocumentDefinition(doc, images) returns a pdfmake definition that
+ * follows the saved invoice format (layout, colours, columns, paper size, logo, signatures).
+ * Also exports the helpers EJS previews use, so the HTML preview and the PDF show the same values.
+ */
+
 import {
   balanceDue,
   calculateLineAmount,
@@ -14,6 +21,7 @@ import {
   DOCUMENT_LABELS,
 } from './types.js';
 import { isIndependentBusiness, organizationSupportEmail } from './business-identity.js';
+// --- Amount in words (Indian numbering: lakh, crore) ---
 const smallWords = [
   'Zero',
   'One',
@@ -52,12 +60,14 @@ function integerWords(value) {
   }
   return '';
 }
+// "Rupees One Hundred and Fifty Paise Only" (Indian numbering). Invalid amounts -> 'Amount unavailable'.
 export function amountInWords(amount) {
   if (!Number.isFinite(amount) || amount < 0 || amount >= 1e21) return 'Amount unavailable';
   const rounded = Math.round((amount + Number.EPSILON) * 100) / 100;
   const [rupees, paise] = rounded.toFixed(2).split('.');
   return `Rupees ${integerWords(BigInt(rupees))}${Number(paise) ? ` and ${integerWords(BigInt(paise))} Paise` : ''} Only`;
 }
+/** Formats YYYY-MM-DD as "05 Oct 2026" for documents. */
 export function documentDate(value) {
   if (!value) return '—';
   const parsed = new Date(`${value}T12:00:00Z`);
@@ -70,7 +80,9 @@ export function documentDate(value) {
       })
     : '—';
 }
+// State code -> state name, e.g. "09" -> "Uttar Pradesh".
 export const stateName = (code) => STATES.find(([value]) => value === code)?.[1] ?? code;
+/** Accent colour of a format plus readable text colours to use on it. */
 export function documentColors(value) {
   const accent = /^#[\da-f]{6}$/i.test(value) ? value : '#26705b';
   const rgb = [1, 3, 5].map((index) => parseInt(accent.slice(index, index + 2), 16));
@@ -90,6 +102,7 @@ export function documentColors(value) {
     accentText: `#${textRgb.map((channel) => channel.toString(16).padStart(2, '0')).join('')}`,
   };
 }
+/** Download file name, e.g. "ATEI-2627-0001 - A T Elevator.pdf". */
 export function pdfFileName(doc) {
   const stem = `${doc.number} - ${doc.organizationSnapshot.name}`
     .normalize('NFKC')
@@ -99,6 +112,7 @@ export function pdfFileName(doc) {
     .slice(0, 160);
   return `${stem || doc.kind}.pdf`;
 }
+// --- Small pdfmake building blocks ---
 const printable = (value) =>
   value.replace(/\S{35,}/gu, (word) => word.match(/.{1,24}/gu)?.join('\u200b') ?? word);
 const text = (value, extra = {}) => ({
@@ -112,6 +126,7 @@ const heading = (value) =>
 const PNG_JPEG = /^data:image\/(png|jpe?g);base64,/i;
 const clamp = (value, fallback, min, max) =>
   Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : fallback;
+/** Page size, margins, font size and image widths of a format, clamped to safe ranges. */
 export function documentGeometry(format) {
   const pageSize = format.pageSize === 'A5' || format.pageSize === 'LETTER' ? format.pageSize : 'A4';
   const orientation = format.orientation === 'landscape' ? 'landscape' : 'portrait';
@@ -134,6 +149,10 @@ export function documentGeometry(format) {
     stampWidth: clamp(format.stampWidth, 110, 60, 180),
   };
 }
+/**
+ * The logo to print. Document branding can hide it or set a custom one; otherwise the first of:
+ * the format's logo, the business product's logo, the business logo.
+ */
 export function documentLogo(doc) {
   const branding = getDocumentBranding(doc);
   if (branding.logoMode === 'none') return '';
@@ -145,6 +164,7 @@ export function documentLogo(doc) {
     ''
   );
 }
+/** Signature, secondary signature and stamp blocks enabled for this document. */
 export function documentSigningBlocks(doc) {
   const branding = getDocumentBranding(doc);
   const format = getDocumentFormat(doc);
@@ -173,6 +193,7 @@ export function documentSigningBlocks(doc) {
     });
   return blocks;
 }
+// Pricing note under a line; delivery challans show only jewellery weights/purity, not prices.
 export function linePricingNote(doc, item) {
   const policy = documentRoundingPolicy(doc);
   if (doc.kind !== 'delivery_note') return pricingDescription(item, policy);
@@ -185,12 +206,14 @@ export function linePricingNote(doc, item) {
     .filter(Boolean)
     .join(' · ');
 }
+// Labels for installment rows on documents.
 export const INSTALLMENT_STATUS_LABELS = {
   paid: 'Paid',
   partially_paid: 'Partially paid',
   overdue: 'Overdue',
   pending: 'Pending',
 };
+/** Seller names to print (trade name, legal name, "A division of" / proprietor label) and support email. */
 export function documentBusinessIdentity(doc) {
   const org = doc.organizationSnapshot;
   const tradeName = org.tradeName?.trim() || '';
@@ -212,6 +235,7 @@ export function documentBusinessIdentity(doc) {
     supportEmail: organizationSupportEmail(org),
   };
 }
+// Heading printed on the document: TAX INVOICE (with GSTIN), INVOICE, PROFORMA INVOICE, DELIVERY CHALLAN or QUOTATION.
 export const documentTitle = (doc) =>
   doc.kind === 'invoice'
     ? doc.organizationSnapshot.gstin
@@ -222,10 +246,12 @@ export const documentTitle = (doc) =>
       : doc.kind === 'delivery_note'
         ? 'DELIVERY CHALLAN'
         : 'QUOTATION';
+// Due date shown on the document: the last installment's due date when there is a plan, else dueDate.
 export const documentDueDate = (doc) =>
   doc.installmentPlan?.installments.length
     ? [...doc.installmentPlan.installments].sort((a, b) => a.dueDate.localeCompare(b.dueDate)).at(-1).dueDate
     : doc.dueDate;
+// Label for documentDueDate (Final installment / Due date / Expected delivery / Valid until).
 export const documentDueLabel = (doc) =>
   doc.installmentPlan?.installments.length
     ? 'Final installment'
@@ -234,6 +260,7 @@ export const documentDueLabel = (doc) =>
       : doc.kind === 'delivery_note'
         ? 'Expected delivery'
         : 'Valid until';
+// The document's title, or '' when it only repeats the default kind name.
 export const documentSubject = (doc) => {
   const title = doc.title.trim();
   const normalized = title.toLowerCase().replace(/[_\s-]+/g, ' ');
@@ -244,6 +271,7 @@ export const documentSubject = (doc) => {
   ].map((value) => value.toLowerCase());
   return defaults.includes(normalized) ? '' : title;
 };
+/** Shipping details in two groups: recipient (name, address, state, phone), then dispatch/transport details. */
 export function shippingGroups(doc) {
   const fields = shippingDetails(doc);
   return [
@@ -251,6 +279,7 @@ export function shippingGroups(doc) {
     fields.filter(([key]) => !['Recipient', 'Address', 'State', 'Phone'].includes(key)),
   ].filter((group) => group.length);
 }
+/** Bank account lines printed on invoices. */
 export function bankDetails(doc) {
   const org = doc.organizationSnapshot;
   return [
@@ -262,6 +291,7 @@ export function bankDetails(doc) {
     ['IFSC', org.ifsc],
   ].filter(([, value]) => value);
 }
+/** Flat list of shipping fields that have a value. */
 export function shippingDetails(doc) {
   const shipping = doc.shipping;
   if (!shipping) return [];
@@ -279,7 +309,14 @@ export function shippingDetails(doc) {
     ['Shipping notes', shipping.notes],
   ].filter(([, value]) => value);
 }
+/**
+ * Builds the complete pdfmake document definition for `doc`. Only PNG/JPEG images are embedded
+ * (WebP is converted by the caller). Sections in order: header and brand, seller/buyer/dates,
+ * shipping, line items table, notes and amount in words, totals, installments, bank details,
+ * terms and payment QR, footer, signatures.
+ */
 export function buildDocumentDefinition(doc, imageInput) {
+  // --- Inputs: saved snapshots, format and page geometry (1 mm = 72/25.4 pt) ---
   const org = doc.organizationSnapshot;
   const identity = documentBusinessIdentity(doc);
   const customer = doc.customerSnapshot;
@@ -321,6 +358,7 @@ export function buildDocumentDefinition(doc, imageInput) {
     if (data) images[`${block.key}Image`] = data;
   }
   if (!delivery && format.showPaymentQr && sourceImages.paymentQr) images.paymentQr = sourceImages.paymentQr;
+  // --- Header: brand (logo, names) and document title/status ---
   const labelColor = minimal || classic || ledger ? colors.accentText : colors.onAccent;
   const small = Math.max(7, fontSize - 1);
   const title = documentTitle(doc);
@@ -508,6 +546,7 @@ export function buildDocumentDefinition(doc, imageInput) {
     ],
     margin: [0, 0, 0, 10],
   });
+  // --- Parties: seller, buyer and dates ---
   const seller = [
     heading('From'),
     text(identity.sellerName, {
@@ -617,6 +656,7 @@ export function buildDocumentDefinition(doc, imageInput) {
       columnGap: gap,
       margin: [0, 0, 0, 10],
     });
+  // --- Shipping and subject ---
   const sectionTable = (label, rows) => ({
     unbreakable: JSON.stringify(rows).length < 1800,
     table: {
@@ -673,6 +713,7 @@ export function buildDocumentDefinition(doc, imageInput) {
         margin: [0, 0, 0, 12],
       }),
     );
+  // --- Line items table (column widths are proportional weights of the free width) ---
   const columnNames = [
     '#',
     'Description',
@@ -768,6 +809,7 @@ export function buildDocumentDefinition(doc, imageInput) {
     margin: [0, 0, 0, 10],
   };
   content.push(itemsTable);
+  // --- Notes, amount in words, totals ---
   const note = [];
   if (doc.notes) note.push(heading('Notes'), text(doc.notes));
   if (doc.kind === 'quotation')
@@ -880,6 +922,7 @@ export function buildDocumentDefinition(doc, imageInput) {
         margin: [0, 0, 0, 10],
       });
   }
+  // --- Installment schedule ---
   const installments = delivery ? [] : installmentBalances(doc);
   if (installments.length) {
     const planColumns = ['Installment', 'Due date', 'Amount', 'Received', 'Pending', 'Status'];
@@ -938,6 +981,7 @@ export function buildDocumentDefinition(doc, imageInput) {
       margin: [0, 0, 0, 12],
     });
   }
+  // --- Bank details, terms and payment QR ---
   const bottom = [];
   if (!delivery && format.showBankDetails && bankDetails(doc).length)
     bottom.push(
@@ -974,6 +1018,7 @@ export function buildDocumentDefinition(doc, imageInput) {
             margin: [0, 0, 0, 10],
           },
     );
+  // --- Footer text and signatures ---
   const message = [];
   if (format.footerText)
     message.push(

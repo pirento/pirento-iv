@@ -1,7 +1,10 @@
+/** Document list pages (invoices, quotations, proformas, delivery challans): filters, URLs and CSV rows. */
+
 import { HttpError } from '../../middleware/errors.js';
 import { STATUS_LABELS, paidAmount, balanceDue } from '../../../shared/types.js';
 import { documentStatus } from '../../../shared/document-status.js';
 
+// Workspace view name -> stored document kind.
 export const DOCUMENT_KINDS = {
   invoices: 'invoice',
   quotations: 'quotation',
@@ -10,6 +13,7 @@ export const DOCUMENT_KINDS = {
 };
 const statuses = new Set(['all', 'overdue', ...Object.keys(STATUS_LABELS)]);
 
+/** Validates ?q=&status=&product=&page= from the URL (400 on anything unexpected). Page size is 50. */
 export function readDocumentFilters(query = {}) {
   const value = (name, fallback = '') => {
     const result = query[name] ?? fallback;
@@ -25,6 +29,7 @@ export function readDocumentFilters(query = {}) {
   return { search: value('q'), status, product, page: Number(page), pageSize: 50 };
 }
 
+/** Builds a document list URL that keeps the current filters. */
 export function documentListUrl(organizationId, view, filters, extra = {}) {
   const query = new URLSearchParams();
   if (filters.search) query.set('q', filters.search);

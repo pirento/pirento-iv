@@ -1,3 +1,5 @@
+/** Unit tests: the required integration run fails clearly when no test database is configured. */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';

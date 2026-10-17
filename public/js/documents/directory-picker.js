@@ -1,3 +1,8 @@
+/**
+ * Contact and catalog pickers in the invoice editor: searches /api/<kind>/lookup page by page and
+ * keeps records already used by the draft selected even when they are not in the current results.
+ */
+
 import { api } from '../core/api.js';
 
 /** Keep one result page and records referenced by the current draft, never every search result. */
@@ -8,6 +13,7 @@ export function replaceDirectoryRows(rows, matches, retainedIds = []) {
   rows.splice(0, rows.length, ...byId.values());
 }
 
+/** Loads specific records by ID (50 per request) so a draft's chosen contact/items can be shown. */
 export async function fetchDirectoryRecords(kind, organizationId, ids) {
   const unique = [...new Set(ids.filter(Boolean))];
   const result = [];

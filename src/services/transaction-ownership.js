@@ -1,3 +1,5 @@
+/** Helper for transactions on an existing record: lock the business the record really belongs to. */
+
 import { HttpError } from '../middleware/errors.js';
 
 /**

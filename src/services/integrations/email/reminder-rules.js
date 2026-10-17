@@ -1,8 +1,12 @@
+/** Rules for payment reminders: which invoices/installments are due, on which days, and their email keys. */
+
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { balanceDue, installmentBalances } from '../../../../shared/types.js';
 
+// Reminder days relative to the due date: 3 days before, on the due date, 3 and 7 days after.
 export const DEFAULT_REMINDER_OFFSETS = [-3, 0, 3, 7];
+// Validates a policy's offsets: 1-12 unique whole days between -30 and +90, returned sorted.
 export const reminderOffsetsSchema = z
   .array(z.number().int().min(-30).max(90))
   .min(1)
@@ -10,6 +14,7 @@ export const reminderOffsetsSchema = z
   .refine((offsets) => new Set(offsets).size === offsets.length, 'Reminder offsets must be unique.')
   .transform((offsets) => [...offsets].sort((a, b) => a - b));
 
+/** True for a valid YYYY-MM-DD date. */
 export function isReminderDate(value) {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const date = new Date(`${value}T12:00:00.000Z`);
@@ -24,6 +29,7 @@ export function reminderDate(dueDate, offset) {
   return date.toISOString().slice(0, 10);
 }
 
+/** The policy used when a business has never saved one (automatic reminders disabled). */
 export function defaultReminderPolicy(organizationId) {
   return {
     organizationId,
@@ -35,6 +41,7 @@ export function defaultReminderPolicy(organizationId) {
   };
 }
 
+/** Loads a business's saved policy, falling back to the default when it is missing or invalid. */
 export async function readReminderPolicy(db, organizationId) {
   const stored = await db
     .collection('payment_reminder_policies')
@@ -60,10 +67,12 @@ export async function readReminderPolicy(db, organizationId) {
   };
 }
 
+/** True when the address can receive a reminder. */
 export function validReminderEmail(value) {
   return typeof value === 'string' && value.length <= 254 && z.string().email().safeParse(value).success;
 }
 
+// Why an invoice cannot get a payment reminder, or '' when it can (issued, unpaid balance).
 export function reminderDocumentReason(document) {
   if (!document) return 'The invoice is unavailable.';
   if (document.kind !== 'invoice') return 'Payment reminders are available only for invoices.';
@@ -112,6 +121,10 @@ export function reminderTargets(document, asOf) {
     });
 }
 
+/**
+ * Re-checks a saved reminder just before sending. Returns { reason } when it must not be sent
+ * (invoice changed, not due yet, automatic policy changed) or { reason: '', target } when it can.
+ */
 export function reminderEligibility(document, reminder, policy, asOf) {
   const reason = reminderDocumentReason(document);
   if (reason) return { reason };
@@ -146,16 +159,19 @@ export function reminderEligibility(document, reminder, policy, asOf) {
   return { reason: '', target };
 }
 
+// Stable outbox key for one reminder, so the same reminder is never queued twice.
 export function reminderEventKey(organizationId, documentId, installmentId, dueDate, automatic, occurrence) {
   const key = JSON.stringify([organizationId, documentId, installmentId, dueDate, automatic, occurrence]);
   return `payment-reminder:${automatic ? 'automatic' : 'manual'}:${createHash('sha256').update(key).digest('hex')}`;
 }
 
+// Hash of the whole saved invoice; used to detect changes after a reminder was prepared.
 export function reminderDocumentFingerprint(document) {
   // The complete saved document also catches unversioned legacy/import changes.
   return createHash('sha256').update(JSON.stringify(document)).digest('hex');
 }
 
+// Email subject line for a payment reminder.
 export function reminderSubject(document) {
   return `Payment reminder · ${document.number} · ${document.organizationSnapshot.name}`;
 }

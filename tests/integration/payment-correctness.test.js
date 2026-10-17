@@ -1,3 +1,5 @@
+/** Integration tests: receipt dates, exact-paise retries and gateway business-date handling. */
+
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import test from 'node:test';

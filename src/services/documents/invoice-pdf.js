@@ -1,3 +1,9 @@
+/**
+ * Server-side invoice PDF, attached to invoice emails. Uses the same document layout as the
+ * browser's "Download PDF" (shared/pdf.js). Uploaded images are checked with sharp and WebP is
+ * converted to PNG; the PDF is limited to 15 MB.
+ */
+
 import pdfmake from 'pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts.js';
 import sharp from 'sharp';
@@ -24,6 +30,7 @@ pdfmake.setFonts({
 pdfmake.setUrlAccessPolicy(() => false);
 pdfmake.setLocalAccessPolicy(() => false);
 
+/** Renders a saved document to { filename, content (base64 PDF) }. */
 export async function renderInvoiceAttachment(doc) {
   const format = getDocumentFormat(doc);
   const sources = [

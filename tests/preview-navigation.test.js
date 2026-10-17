@@ -1,3 +1,5 @@
+/** Unit tests: the synthetic preview's link guard (public/js/core/preview-navigation.js). */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { isAllowedPreviewLink } from '../public/js/core/preview-navigation.js';

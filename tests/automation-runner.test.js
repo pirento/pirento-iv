@@ -1,3 +1,5 @@
+/** Unit tests: the automation runner (recurring invoices + reminders) coalesces passes and stops cleanly. */
+
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createAutomationRunner } from '../src/services/operations/automation-runner.js';

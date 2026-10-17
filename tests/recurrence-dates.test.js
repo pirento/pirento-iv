@@ -1,3 +1,5 @@
+/** Unit tests: recurring invoice dates (month ends, leap days, end dates, limits). */
+
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {

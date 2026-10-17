@@ -1,3 +1,5 @@
+/** Integration tests: idempotent document creation and version checks against stale edits. */
+
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import test from 'node:test';

@@ -1,3 +1,15 @@
+/**
+ * Organization access guard for /api requests (runs after the session check).
+ *
+ * Administrators can use everything. Staff accounts may only touch the businesses
+ * assigned to them: this checks organizationId in the query/body, and for URLs like
+ * /api/<resource>/<id> it looks up which business owns that record.
+ */
+
+/**
+ * Returns Express middleware that answers 401 (not signed in), 403 (not your business)
+ * or calls next(). `db` is used to look up record ownership.
+ */
 export function createAccessGuard(db) {
   return async (req, res, next) => {
     const user = res.locals.user;

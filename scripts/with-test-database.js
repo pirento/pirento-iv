@@ -1,3 +1,8 @@
+/**
+ * `npm run verify:local` - starts a temporary local MongoDB replica set (needs `mongod` installed),
+ * runs the given command against it (normally `npm run verify:release`) and removes it afterwards.
+ */
+
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';

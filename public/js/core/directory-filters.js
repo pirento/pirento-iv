@@ -1,3 +1,5 @@
+/** Contacts/catalog list filters: dropdowns submit immediately; the CSV link always uses the current filters. */
+
 /** Directory filters use server pagination; export always includes current, even unsubmitted, filters. */
 export function bindDirectoryFilters(form, exportLink, organizationId, kind) {
   if (!form) return;

@@ -141,6 +141,7 @@ The project follows conventional **Model–View–Controller (MVC)** with a sepa
 
 ## Detailed guides
 
+- [Code guide: folder map, request flow and where to change things](docs/CODE-GUIDE.md)
 - [Architecture and feature boundaries](docs/ARCHITECTURE.md)
 - [MongoDB migration and recovery](docs/MIGRATION.md)
 - [Deployment and provider configuration](docs/DEPLOYMENT.md)

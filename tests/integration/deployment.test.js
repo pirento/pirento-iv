@@ -1,3 +1,5 @@
+/** Integration tests: hosted preflight never seeds or creates collections in an unintended empty database. */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { MongoClient } from 'mongodb';

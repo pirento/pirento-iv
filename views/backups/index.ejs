@@ -1,3 +1,4 @@
+<%# Admin page /workspace/<id>/backups: backup status, create and download backups. Script: /js/management/backups.js. -%>
 <%
 const status = data.backupStatus;
 const backups = [...(data.backups || [])].sort((a,b) => b.createdAt.localeCompare(a.createdAt));

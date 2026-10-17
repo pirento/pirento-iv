@@ -1,3 +1,5 @@
+/** Helpers for the document editor and preview: URLs, India dates, blank lines, form defaults, lock rules, pricing fields. */
+
 import {
   blankShipping,
   CATALOG_UNITS,
@@ -10,12 +12,16 @@ import {
 import { BILLING_PROFILES, billingProfileFor, emptyJewelleryPricing } from '/shared/billing-presets.js';
 import { escapeHtml } from '/js/core/api.js';
 
+// Escapes any value (including null) for HTML.
 export const escape = (value) => escapeHtml(String(value ?? ''));
+// Document kind -> workspace URL section.
 export const documentView = (kind) =>
   ({ invoice: 'invoices', quotation: 'quotations', proforma: 'proformas', delivery_note: 'shipping' })[kind];
+/** URL of a document page, e.g. /workspace/<business>/invoices/preview/<id>. */
 export function documentUrl(doc, action = 'preview') {
   return `/workspace/${encodeURIComponent(doc.organizationId)}/${documentView(doc.kind)}/${action}/${encodeURIComponent(doc.id)}`;
 }
+/** India date as YYYY-MM-DD, `offset` days from today. */
 export function indiaDate(offset = 0) {
   const today = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Kolkata',
@@ -27,6 +33,7 @@ export function indiaDate(offset = 0) {
   date.setUTCDate(date.getUTCDate() + offset);
   return date.toISOString().slice(0, 10);
 }
+/** "5 Oct 2026" (optionally with time) in India time; returns the input if it is not a date. */
 export function readableDate(value, time = false) {
   if (!value) return '—';
   const date = new Date(value.length === 10 ? `${value}T12:00:00Z` : value);
@@ -40,6 +47,7 @@ export function readableDate(value, time = false) {
         ...(time ? { hour: 'numeric', minute: '2-digit' } : {}),
       }).format(date);
 }
+/** A new empty line item using the business's billing profile (jewellery / recurring pricing when relevant). */
 export function blankLine(profile, delivery = false) {
   return {
     description: '',
@@ -55,6 +63,7 @@ export function blankLine(profile, delivery = false) {
         : {}),
   };
 }
+/** The editor's starting values: the saved document, or defaults for a new one (due in 30 days, default format). */
 export function initialDocumentForm(data) {
   const org = data.organization;
   const existing = data.document;
@@ -89,6 +98,7 @@ export function initialDocumentForm(data) {
     shipping: { ...blankShipping(), ...existing?.shipping },
   };
 }
+// Financial fields are locked once a document is issued, converted, finalized or (invoice) has receipts.
 export const documentLocked = (doc) =>
   Boolean(
     doc &&
@@ -97,6 +107,7 @@ export const documentLocked = (doc) =>
       doc.status !== 'draft' ||
       (doc.kind === 'invoice' && paidAmount(doc) > 0)),
   );
+/** True when the edit changes anything that affects money (customer, dates, items, discount, tax, product). */
 export function financialChange(form, existing) {
   return Boolean(
     existing &&
@@ -106,6 +117,7 @@ export function financialChange(form, existing) {
       (form.gstRegistrationId || '') !== (existing.gstRegistrationId || '')),
   );
 }
+/** Checks recurring/jewellery pricing inputs; returns an error message, or '' when valid. */
 export function validatePricing(pricing) {
   if (!pricing || pricing.mode === 'standard') return '';
   if (pricing.mode === 'recurring')
@@ -136,6 +148,7 @@ export function validatePricing(pricing) {
 function input(label, path, value, attrs = '') {
   return `<label>${escape(label)}<input data-pricing="${path}" value="${escape(value)}" ${attrs}></label>`;
 }
+/** HTML for a line's pricing method fields (standard, recurring or jewellery). */
 export function pricingFields(line, index, disabled = false, roundingPolicy) {
   const mode = line.pricing?.mode || 'standard';
   const p = line.pricing || {};
@@ -167,6 +180,7 @@ export function pricingFields(line, index, disabled = false, roundingPolicy) {
   fields += `<p class="pricing-formula" data-pricing-summary>${pricingSummary(line, roundingPolicy)}</p>`;
   return `<fieldset class="pricing-fields" data-line-index="${index}" ${disabled ? 'disabled' : ''}>${fields}</fieldset>`;
 }
+/** HTML formula showing how a line total is calculated, e.g. "2 × ₹1,500 = ₹3,000". */
 export function pricingSummary(line, roundingPolicy) {
   const details = linePriceBreakdown(line, roundingPolicy);
   if (line.pricing?.mode === 'jewellery')
@@ -175,6 +189,7 @@ export function pricingSummary(line, roundingPolicy) {
     return `${escape(line.quantity)} ${escape(line.unit || 'units')} × ${escape(line.pricing.periods ?? 1)} ${escape(line.pricing.periodUnit || 'Month')} × ${money(line.rate)} = <strong>${money(details.total)}</strong>`;
   return `${escape(line.quantity)} × ${money(line.rate)} = <strong>${money(details.total)}</strong>`;
 }
+/** Reads a PNG/JPG/WebP file (max 500 KB) into a data URL after checking it decodes as an image. */
 export async function readBrandImage(file) {
   if (!file || !['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 500 * 1024)
     throw new Error('Choose a PNG, JPG or WebP image up to 500 KB.');

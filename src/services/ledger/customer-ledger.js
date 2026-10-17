@@ -1,3 +1,9 @@
+/**
+ * Customer ledger service: per-customer balances (received, outstanding, overdue), customer
+ * statements with date filters, and CSV exports. It only reads existing invoices and receipts;
+ * it never stores a second copy of the accounts.
+ */
+
 import { createCustomerLedgerQueries } from '../../models/customer-ledger-queries.js';
 import { HttpError } from '../../middleware/errors.js';
 import { indiaBusinessDate } from '../../../shared/business-date.js';
@@ -17,6 +23,7 @@ import {
   readLedgerStatementFilters,
 } from './ledger-values.js';
 
+// Display identity for a ledger row; falls back to the snapshot saved on documents for deleted contacts.
 function customerIdentity(customer, organizationId, missingContact = false) {
   return {
     id: customer.id,
@@ -46,6 +53,7 @@ const safeFilename = (value) =>
     .slice(0, 80) || 'workspace';
 
 /** Read-only customer balances: no duplicate ledger, inferred name match or financial mutation. */
+/** Returns { list, statement, exportCustomers, exportStatement } with access checks per user. */
 export function createCustomerLedger({ db, now = () => new Date(), auth = true }) {
   const queries = createCustomerLedgerQueries(db);
 

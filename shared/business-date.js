@@ -1,3 +1,5 @@
+/** "Today" in India (Asia/Kolkata), regardless of the server's time zone. Used for dates on documents and due checks. */
+
 const indiaDateFormatter = new Intl.DateTimeFormat('en-CA', {
   timeZone: 'Asia/Kolkata',
   year: 'numeric',

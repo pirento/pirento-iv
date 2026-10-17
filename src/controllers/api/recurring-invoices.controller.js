@@ -1,3 +1,8 @@
+/**
+ * Recurring invoices API (/api/recurring-invoices): schedules that create draft invoices
+ * weekly/monthly/quarterly/yearly. Logic lives in src/services/recurring/recurring-invoices.js.
+ */
+
 import { z } from 'zod';
 import { HttpError } from '../../middleware/errors.js';
 
@@ -25,31 +30,38 @@ export function createController({ recurringInvoices, auth }) {
     return { organizationId, actorId, input };
   }
   return {
+    // GET /api/recurring-invoices
     list: async (req, res) => {
       const { organizationId } = authorize(res, req.query.organizationId);
       res.json(await recurringInvoices.list(organizationId, req.query));
     },
+    // GET /api/recurring-invoices/sources
     sources: async (req, res) => {
       const { organizationId } = authorize(res, req.query.organizationId);
       res.json(await recurringInvoices.sourceCandidates(organizationId, req.query.q || ''));
     },
+    // GET /api/recurring-invoices/:id
     show: async (req, res) => {
       const { organizationId } = authorize(res, req.query.organizationId);
       res.json(await recurringInvoices.get(organizationId, req.params.id, req.query));
     },
+    // POST /api/recurring-invoices
     create: async (req, res) => {
       const { actorId } = authorize(res, req.body?.organizationId, true);
       const result = await recurringInvoices.create(req.body, actorId);
       res.status(result.created ? 201 : 200).json(result);
     },
+    // PUT /api/recurring-invoices/:id
     update: async (req, res) => {
       const { organizationId, actorId, input } = mutation(req, res);
       res.json(await recurringInvoices.update(organizationId, req.params.id, input, actorId));
     },
+    // POST /api/recurring-invoices/:id/status
     setStatus: async (req, res) => {
       const { organizationId, actorId, input } = mutation(req, res);
       res.json(await recurringInvoices.setStatus(organizationId, req.params.id, input, actorId));
     },
+    // POST /api/recurring-invoices/:id/generate
     generate: async (req, res) => {
       const { organizationId, actorId, input } = mutation(req, res);
       const result = await recurringInvoices.generate(organizationId, req.params.id, input, actorId);

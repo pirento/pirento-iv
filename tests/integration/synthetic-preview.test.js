@@ -1,3 +1,5 @@
+/** Integration tests: the disposable preview works end to end while isolating data and blocking providers. */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { access } from 'node:fs/promises';

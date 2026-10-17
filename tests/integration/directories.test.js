@@ -1,3 +1,5 @@
+/** Integration tests: Contacts/Catalog paging, filters, CSV export, editor lookups and business permissions. */
+
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createFixture, integrationEnabled } from './fixture.js';

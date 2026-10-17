@@ -1,3 +1,11 @@
+/**
+ * Core business service shared by the API controllers (passed to them as the controller context).
+ *
+ * Holds the rules that several screens need: loading records (404 when missing), receipts and
+ * invoice balance/status, catalog and format checks, GST checks, document numbering
+ * (PREFIX/2627/0001 per financial year) and creating a new document from validated input.
+ */
+
 import { randomUUID } from 'node:crypto';
 import { normalizeContact, isInvoiceRecipient } from './validation/contacts.js';
 import { organizationForRegistration } from '../../shared/business-identity.js';
@@ -7,13 +15,17 @@ import { indiaBusinessDate } from '../../shared/business-date.js';
 import { wholePaise } from '../../shared/money.js';
 import { HttpError } from '../middleware/errors.js';
 import { DOCUMENT_VERSION_CONFLICT } from './documents/document-writes.js';
+
+/** Builds the service. `context` provides { db, now, mailer, online }. */
 export function createWorkspaceService(context) {
   const { db, now } = context;
+  // Indian financial year (April-March) as 4 digits: an issue date in Oct 2026 -> "2627".
   function fiscalYear(issueDate) {
     const year = Number(issueDate.slice(0, 4));
     const start = Number(issueDate.slice(5, 7)) >= 4 ? year : year - 1;
     return `${String(start).slice(-2)}${String(start + 1).slice(-2)}`;
   }
+  // --- Record lookups: each throws HttpError 404 when the record does not exist. ---
   async function getOrganization(id) {
     const row = await db.models.organizations.findById(id);
     if (!row) throw new HttpError(404, 'Organization not found.');
@@ -34,10 +46,13 @@ export function createWorkspaceService(context) {
     if (!row) throw new HttpError(404, 'Payment not found.');
     return row;
   }
+  // --- Receipts and invoice balance ---
+  // Total of non-voided receipts for a document, in paise.
   async function activePaidPaise(documentId) {
     const row = await db.models.payments.activeTotal(documentId);
     return row.paid;
   }
+  // Appends a line to the document's history (shown on the Payments page).
   async function addEvent(documentId, type, description) {
     const event = {
       id: randomUUID(),
@@ -48,6 +63,7 @@ export function createWorkspaceService(context) {
     };
     await db.models.events.insert(event);
   }
+  // Document + its receipts + its history, as returned by the payments API.
   async function paymentDetails(documentId) {
     return {
       document: await getDocument(documentId),
@@ -55,6 +71,10 @@ export function createWorkspaceService(context) {
       events: await db.models.events.list(documentId),
     };
   }
+  /**
+   * Recalculates amountPaid/balanceDue/status from the receipts and saves the invoice.
+   * finalize=true marks a fully paid invoice as final (locked); reopening=true undoes that.
+   */
   async function updatePaymentBalance(document, finalize = false, reopening = false) {
     const paid = await activePaidPaise(document.id);
     const total = Math.round(document.totals.total * 100);
@@ -87,6 +107,7 @@ export function createWorkspaceService(context) {
       );
     return updated;
   }
+  // --- Catalog, business products and formats ---
   async function getCatalogItem(id) {
     const row = await db.models.catalog.findById(id);
     if (!row) throw new HttpError(404, 'Product or service not found.');
@@ -97,6 +118,7 @@ export function createWorkspaceService(context) {
     if (!row) throw new HttpError(404, 'Business product not found.');
     return row;
   }
+  // Validates the business product chosen for a document (same business, not archived unless already used).
   async function selectBusinessProduct(organization, productId, previousId, requireSelection = true) {
     if (!productId) {
       if (
@@ -114,6 +136,7 @@ export function createWorkspaceService(context) {
       throw new HttpError(400, 'Archived business products cannot be selected for new records.');
     return product;
   }
+  // Product codes are unique within a business, including archived products.
   async function assertProductCodeAvailable(input, excludedId = '') {
     if (
       input.code &&
@@ -124,6 +147,7 @@ export function createWorkspaceService(context) {
         'This business product code is already used in this organization, including archived products.',
       );
   }
+  // An installment plan must add up exactly (to the paisa) to the document total.
   function validateInstallmentTotal(plan, total) {
     if (
       plan &&
@@ -135,6 +159,7 @@ export function createWorkspaceService(context) {
         'Installments must add up exactly to the full document total. Update or remove the plan when changing financial details.',
       );
   }
+  // Records an installment plan change in the document history.
   async function recordPlanChange(documentId, previous, next) {
     await addEvent(
       documentId,
@@ -147,6 +172,7 @@ export function createWorkspaceService(context) {
     if (!row) throw new HttpError(404, 'Invoice format not found.');
     return row;
   }
+  // The chosen format, or the business's default format when none is chosen.
   async function selectFormat(organizationId, formatId) {
     let format;
     if (formatId) format = await getFormat(formatId);
@@ -160,12 +186,15 @@ export function createWorkspaceService(context) {
       throw new HttpError(400, 'The format belongs to a different organization.');
     return format;
   }
+  // SKUs are unique within a business, including archived items.
   async function assertSkuAvailable(input, excludedId = '') {
     if (!input.sku) return;
     const row = await db.models.catalog.findSkuConflict(input.organizationId, input.sku, excludedId);
     if (row)
       throw new HttpError(409, 'This SKU is already used in this organization, including archived items.');
   }
+  // Every catalog item on a document must belong to this business, be active (unless it was
+  // already on the document) and match the document's business product.
   async function validateCatalogReferences(input, current) {
     const previous = new Set(current?.items.map((item) => item.catalogItemId).filter(Boolean));
     for (const item of input.items) {
@@ -184,6 +213,7 @@ export function createWorkspaceService(context) {
         );
     }
   }
+  // Saves a format; making it the default removes the default flag from the previous one.
   async function saveFormat(format) {
     if (format.isDefault) {
       const previous = await db.models.formats.findOtherDefault(format.organizationId, format.id);
@@ -198,10 +228,13 @@ export function createWorkspaceService(context) {
     }
     await db.models.formats.save(format);
   }
+  // --- Business checks ---
+  // Loads the business named by a request's organizationId (400 when missing).
   async function scopedOrganization(value) {
     if (typeof value !== 'string' || !value) throw new HttpError(400, 'organizationId is required.');
     return await getOrganization(value);
   }
+  // Invoice/quotation number prefixes must be unique across all businesses, including ones used in the past.
   async function assertPrefixesAvailable(organization, excludedId) {
     const organizations = await db.models.organizations.list();
     const incoming = new Set([organization.invoicePrefix, organization.quotationPrefix]);
@@ -218,6 +251,7 @@ export function createWorkspaceService(context) {
       throw new HttpError(409, 'This prefix was already used by another division. Choose a new prefix.');
     }
   }
+  // GST can only be charged when the business has a GSTIN and state, and a place of supply is selected.
   function validateTax(input, organization) {
     if (
       input.items.some((item) => item.gstRate > 0) &&
@@ -229,6 +263,8 @@ export function createWorkspaceService(context) {
       );
     }
   }
+  // --- Document numbering and creation ---
+  // Next free document number, e.g. ATEI/2627/0001 (proformas add "P", delivery challans add "D").
   async function nextNumber(organization, kind, issueDate) {
     const year = fiscalYear(issueDate);
     const prefix = kind === 'quotation' ? organization.quotationPrefix : organization.invoicePrefix;
@@ -241,6 +277,7 @@ export function createWorkspaceService(context) {
       if (!(await db.models.documents.findByNumber(number))) return number;
     }
   }
+  // Saves a document only if nobody else saved it meanwhile (optimistic locking on `version`).
   async function saveDocument(document) {
     const version = document.version ?? 0;
     if (!Number.isSafeInteger(version) || version < 0 || version >= Number.MAX_SAFE_INTEGER)
@@ -255,6 +292,7 @@ export function createWorkspaceService(context) {
       );
     document.version = updated.version;
   }
+  // The business details as they apply to the chosen GST registration (seller identity on the document).
   function sellerRegistration(organization, registrationId) {
     try {
       return organizationForRegistration(organization, registrationId);
@@ -262,6 +300,12 @@ export function createWorkspaceService(context) {
       throw new HttpError(400, 'Choose a GST registration saved in this organization.');
     }
   }
+  /**
+   * Creates and stores a new document: validates tax, customer, catalog and product, assigns
+   * the next number, takes snapshots of the customer/business/format (so later edits to them
+   * never change an issued document) and queues the invoice email when it is issued.
+   * `source` is set when converting a quotation or creating a delivery challan from an invoice.
+   */
   async function newDocument(input, organization, customer, source = null) {
     if (!source) organization = sellerRegistration(organization, input.gstRegistrationId);
     validateTax(input, organization);
@@ -314,6 +358,7 @@ export function createWorkspaceService(context) {
     if (document.installmentPlan) await recordPlanChange(document.id, null, document.installmentPlan);
     return document;
   }
+  // Queues the automatic email for an issued (status "sent") invoice/quotation/proforma.
   async function emailIssuedDocument(document) {
     if (document.status !== 'sent' || document.kind === 'delivery_note') return;
     await context.mailer.enqueueInvoice(document, {
@@ -324,6 +369,11 @@ export function createWorkspaceService(context) {
         (await context.online.getStatus(document.organizationId, document.id)).configured,
     });
   }
+  /**
+   * Records a receipt against an invoice. The same requestId with the same details returns the
+   * existing receipt (safe retry); different details -> 409. Overpayment is rejected.
+   * `providerPaidAt` is set only for payments verified by Razorpay/Cashfree.
+   */
   async function recordPayment(documentId, rawInput, { providerPaidAt } = {}) {
     // Normalize both sides of a retry comparison, including harmless JS decimal noise.
     const input = paymentSchema.parse(rawInput);

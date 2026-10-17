@@ -1,3 +1,8 @@
+/**
+ * Invoice email page (views/documents/email.ejs): send the invoice (optionally with a payment link),
+ * show delivery history and retry failed messages.
+ */
+
 import { api, sendJson } from '/js/core/api.js';
 import { getPageData } from '/js/core/page.js';
 import { balanceDue, DOCUMENT_LABELS } from '/shared/types.js';

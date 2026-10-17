@@ -1,3 +1,11 @@
+/**
+ * Error type and request diagnostics shared by the whole server.
+ *
+ * - HttpError: throw it anywhere to send a specific HTTP status and message to the client.
+ * - createRequestDiagnostics: request ID + structured request log line for every request.
+ * - createErrorReporter: logs an error safely (no request data or secrets in the log).
+ */
+
 import { randomUUID } from 'node:crypto';
 import { performance } from 'node:perf_hooks';
 import { requestRoute } from '../services/operations/logger.js';
@@ -5,6 +13,10 @@ import { requestRoute } from '../services/operations/logger.js';
 const diagnosticsStarted = Symbol('request-diagnostics');
 const errorReported = Symbol('request-error-reported');
 
+/**
+ * An error with an HTTP status. Example: `throw new HttpError(404, 'Customer not found.')`.
+ * Optional `code` is returned to the browser for special cases (e.g. version conflicts).
+ */
 export class HttpError extends Error {
   status;
   constructor(status, message, code) {

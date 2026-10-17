@@ -1,3 +1,8 @@
+/**
+ * Business products API (/api/business-products): the product lines a business sells under,
+ * each with its own product code. A product can never move to another business.
+ */
+
 import { randomUUID } from 'node:crypto';
 import { transaction } from '../../config/database.js';
 import { transactionForRecord } from '../../services/transaction-ownership.js';
@@ -7,10 +12,12 @@ export function createController(context) {
   const { db, now, getOrganization, getBusinessProduct, assertProductCodeAvailable, scopedOrganization } =
     context;
   return {
+    // GET /api/business-products
     list: async (req, res) => {
       const organization = await scopedOrganization(req.query.organizationId);
       res.json(await db.models.businessProducts.list(organization.id));
     },
+    // POST /api/business-products
     create: async (req, res) => {
       const input = businessProductSchema.parse(req.body);
       const product = await transaction(
@@ -32,6 +39,7 @@ export function createController(context) {
       );
       res.status(201).json(product);
     },
+    // PUT /api/business-products/:id
     update: async (req, res) => {
       const input = businessProductSchema.parse(req.body);
       const product = await transactionForRecord(

@@ -1,3 +1,8 @@
+/**
+ * `npm run db:import-sqlite` - one-time import of the old TypeScript app's SQLite database
+ * (schema v5) into a new, empty MongoDB database. See docs/MIGRATION.md.
+ */
+
 import { DatabaseSync } from 'node:sqlite';
 import { existsSync, lstatSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -30,6 +35,7 @@ const LEGACY_TABLES = new Set(
 );
 const DOCUMENT_KINDS = new Set(['invoice', 'quotation', 'proforma', 'delivery_note']);
 
+// Help text printed for --help or invalid arguments.
 export const IMPORT_HELP = `Import an existing Venturecore SQLite version 5 workspace into MongoDB
 
   npm run db:import-sqlite -- --source=/private/existing.sqlite --database=NEW_EMPTY_NAME --confirm-import
@@ -228,6 +234,7 @@ export function readLegacyDatabase(source, options = {}) {
   }
 }
 
+/** Entry point: validates arguments, reads the SQLite file and writes every record to MongoDB. */
 export async function runImportCommand(arguments_ = [], options = {}) {
   const { values } = parseArgs({
     args: arguments_,

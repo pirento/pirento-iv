@@ -1,13 +1,22 @@
+/**
+ * Core business constants and calculations shared by server and browser: document and status
+ * labels, units, Indian states, payment methods, default formats, totals/GST calculation,
+ * balances and installment allocation. The server is always the source of truth for saved totals.
+ */
+
 import { decimal } from './decimal.js';
 import { legacyLinePriceBreakdown } from './legacy-pricing.js';
 
+// Group company legal name: seeded as the workspace name and the legal name of group businesses.
 export const COMPANY_NAME = 'Venturecore Solutions Private Limited';
+// Document kind -> display name.
 export const DOCUMENT_LABELS = {
   invoice: 'Invoice',
   quotation: 'Quotation',
   proforma: 'Proforma invoice',
   delivery_note: 'Delivery challan',
 };
+// Document status -> display name.
 export const STATUS_LABELS = {
   draft: 'Draft',
   sent: 'Sent',
@@ -19,6 +28,7 @@ export const STATUS_LABELS = {
   dispatched: 'Dispatched',
   delivered: 'Delivered',
 };
+// Units offered for catalog items and line items.
 export const CATALOG_UNITS = [
   'Nos',
   'Unit',
@@ -49,6 +59,7 @@ export const CATALOG_UNITS = [
   'License',
   'User',
 ];
+// Empty shipping details for a new document.
 export const blankShipping = () => ({
   recipientName: '',
   address: '',
@@ -62,6 +73,7 @@ export const blankShipping = () => ({
   reference: '',
   notes: '',
 });
+// Receipt payment methods -> display names.
 export const PAYMENT_METHODS = {
   bank_transfer: 'Bank transfer',
   upi: 'UPI',
@@ -70,6 +82,7 @@ export const PAYMENT_METHODS = {
   cheque: 'Cheque',
   other: 'Other',
 };
+/** The built-in "Standard" format for a business (used when a document has no saved format). */
 export function defaultFormatFor(organization) {
   return {
     id: `${organization.id}-standard`,
@@ -104,20 +117,24 @@ export function defaultFormatFor(organization) {
     stampWidth: 110,
   };
 }
+/** The format saved with a document, on top of the defaults (older documents lack newer fields). */
 export function getDocumentFormat(document) {
   return {
     ...defaultFormatFor(document.organizationSnapshot),
     ...document.formatSnapshot,
   };
 }
+// Amount received on an invoice (older paid invoices may lack amountPaid).
 export const paidAmount = (document) =>
   document.amountPaid ??
   (document.kind === 'invoice' && document.status === 'paid' ? document.totals.total : 0);
+// Amount still owed on an invoice (0 for other document kinds).
 export const balanceDue = (document) =>
   document.kind === 'invoice'
     ? (document.balanceDue ??
       Math.max(0, Math.round((document.totals.total - paidAmount(document)) * 100) / 100))
     : 0;
+// Indian states and union territories: [GST state code, name].
 export const STATES = [
   ['01', 'Jammu & Kashmir'],
   ['02', 'Himachal Pradesh'],
@@ -156,12 +173,14 @@ export const STATES = [
   ['37', 'Andhra Pradesh'],
   ['38', 'Ladakh'],
 ];
+// Formats a number as Indian rupees, e.g. 125000 -> "₹1,25,000.00".
 export const money = (value) =>
   new Intl.NumberFormat('en-IN', {
     style: 'currency',
     currency: 'INR',
     maximumFractionDigits: 2,
   }).format(value);
+// Rounding policy saved on documents: new documents use exact decimal; older ones keep their original display.
 export const DECIMAL_ROUNDING_POLICY = 'decimal-half-up-v1';
 export const LEGACY_ROUNDING_POLICY = 'legacy-binary-v1';
 
@@ -203,7 +222,13 @@ export function calculateTotals(items, discountPercent, interstate) {
     roundingPolicy: DECIMAL_ROUNDING_POLICY,
   };
 }
+// Rounds a rupee amount to 2 decimals (half-up, exact decimal) and returns a Number.
 export const roundMoney = (value) => decimal(value).round().toNumber();
+/**
+ * Splits one line item into { base, making, wastage, stones, other, netWeight, periods, total }.
+ * Normal lines: quantity x periods x rate. Jewellery lines: quantity x net weight x metal rate plus
+ * making/wastage/stone/other charges. Old documents use the legacy (binary) rounding.
+ */
 export function linePriceBreakdown(item, roundingPolicy = DECIMAL_ROUNDING_POLICY) {
   if (roundingPolicy === LEGACY_ROUNDING_POLICY) return legacyLinePriceBreakdown(item);
   const quantity = decimal(Number.isFinite(item.quantity) ? item.quantity : 0);
@@ -239,7 +264,9 @@ export function linePriceBreakdown(item, roundingPolicy = DECIMAL_ROUNDING_POLIC
     total: base.plus(making).plus(wastage).plus(stones).plus(other).round().toNumber(),
   };
 }
+// Line total only (see linePriceBreakdown).
 export const calculateLineAmount = (item, roundingPolicy) => linePriceBreakdown(item, roundingPolicy).total;
+// One-line explanation printed under a recurring or jewellery line; '' for normal lines.
 export function pricingDescription(item, roundingPolicy) {
   const p = item.pricing;
   const b = linePriceBreakdown(item, roundingPolicy);
@@ -260,6 +287,7 @@ export function pricingDescription(item, roundingPolicy) {
     .filter(Boolean)
     .join(' · ');
 }
+/** Default signatures and stamp labels for documents of a business. */
 export function defaultDocumentBranding(org) {
   return {
     logoMode: 'inherit',
@@ -274,10 +302,12 @@ export function defaultDocumentBranding(org) {
     showStamp: true,
   };
 }
+// Document branding = business defaults overridden by the document's own branding.
 export const getDocumentBranding = (doc) => ({
   ...defaultDocumentBranding(doc.organizationSnapshot),
   ...doc.branding,
 });
+/** Splits received money across installments, oldest due date first, and marks each paid/partial/overdue/pending. */
 export function installmentBalances(
   doc,
   asOf = new Intl.DateTimeFormat('en-CA', {

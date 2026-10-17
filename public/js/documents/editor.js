@@ -1,3 +1,16 @@
+/**
+ * Document editor page (views/documents/editor.ejs) for invoices, quotations, proformas and
+ * delivery challans.
+ *
+ * The server renders the form; this script keeps a `form` object in sync with the inputs,
+ * recalculates totals live (same functions as the server: shared/types.js), picks contacts and
+ * catalog items (directory-picker.js), validates, and saves to /api/documents.
+ *
+ * Safety features: unsaved edits survive reloads (editor-state.js); a new document carries a
+ * requestId so a retried save never creates a duplicate; a save from an outdated tab is refused
+ * with a conflict message instead of overwriting newer changes.
+ */
+
 import { api, sendJson, downloadText } from '/js/core/api.js';
 import { getPageData } from '/js/core/page.js';
 import { createDirectoryPicker, fetchDirectoryRecords, replaceDirectoryRows } from './directory-picker.js';
@@ -41,6 +54,9 @@ import {
   writeStoredDraft,
 } from './editor-state.js';
 
+// ---------------------------------------------------------------------------
+// Page state
+// ---------------------------------------------------------------------------
 const data = getPageData();
 const organization = data.organization;
 const existing = data.document;
@@ -70,6 +86,7 @@ try {
 } catch {
   /* Saving explains when a browser cannot retain a request safely. */
 }
+// Records sent by the server for this business (contacts and catalog: first page + records used by the draft).
 const catalog = data.catalog || [];
 const formats = (data.formats || []).filter((format) => format.organizationId === organization.id);
 const products = (data.businessProducts || []).filter(
@@ -109,6 +126,9 @@ if (!locked && canRestoreDraft(savedDraft, existing, organization.id, form.kind)
   writeStoredDraft(draftStorage, `${draftKey}:recovery`, savedDraft);
 }
 
+// ---------------------------------------------------------------------------
+// Small helpers: current seller, customer, totals; feedback, draft saving, field errors
+// ---------------------------------------------------------------------------
 const field = (name) => editor.elements.namedItem(name);
 const currentBranding = () => ({
   ...defaultDocumentBranding(existing?.organizationSnapshot || organization),
@@ -196,6 +216,9 @@ function syncFields() {
     else element.value = value;
   }
 }
+// ---------------------------------------------------------------------------
+// Rendering: contact picker, business product, catalog picker, line items, branding, totals
+// ---------------------------------------------------------------------------
 function renderContacts() {
   const search = document.querySelector('#doc-contact-search').value.trim().toLowerCase();
   const filtered = customers.filter(
@@ -447,6 +470,9 @@ function refreshDerived() {
   }
   if (field('dueDate')) field('dueDate').min = form.issueDate || '2000-01-01';
 }
+// ---------------------------------------------------------------------------
+// Validation before save (returns field -> message)
+// ---------------------------------------------------------------------------
 function validate() {
   const errors = {};
   const seller = currentSeller();
@@ -523,6 +549,9 @@ function validate() {
       'Clear the installment plan before saving this changed total, then create a revised plan from Payments.';
   return errors;
 }
+// ---------------------------------------------------------------------------
+// User input: typing, dropdown changes, button clicks (add/remove line, choose item, ...)
+// ---------------------------------------------------------------------------
 editor.addEventListener('input', (event) => {
   const target = event.target;
   if (target.id === 'doc-contact-search') return contactPicker?.search();
@@ -722,6 +751,9 @@ for (const link of editor.querySelectorAll('[data-manager-link]')) {
     }
   });
 }
+// ---------------------------------------------------------------------------
+// Save button state, "Start fresh" / discard draft dialog, save conflicts
+// ---------------------------------------------------------------------------
 function updateSaveAvailability() {
   if (resetDraftButton) {
     resetDraftButton.disabled = initializing || initializationFailed || saving || uploadCount > 0;
@@ -866,6 +898,9 @@ document.querySelector('[data-download-unsaved]')?.addEventListener('click', () 
   );
 });
 
+// ---------------------------------------------------------------------------
+// Save: POST (new) or PUT (existing) to /api/documents, then open the saved document
+// ---------------------------------------------------------------------------
 editor.addEventListener('submit', async (event) => {
   event.preventDefault();
   if (initializing || initializationFailed || saving || finalized || uploadCount || saveConflict) return;
@@ -944,6 +979,9 @@ renderCatalog();
 refreshDerived();
 refreshBranding();
 
+// ---------------------------------------------------------------------------
+// Contact and catalog pickers (only while the document can still be edited)
+// ---------------------------------------------------------------------------
 if (!locked) {
   contactPicker = createDirectoryPicker({
     kind: 'customers',
@@ -994,6 +1032,9 @@ if (!locked) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Startup: load pickers and referenced records, restore the draft, first render
+// ---------------------------------------------------------------------------
 async function initializeEditor() {
   editor.querySelector('.doc-content-fieldset').disabled = true;
   updateSaveAvailability();

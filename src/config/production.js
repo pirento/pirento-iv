@@ -1,8 +1,15 @@
+/**
+ * Production preflight, run before a hosted server starts (and by `npm run check:deployment`).
+ * Checks the Node.js version, required settings, the first-admin settings, and that the
+ * selected database is the expected one (an empty database needs IV_ALLOW_NEW_DATABASE=true).
+ */
+
 import { MongoClient } from 'mongodb';
 import { z } from 'zod';
 import { assertHttpsPublicOrigin, EnvironmentConfigurationError } from './environment.js';
 import { parseTrustedProxy } from './trusted-proxy.js';
 
+/** Throws unless Node.js is 24.5 or newer (and below 27). */
 export function assertHostedNodeVersion(version = process.versions.node) {
   const match = /^(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/.exec(version);
   const major = Number(match?.[1]);
@@ -13,6 +20,10 @@ export function assertHostedNodeVersion(version = process.versions.node) {
     );
 }
 
+/**
+ * True when the first-administrator email + password are both set and valid, false when both
+ * are absent. Throws when only one is set or a value is invalid.
+ */
 export function hasValidBootstrapSettings(environment) {
   const email = environment.INITIAL_ADMIN_EMAIL;
   const password = environment.INITIAL_ADMIN_PASSWORD;

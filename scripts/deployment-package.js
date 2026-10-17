@@ -1,3 +1,9 @@
+/**
+ * Builds the release archives (`npm run package:preview`): copies an allow-list of project files
+ * into release/*.zip and *.tar.gz with SHA-256 checksums. Refuses to package private files
+ * (.env, databases, keys) or a filled-in .example.env.
+ */
+
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
@@ -17,6 +23,7 @@ import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { inspectExampleTemplate } from './environment-template.js';
 
+// Files and folders that must be in every release package.
 export const deploymentRoots = [
   'package.json',
   'package-lock.json',
@@ -36,6 +43,7 @@ export const deploymentRoots = [
   'tests',
 ];
 
+// Included when present (developer tooling).
 export const optionalDeploymentRoots = ['.github', 'eslint.config.js', 'playwright.config.js'];
 
 /** A directly loaded config file may contain secrets; refuse to package a filled copy. */
@@ -79,6 +87,7 @@ export function collectDeploymentFiles(root) {
   return files;
 }
 
+/** Creates the archives and returns their paths. `synthetic` builds the disposable-preview variant. */
 export function createDeploymentPackages({ root, synthetic = false }) {
   const applicationRoot = realpathSync(root);
   const files = collectDeploymentFiles(applicationRoot);

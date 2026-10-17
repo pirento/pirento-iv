@@ -1,3 +1,9 @@
+/**
+ * `npm run check:deployment` - read-only check of a production setup: Node version, settings,
+ * HTTPS origin, proxy setting, database reachability/transactions, first-admin settings, backups
+ * and which payment/email integrations are configured. Prints JSON; never prints secret values.
+ */
+
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isIP } from 'node:net';

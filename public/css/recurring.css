@@ -1,3 +1,5 @@
+/* Recurring invoices page: schedule list, status, date preview, dialogs and activity. */
+
 .recurring-page {
   display: grid;
   gap: 22px;

@@ -1,3 +1,5 @@
+/** Unit tests: scripts/with-test-database.js stops all child processes when verification is interrupted. */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';

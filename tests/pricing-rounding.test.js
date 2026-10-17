@@ -1,3 +1,5 @@
+/** Unit tests: exact-decimal line pricing and half-up rounding (normal, recurring and jewellery lines). */
+
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { decimal } from '../shared/decimal.js';
