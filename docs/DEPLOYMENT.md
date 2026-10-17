@@ -42,6 +42,8 @@ Release 2.4.0 adds optional `TRUST_PROXY`, empty by default; see the proxy secti
 
 Provision the initial owner with `INITIAL_ADMIN_EMAIL`, `INITIAL_ADMIN_NAME` and `INITIAL_ADMIN_PASSWORD`. Use a password of at least 12 characters. Remove both email/password startup values after the initial login. Public signup alone does not grant administrative access.
 
+**Two-step login (required for production):** set `TWO_STEP_KEY` to 64 hexadecimal characters, for example the output of `openssl rand -hex 32`. It encrypts the authenticator keys stored in the database, and production startup refuses to run without it. Keep it private and never change it; a new key turns off everyone's codes until an administrator removes two-step login and they set it up again. In production, administrators must turn on two-step login (on **My sessions**) before they can use the workspace. Set `ADMIN_TWO_STEP=optional` only if administrators should choose for themselves. Staff can turn it on at any time.
+
 Do not place `.example.env`, the project root or backup storage in a public static directory. The supplied server exposes only specific browser asset folders. Publish the blank template with source; keep filled credentials private.
 
 ### Reverse proxies and account limits
