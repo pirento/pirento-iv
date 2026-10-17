@@ -334,6 +334,18 @@ export function createModels(context) {
     const result = await collection('email_outbox').updateOne(filter, mutation, emailOptions(timeoutMS));
     return { changes: result.matchedCount };
   };
+  // A sent email is never re-sent, so only the fields its history and reminder checks read are kept;
+  // the invoice copy, HTML and PDF are dropped. Password reset links are removed entirely.
+  const sentEmailPayload = {
+    $cond: [
+      { $eq: ['$kind', 'password_reset'] },
+      {},
+      {
+        organizationId: { $ifNull: ['$payload.organizationId', '$payload.document.organizationId'] },
+        reminder: '$payload.reminder',
+      },
+    ],
+  };
   const unattemptedEmailFilter = (id, claim_token, at) => {
     if (typeof id !== 'string' || !id) throw new TypeError('An email message ID is required.');
     return {
@@ -485,6 +497,20 @@ export function createModels(context) {
         },
         options(),
       ),
+    /** One-off clean-up for emails sent before payloads were trimmed on send (safe to repeat). */
+    compactSent: () =>
+      collection('email_outbox').updateMany(
+        {
+          status: 'sent',
+          $or: [
+            { 'payload.document': { $exists: true } },
+            { 'payload.html': { $exists: true } },
+            { 'payload.attachment': { $exists: true } },
+          ],
+        },
+        [{ $set: { payload: sentEmailPayload } }],
+        options(),
+      ),
     claim: async (updated_at, lease_until, due, expired, claim_token) => {
       emailClaimFilter('claim', claim_token, updated_at);
       return present(
@@ -594,7 +620,7 @@ export function createModels(context) {
             next_attempt_at: null,
             provider_id: { $literal: provider_id },
             last_error: '',
-            payload: { $cond: [{ $eq: ['$kind', 'password_reset'] }, {}, '$payload'] },
+            payload: sentEmailPayload,
           },
         },
       ]),

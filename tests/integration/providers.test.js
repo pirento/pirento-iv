@@ -358,7 +358,7 @@ test(
     await backend.mailer.processQueue();
     failed = await backend.db.models.email.findById(send.message.id);
     assert.equal(failed.status, 'sent');
-    assert.deepEqual(failed.payload, payload);
+    assert.deepEqual(failed.payload, { organizationId: payload.organizationId });
     const lastTwo = emails.slice(-2);
     assert.equal(lastTwo[0].headers['Idempotency-Key'], lastTwo[1].headers['Idempotency-Key']);
     assert.deepEqual(lastTwo[0].body, lastTwo[1].body);

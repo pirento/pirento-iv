@@ -210,6 +210,7 @@ async function initializeApplication(options, environment, db) {
     automations,
   };
   app.locals.initialize = async () => {
+    await db.models.email.compactSent();
     const owner = await auth?.initializeOwner();
     await backups.initialize();
     readiness.markReady();
