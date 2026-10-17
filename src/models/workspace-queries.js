@@ -196,7 +196,7 @@ export function createWorkspaceQueries(db) {
     return { ...summary, recent, activeContacts, activeCatalog, availableFormats };
   }
 
-  /** Issued invoices dated in [from, to) with the fields GSTR-1 needs (src/services/pages/gstr1.js). */
+  /** Issued and cancelled invoices dated in [from, to) with the fields GSTR-1 needs (services/pages/gstr1.js). */
   function gstr1Invoices(organizationId, { from, to }) {
     return db
       .collection('documents')
@@ -204,7 +204,7 @@ export function createWorkspaceQueries(db) {
         {
           organizationId,
           kind: 'invoice',
-          status: { $nin: ['draft', 'cancelled'] },
+          status: { $ne: 'draft' },
           issueDate: { $gte: from, $lt: to },
         },
         {
@@ -212,6 +212,7 @@ export function createWorkspaceQueries(db) {
           projection: {
             _id: 0,
             number: 1,
+            status: 1,
             issueDate: 1,
             placeOfSupply: 1,
             discountPercent: 1,

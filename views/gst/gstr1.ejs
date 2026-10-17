@@ -1,7 +1,7 @@
 <%# GST returns page /workspace/<id>/gst_returns?month=YYYY-MM&gstin=...: GSTR-1 tables with a CSV per table (data from src/services/pages/gstr1.js). No page script. -%>
 <%
 const report = data.gstr1;
-const numeric = new Set(['Invoice Value', 'Rate', 'Taxable Value', 'Cess Amount', 'Total Quantity', 'Total Value', 'Integrated Tax Amount', 'Central Tax Amount', 'State/UT Tax Amount', 'Nil Rated Supplies', 'Exempted(other than nil rated/non GST supply)', 'Non-GST supplies']);
+const numeric = new Set(['Total Number', 'Cancelled', 'Invoice Value', 'Rate', 'Taxable Value', 'Cess Amount', 'Total Quantity', 'Total Value', 'Integrated Tax Amount', 'Central Tax Amount', 'State/UT Tax Amount', 'Nil Rated Supplies', 'Exempted(other than nil rated/non GST supply)', 'Non-GST supplies']);
 %>
 <header class="page-header">
   <div>
@@ -80,5 +80,6 @@ const numeric = new Set(['Invoice Value', 'Rate', 'Taxable Value', 'Cess Amount'
 <p class="finance-basis">
   Based on issued invoices (drafts and cancelled invoices are excluded). Reverse charge is reported as "N" and cess as 0. B2CL uses
   ₹1,00,000 for invoices from 1 Aug 2024 (₹2,50,000 before). 0% lines are listed under nil rated; move them to exempt or non-GST if
-  that applies. Review the figures with your CA before filing.
+  that applies. Documents issued counts the invoices found in each number series; if a number is missing (for example a
+  deleted draft), add it as cancelled if your CA needs a continuous series. Review the figures with your CA before filing.
 </p>

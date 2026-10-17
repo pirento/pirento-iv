@@ -1,6 +1,7 @@
 /**
  * GSTR-1 (monthly outward supplies) for one business GSTIN, built from issued invoices:
- * B2B, B2CL, B2CS, HSN summary (B2B and B2C) and 0% lines, plus CSV files with the GST offline
+ * B2B, B2CL, B2CS, HSN summary (B2B and B2C), 0% lines and documents issued (cancelled invoices
+ * count only there), plus CSV files with the GST offline
  * tool's column layout. Every invoice's lines are reconciled to its saved totals, so the tables
  * agree with the invoices. A CA should still review the return before filing.
  */
@@ -98,6 +99,10 @@ export const GSTR1_SECTIONS = {
       'Non-GST supplies',
     ],
   },
+  docs: {
+    title: 'Documents issued (13)',
+    columns: ['Nature of Document', 'Sr. No. From', 'Sr. No. To', 'Total Number', 'Cancelled'],
+  },
 };
 
 const money = (value) => decimal(value).round().toNumber().toFixed(2);
@@ -159,15 +164,46 @@ export function invoiceLines(document) {
 }
 
 /**
- * Builds the GSTR-1 tables for one month from issued invoices (already filtered by business and
- * month). Only invoices issued under `gstin` are included; the default is the first GSTIN found.
+ * Invoice number series for Table 13: "ABC/2627/0007" belongs to series "ABC/2627/". Total and
+ * cancelled are counts of the invoices found; numbers missing from a series are not guessed.
+ */
+function documentSeries(invoices) {
+  const series = new Map();
+  for (const doc of invoices) {
+    const prefix = doc.number.replace(/\d+$/, '');
+    const position = Number(doc.number.slice(prefix.length) || 0);
+    const row = series.get(prefix) ?? {
+      from: doc,
+      to: doc,
+      fromAt: position,
+      toAt: position,
+      total: 0,
+      cancelled: 0,
+    };
+    if (position < row.fromAt) Object.assign(row, { from: doc, fromAt: position });
+    if (position > row.toAt) Object.assign(row, { to: doc, toAt: position });
+    row.total++;
+    if (doc.status === 'cancelled') row.cancelled++;
+    series.set(prefix, row);
+  }
+  return [...series.values()]
+    .sort((a, b) => a.from.number.localeCompare(b.from.number))
+    .map((row) => ['Invoices for outward supply', row.from.number, row.to.number, row.total, row.cancelled]);
+}
+
+/**
+ * Builds the GSTR-1 tables for one month from issued and cancelled invoices (already filtered by
+ * business and month). Only invoices issued under `gstin` are included; the default is the first
+ * GSTIN found. Cancelled invoices appear only in the documents-issued table.
  */
 export function buildGstr1(invoices, { month, gstin = '' }) {
   const gstins = [...new Set(invoices.map((doc) => doc.organizationSnapshot?.gstin).filter(Boolean))].sort();
   const selected = gstins.includes(gstin) ? gstin : (gstins[0] ?? '');
-  const withoutGstin = invoices.filter((doc) => !doc.organizationSnapshot?.gstin).length;
-  const chosen = invoices
-    .filter((doc) => doc.organizationSnapshot?.gstin === selected)
+  const issued = invoices.filter((doc) => doc.status !== 'cancelled');
+  const withoutGstin = issued.filter((doc) => !doc.organizationSnapshot?.gstin).length;
+  const forGstin = invoices.filter((doc) => doc.organizationSnapshot?.gstin === selected);
+  const chosen = forGstin
+    .filter((doc) => doc.status !== 'cancelled')
     .sort((a, b) => a.issueDate.localeCompare(b.issueDate) || a.number.localeCompare(b.number));
   const b2b = [];
   const b2cl = [];
@@ -307,6 +343,7 @@ export function buildGstr1(invoices, { month, gstin = '' }) {
       'hsn-b2b': hsnRows(hsn['hsn-b2b']),
       'hsn-b2c': hsnRows(hsn['hsn-b2c']),
       nil: [...nil].map(([label, amount]) => [label, money(amount), '0.00', '0.00']),
+      docs: documentSeries(forGstin),
     },
   };
 }

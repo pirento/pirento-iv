@@ -13,10 +13,18 @@ import { calculateTotals } from '../shared/types.js';
 
 const seller = { gstin: '09AAAAA0000A1Z5', stateCode: '09' };
 let sequence = 0;
-function invoice({ buyerGstin = '', place = '09', items, discountPercent = 0, sellerGstin = seller.gstin }) {
+function invoice({
+  buyerGstin = '',
+  place = '09',
+  items,
+  discountPercent = 0,
+  sellerGstin = seller.gstin,
+  status = 'sent',
+}) {
   sequence++;
   return {
     number: `INV-${String(sequence).padStart(3, '0')}`,
+    status,
     issueDate: '2026-10-05',
     placeOfSupply: place,
     discountPercent,
@@ -43,6 +51,7 @@ test('invoices are split into B2B, B2CL, B2CS, HSN and 0% tables', () => {
     invoice({ place: '27', discountPercent: 10, items: [line(1000, 5)] }),
     invoice({ items: [line(500, 18), line(100, 0, { hsn: '0401', unit: 'Kg', quantity: 2 })] }),
     invoice({ sellerGstin: '', items: [line(10, 18)] }),
+    invoice({ status: 'cancelled', items: [line(999, 18)] }),
   ];
   const report = buildGstr1(invoices, { month: '2026-10' });
   assert.equal(report.gstin, seller.gstin);
@@ -84,6 +93,8 @@ test('invoices are split into B2B, B2CL, B2CS, HSN and 0% tables', () => {
     ['Intra-State supplies to unregistered persons', '200.00', '0.00', '0.00'],
   ]);
   assert.deepEqual(report.totals, { invoices: 4, value: '123275.00', taxable: '104600.00', tax: '18675.00' });
+  // The cancelled INV-006 counts only in documents issued; INV-005 has no seller GSTIN.
+  assert.deepEqual(report.sections.docs, [['Invoices for outward supply', 'INV-001', 'INV-006', 5, 1]]);
   const csv = gstr1Csv(report, 'b2cs');
   assert.equal(csv.filename, 'GSTR1-09AAAAA0000A1Z5-2026-10-b2cs.csv');
   assert.equal(csv.lines.length, 3);

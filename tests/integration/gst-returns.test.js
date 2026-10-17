@@ -70,6 +70,16 @@ test('GST returns page lists issued invoices and downloads each table', options,
     'one issued September invoice; the draft and the October invoice are left out',
   );
   assert.match(rows[1], /"27AAACR5055K1Z7","GST Buyer",".+","10-Sep-2026","1180.00","27-Maharashtra"/);
+  const docs = await fetch(
+    `${base}/workspace/${organizationId}/gst_returns?month=2026-09&download=csv&section=docs`,
+  );
+  const docsRows = (await docs.text()).trim().split('\r\n');
+  assert.equal(docsRows.length, 2);
+  assert.match(
+    docsRows[1],
+    /^"Invoices for outward supply","(.+)","\1","1","0"$/,
+    'the draft is not a document issued',
+  );
   const missing = await fetch(`${base}/workspace/${organizationId}/gst_returns?download=csv&section=unknown`);
   assert.equal(missing.status, 404);
 });
