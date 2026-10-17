@@ -181,6 +181,17 @@ Every response handled by request diagnostics carries a server-generated `X-Requ
 
 Use SIGTERM or SIGINT for an orderly restart. The process immediately becomes unready, stops polling/claiming email and scheduling backups, closes its listener and waits for accepted requests, the active delivery and backup cleanup before closing MongoDB. New business requests that still reach it receive 503 with `SERVICE_DRAINING` and `Retry-After: 5`. A completed normal shutdown exits 0. The 30-second deadline forces exit 1 for stuck work and records `shutdown_timeout`; treat that event as a reason to review the interrupted job. Repeating a stop signal does not start a second shutdown workflow.
 
+## Two-step login recovery
+
+An administrator can remove two-step login for another person from **Team access**. If the only administrator loses their phone, clear it in the database (MongoDB Atlas Data Explorer or `mongosh`), then sign in with the password and set it up again:
+
+```js
+db.auth_users.updateOne(
+  { email: 'owner@example.com' },
+  { $set: { totp_secret: null, totp_pending: null, totp_last_step: null } },
+);
+```
+
 ## Backup storage and cutover
 
 **Upgrading to the storage update (unreleased):** back up first and stop older application processes. The first start converts existing documents and unsent emails to stored-image references (new `images` collection) and trims emails that were already sent. This runs once, and a marker in `workspace_metadata` skips it afterwards. Backups and restores include the `images` collection automatically. Older versions cannot read converted records, so rolling back requires restoring the pre-upgrade backup.
