@@ -189,22 +189,4 @@ export function pricingSummary(line, roundingPolicy) {
     return `${escape(line.quantity)} ${escape(line.unit || 'units')} × ${escape(line.pricing.periods ?? 1)} ${escape(line.pricing.periodUnit || 'Month')} × ${money(line.rate)} = <strong>${money(details.total)}</strong>`;
   return `${escape(line.quantity)} × ${money(line.rate)} = <strong>${money(details.total)}</strong>`;
 }
-/** Reads a PNG/JPG/WebP file (max 500 KB) into a data URL after checking it decodes as an image. */
-export async function readBrandImage(file) {
-  if (!file || !['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 500 * 1024)
-    throw new Error('Choose a PNG, JPG or WebP image up to 500 KB.');
-  const value = await new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(new Error('Image could not be read.'));
-    reader.readAsDataURL(file);
-  });
-  await new Promise((resolve, reject) => {
-    const image = new Image();
-    image.onload = resolve;
-    image.onerror = () => reject(new Error('Choose a valid image file.'));
-    image.src = value;
-  });
-  return value;
-}
 export { CATALOG_UNITS, defaultDocumentBranding };

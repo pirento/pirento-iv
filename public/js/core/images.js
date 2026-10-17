@@ -1,6 +1,6 @@
 /** Image upload fields: reads a PNG/JPEG/WebP file (max 500 KB) into an inline data URL with a live preview. */
 
-/** Uploads remain portable data URLs, matching the original 500 KB limit. */
+/** The one image reader for every upload (image fields, logos, document branding). Returns a data URL. */
 export async function readImage(file) {
   if (!file || !['image/png', 'image/jpeg', 'image/webp'].includes(file.type))
     throw new Error('Choose a PNG, JPEG or WebP image.');

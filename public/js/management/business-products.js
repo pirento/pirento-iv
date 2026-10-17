@@ -10,9 +10,9 @@ import {
   withBusy,
   preserveReturnLinks,
   afterSave,
-  readLogo,
   initials,
 } from './common.js';
+import { readImage } from '../core/images.js';
 
 const data = getPageData();
 const root = document.getElementById('business-products-page');
@@ -47,7 +47,7 @@ if (form) {
     showError('', form);
     await withBusy(form, async () => {
       try {
-        form.elements.namedItem('logoUrl').value = await readLogo(file);
+        form.elements.namedItem('logoUrl').value = await readImage(file);
         form.querySelector('[data-upload-name]').textContent = file.name;
         updatePreview();
       } catch (error) {
