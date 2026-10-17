@@ -308,3 +308,41 @@ test('adding a contact returns to the exact draft and selects a new contact outs
   await expect(page.locator('#doc-customer')).toHaveValue(customer.id);
   await expect(page.locator('#doc-customer-card')).toContainText('ZZZ Newly Added Contact');
 });
+
+test('an expense fills from a vendor contact, previews its GST, saves, edits and deletes', async ({
+  page,
+  app,
+}) => {
+  await signIn(page, app);
+  const vendor = await api(page, app, '/customers', 'POST', {
+    ...customerInput(app.organizationId, 'Browser Vendor'),
+    roles: ['vendor'],
+    gstin: '27AAACR5055K1Z7',
+    stateCode: '27',
+  });
+  await page.goto(workspace(app, 'expenses?month=2026-09'));
+  const form = page.locator('[data-expense-form]');
+  await form.locator('[name="vendorId"]').selectOption(vendor.id);
+  await expect(form.locator('[name="vendorName"]')).toHaveValue('Browser Vendor');
+  await expect(form.locator('[name="interstate"]')).toHaveValue('true');
+  await form.locator('[name="billDate"]').fill('2026-09-05');
+  await form.locator('[name="taxable"]').fill('0.1');
+  await form.locator('[name="gstRate"]').selectOption('18');
+  await expect(form.locator('[data-expense-preview]')).toContainText('IGST');
+  await form.locator('[name="interstate"]').selectOption('false');
+  const preview = await form.locator('[data-expense-preview]').textContent();
+  await form.getByRole('button', { name: 'Add expense' }).click();
+  await expect(page).toHaveURL(/\/expenses\?month=2026-09$/);
+  const saved = await app.backend.db.collection('expenses').findOne({ vendorId: vendor.id });
+  expect([saved.cgst, saved.sgst, saved.total]).toEqual([0.01, 0.01, 0.12]);
+  expect(preview).toContain('Total ₹0.12');
+
+  await page.getByRole('link', { name: 'Edit' }).click();
+  await form.locator('[name="taxable"]').fill('100');
+  await form.getByRole('button', { name: 'Save changes' }).click();
+  await expect(page).toHaveURL(/\/expenses\?month=2026-09$/);
+  await expect(page.locator('.finance-table')).toContainText('₹118.00');
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.getByRole('button', { name: 'Delete' }).click();
+  await expect(page.getByText('No expenses this month')).toBeVisible();
+});

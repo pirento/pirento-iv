@@ -20,6 +20,7 @@ import { createController as gst } from './gst.controller.js';
 import { createController as ledger } from './ledger.controller.js';
 import { createController as reminders } from './reminders.controller.js';
 import { createController as recurring } from './recurring-invoices.controller.js';
+import { createController as expenses } from './expenses.controller.js';
 
 /** One controller object per API resource; route paths live in src/routes/api.js. */
 export function createApiControllers(context) {
@@ -33,6 +34,7 @@ export function createApiControllers(context) {
     workspaceSettings: workspaceSettings(context),
     organizations: organizations(context),
     businessProducts: businessProducts(context),
+    expenses: expenses(context),
     catalog: catalog(context),
     formats: formats(context),
     customers: customers(context),

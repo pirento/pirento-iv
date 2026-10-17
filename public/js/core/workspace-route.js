@@ -13,6 +13,7 @@ export const WORKSPACE_VIEWS = [
   'customers',
   'ledger',
   'gst_returns',
+  'expenses',
   'reminders',
   'recurring',
   'organizations',
@@ -67,6 +68,8 @@ export function readWorkspaceRoute(pathname, search = '') {
       if (action === 'payments' && view !== 'invoices') return invalid;
     } else if (view === 'ledger') {
       if (action !== 'preview' || !id) return invalid;
+    } else if (view === 'expenses') {
+      if (action !== 'edit' || !id) return invalid;
     } else if (view === 'recurring') {
       if (!['new', 'edit'].includes(action) || (action === 'new' ? Boolean(id) : !id)) return invalid;
     } else if (managerViews.has(view) || view === 'organizations') {

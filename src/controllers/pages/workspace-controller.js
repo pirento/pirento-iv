@@ -22,6 +22,7 @@ const titles = {
   customers: 'Contacts',
   ledger: 'Customer ledger',
   gst_returns: 'GST returns (GSTR-1)',
+  expenses: 'Expenses',
   reminders: 'Payment reminders',
   recurring: 'Recurring invoices',
   organizations: 'Businesses',
@@ -66,6 +67,7 @@ const pageStylesheets = {
   'workspace/documents': ['document-list'],
   'ledger/index': ['receivables'],
   'gst/gstr1': ['receivables'],
+  'expenses/index': ['receivables'],
   'ledger/statement': ['receivables'],
   'reminders/index': ['receivables'],
   'recurring/index': ['recurring'],
@@ -176,12 +178,16 @@ export function createPageController(backend) {
     let data;
     try {
       if (
-        ((documentKinds[route.view] && !route.action) || ['ledger', 'gst_returns'].includes(route.view)) &&
+        ((documentKinds[route.view] && !route.action) ||
+          ['ledger', 'gst_returns', 'expenses'].includes(route.view)) &&
         req.query.download === 'csv'
       ) {
         const exportFile =
-          { ledger: app.locals.ledgerExport, gst_returns: app.locals.gstr1Export }[route.view] ??
-          app.locals.documentExport;
+          {
+            ledger: app.locals.ledgerExport,
+            gst_returns: app.locals.gstr1Export,
+            expenses: app.locals.expenseExport,
+          }[route.view] ?? app.locals.documentExport;
         const exported = await exportFile(user, route.organizationId, {
           ...route,
           query: req.query,
@@ -236,6 +242,7 @@ export function createPageController(backend) {
         customers: 'contacts/index',
         ledger: route.id ? 'ledger/statement' : 'ledger/index',
         gst_returns: 'gst/gstr1',
+        expenses: 'expenses/index',
         reminders: 'reminders/index',
         recurring: 'recurring/index',
         organizations: 'organizations/index',

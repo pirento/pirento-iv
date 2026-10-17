@@ -80,6 +80,7 @@ export function createAccessGuard(db) {
       formats: 'formats',
       'business-products': 'business_products',
       payments: 'payments',
+      expenses: 'expenses',
     };
     const table = Object.hasOwn(tables, resource) ? tables[resource] : undefined;
     const directoryRead =

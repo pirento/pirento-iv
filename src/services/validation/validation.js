@@ -429,6 +429,39 @@ export const paymentSchema = z.object({
   requestId: requiredText(100),
   finalizeWhenPaid: z.boolean().default(true),
 });
+// Expense categories shown on the Expenses page and in reports.
+export const EXPENSE_CATEGORIES = [
+  'Purchases / stock',
+  'Rent',
+  'Salaries & wages',
+  'Utilities',
+  'Travel & transport',
+  'Office supplies',
+  'Professional fees',
+  'Repairs & maintenance',
+  'Marketing',
+  'Bank & finance charges',
+  'Other',
+];
+// A purchase bill or expense: amount before GST, GST rate and whether the vendor is in another state.
+export const expenseSchema = z
+  .object({
+    organizationId: requiredText(100),
+    vendorId: text(100).default(''),
+    vendorName: requiredText(200),
+    vendorGstin: gstin.default(''),
+    billNumber: text(60).default(''),
+    billDate: date,
+    category: z.enum(EXPENSE_CATEGORIES),
+    description: text(500).default(''),
+    taxable: moneyAmount,
+    gstRate: z.union([0, 0.25, 3, 5, 12, 18, 28].map((value) => z.literal(value))),
+    interstate: z.boolean().default(false),
+    paidOn: optionalDate.default(''),
+    paymentMethod: z.enum(['', 'bank_transfer', 'upi', 'cash', 'card', 'cheque', 'other']).default(''),
+    notes: text(2000).default(''),
+  })
+  .strict();
 // Voiding a receipt requires a reason (kept in history).
 export const voidPaymentSchema = z.object({
   reason: requiredText(2000),

@@ -1,0 +1,150 @@
+<%# Expenses page /workspace/<id>/expenses?month=YYYY-MM (and /expenses/edit/<id>): purchase bills with GST, monthly totals and CSV. Script: /js/workspace/expenses.js. -%>
+<%
+const page = data.expensePage;
+const editing = page.editing;
+const form = editing || { vendorId: '', vendorName: '', vendorGstin: '', billNumber: '', billDate: data.businessDate, category: page.categories[0], description: '', taxable: '', gstRate: 18, interstate: false, paidOn: '', paymentMethod: '', notes: '' };
+const amount = value => helpers.money(value || 0);
+const monthUrl = month => helpers.pageUrl(data, 'expenses', { month });
+%>
+<header class="page-header">
+  <div>
+    <span class="eyebrow">ACCOUNTS</span>
+    <h1>Expenses</h1>
+    <p>Purchase bills and other expenses of <%= data.organization.name %>, with the GST you can claim as input tax credit.</p>
+  </div>
+  <div class="actions">
+    <a class="button" href="<%= page.downloadUrl %>" download>Download CSV</a>
+  </div>
+</header>
+<section class="card">
+  <form class="finance-filters" method="get" action="<%= helpers.url(data, 'expenses') %>">
+    <label class="field">
+      Month
+      <input type="month" name="month" value="<%= page.month %>" required />
+    </label>
+    <button class="button" type="submit">Show month</button>
+  </form>
+  <div class="metrics-grid finance-metrics">
+    <% for (const [label, value] of [
+      ['Bills', page.totals.count],
+      ['Before GST', amount(page.totals.taxable)],
+      ['GST (input credit)', amount(page.totals.tax)],
+      ['Total', amount(page.totals.total)]
+    ]) { %>
+      <section class="metric">
+        <div class="metric-label"><%= label %></div>
+        <div class="metric-value"><%= value %></div>
+        <div class="metric-hint"><%= page.month %></div>
+      </section>
+    <% } %>
+  </div>
+</section>
+<section class="card" id="expense-editor">
+  <div class="finance-section-heading">
+    <h2><%= editing ? 'Edit expense' : 'Add an expense' %></h2>
+    <% if (editing) { %><a class="text-button" href="<%= monthUrl(page.month) %>">Cancel editing</a><% } %>
+  </div>
+  <form class="stack" data-expense-form data-expense-id="<%= editing?.id || '' %>" data-business-state="<%= data.organization.stateCode || '' %>">
+    <div class="alert alert-error" data-form-error hidden role="alert"></div>
+    <div class="form-grid">
+      <label class="field">
+        Vendor from contacts <span class="optional">(optional)</span>
+        <select name="vendorId">
+          <option value="">Not in contacts</option>
+          <% for (const vendor of page.vendors) { %>
+            <option value="<%= vendor.id %>" data-gstin="<%= vendor.gstin || '' %>" data-state="<%= vendor.stateCode || '' %>" <%= form.vendorId === vendor.id ? 'selected' : '' %>><%= vendor.name %></option>
+          <% } %>
+        </select>
+      </label>
+      <label class="field">Vendor name<input name="vendorName" maxlength="200" value="<%= form.vendorName %>" required /></label>
+      <label class="field">Vendor GSTIN <span class="optional">(optional)</span><input name="vendorGstin" maxlength="15" value="<%= form.vendorGstin %>" /></label>
+      <label class="field">Bill number<input name="billNumber" maxlength="60" value="<%= form.billNumber %>" /></label>
+      <label class="field">Bill date<input type="date" name="billDate" value="<%= form.billDate %>" required /></label>
+      <label class="field">
+        Category
+        <select name="category">
+          <% for (const category of page.categories) { %><option <%= form.category === category ? 'selected' : '' %>><%= category %></option><% } %>
+        </select>
+      </label>
+      <label class="field">Amount before GST (₹)<input type="number" name="taxable" min="0.01" step="0.01" value="<%= form.taxable %>" required /></label>
+      <label class="field">
+        GST rate
+        <select name="gstRate">
+          <% for (const rate of [0, 0.25, 3, 5, 12, 18, 28]) { %><option value="<%= rate %>" <%= Number(form.gstRate) === rate ? 'selected' : '' %>><%= rate %>%</option><% } %>
+        </select>
+      </label>
+      <label class="field">
+        GST type
+        <select name="interstate">
+          <option value="false" <%= form.interstate ? '' : 'selected' %>>Same state (CGST + SGST)</option>
+          <option value="true" <%= form.interstate ? 'selected' : '' %>>Other state (IGST)</option>
+        </select>
+      </label>
+      <label class="field">Paid on <span class="optional">(optional)</span><input type="date" name="paidOn" value="<%= form.paidOn %>" /></label>
+      <label class="field">
+        Payment method
+        <select name="paymentMethod">
+          <% for (const [value, label] of [['', 'Not paid yet'], ['bank_transfer', 'Bank transfer'], ['upi', 'UPI'], ['cash', 'Cash'], ['card', 'Card'], ['cheque', 'Cheque'], ['other', 'Other']]) { %>
+            <option value="<%= value %>" <%= form.paymentMethod === value ? 'selected' : '' %>><%= label %></option>
+          <% } %>
+        </select>
+      </label>
+      <label class="field full-width">Description<input name="description" maxlength="500" value="<%= form.description %>" /></label>
+      <label class="field full-width">Notes <span class="optional">(optional)</span><textarea name="notes" maxlength="2000" rows="2"><%= form.notes %></textarea></label>
+    </div>
+    <p class="finance-basis" data-expense-preview aria-live="polite"></p>
+    <div class="form-actions">
+      <button class="button button-primary" type="submit"><%= editing ? 'Save changes' : 'Add expense' %></button>
+    </div>
+  </form>
+</section>
+<section class="card">
+  <div class="finance-section-heading">
+    <h2>Expenses in <%= page.month %></h2>
+    <span class="muted"><%= page.expenses.length %> bill(s)</span>
+  </div>
+  <% if (page.expenses.length) { %>
+    <div tabindex="0" role="region" aria-label="Expenses" class="table-wrap">
+      <table class="finance-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Vendor</th>
+            <th>Category</th>
+            <th class="text-right">Before GST</th>
+            <th class="text-right">GST</th>
+            <th class="text-right">Total</th>
+            <th>Paid</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% for (const expense of page.expenses) { %>
+            <tr>
+              <td><%= helpers.displayDate(expense.billDate) %></td>
+              <td>
+                <strong><%= expense.vendorName %></strong>
+                <small><%= [expense.billNumber, expense.vendorGstin, expense.description].filter(Boolean).join(' · ') %></small>
+              </td>
+              <td><%= expense.category %></td>
+              <td class="text-right"><%= amount(expense.taxable) %></td>
+              <td class="text-right"><%= amount(expense.tax) %> <small><%= expense.gstRate %>%</small></td>
+              <td class="text-right"><strong><%= amount(expense.total) %></strong></td>
+              <td><%= expense.paidOn ? helpers.displayDate(expense.paidOn) : 'Not paid' %></td>
+              <td>
+                <a class="text-button" href="<%= helpers.url(data, 'expenses', 'edit', expense.id) %>?month=<%= page.month %>">Edit</a>
+                <button class="text-button" type="button" data-expense-delete="<%= expense.id %>" data-expense-name="<%= expense.vendorName %>">Delete</button>
+              </td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  <% } else { %>
+    <div class="empty-state">
+      <h2>No expenses this month</h2>
+      <p>Add purchase bills and other expenses above. They appear in the Reports profit view and the CSV for your CA.</p>
+    </div>
+  <% } %>
+</section>
+<script type="module" src="/js/workspace/expenses.js"></script>

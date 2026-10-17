@@ -15,6 +15,8 @@ import { DOCUMENT_KINDS, readDocumentFilters, documentListUrl, documentCsv } fro
 import { createDirectoryQueries } from '../../models/directory-queries.js';
 import { readDirectoryFilters, directoryPageLinks } from './directory-list.js';
 import { buildGstr1, gstr1Csv, GSTR1_SECTIONS, monthRange, readGstr1Filters } from './gstr1.js';
+import { expenseCsv, expenseTotals, readExpenseMonth } from '../expenses/expenses.js';
+import { EXPENSE_CATEGORIES } from '../validation/validation.js';
 import { safeWorkspaceReturn } from '../../../public/js/core/workspace-route.js';
 
 /** Page-specific loading keeps unrelated financial snapshots and operations off normal navigation. */
@@ -164,6 +166,8 @@ export function createWorkspacePageData({
     if (route?.view === 'recurring') read('recurring', () => recurringInvoices.page(organizationId, route));
     if (route?.view === 'gst_returns')
       read('gstr1', () => gstr1Report(organizationId, route, result.businessDate));
+    if (route?.view === 'expenses')
+      read('expensePage', () => expensePage(organizationId, route, result.businessDate));
     if (legacy || route.view === 'integrations')
       read('integrationStatus', async () => {
         const payment = await online.getStatus(organizationId);
@@ -254,6 +258,48 @@ export function createWorkspacePageData({
     return { ...report, sections: GSTR1_SECTIONS, rows: report.sections, downloads };
   }
 
+  // Expenses page: the month's expenses, totals, vendor choices and the expense being edited.
+  async function expensePage(organizationId, route, businessDate) {
+    const month = readExpenseMonth(route.query, businessDate);
+    const expenses = await db.models.expenses.listBetween(organizationId, monthRange(month));
+    let editing = null;
+    if (route.action === 'edit' && route.id) {
+      editing = await db.models.expenses.findById(route.id);
+      if (editing?.organizationId !== organizationId) throw new HttpError(404, 'Expense not found.');
+    }
+    // shortcut: the vendor list is capped at 500 contacts; switch to a search box if businesses outgrow it.
+    const vendors = await db
+      .collection('customers')
+      .find(
+        { organizationId, roles: 'vendor', active: { $ne: false } },
+        { ...db.options(), projection: { _id: 0, id: 1, name: 1, gstin: 1, stateCode: 1 } },
+      )
+      .sort({ name: 1 })
+      .limit(500)
+      .toArray();
+    const pageUrl = `/workspace/${encodeURIComponent(organizationId)}/expenses`;
+    return {
+      month,
+      expenses,
+      totals: expenseTotals(expenses),
+      vendors,
+      editing,
+      categories: EXPENSE_CATEGORIES,
+      downloadUrl: `${pageUrl}?${new URLSearchParams({ month, download: 'csv' })}`,
+    };
+  }
+
+  // CSV of one month's expenses: /workspace/<business>/expenses?month=YYYY-MM&download=csv.
+  async function exportExpenses(user, organizationId, route) {
+    const data = await base(user, organizationId);
+    const month = readExpenseMonth(route.query, data.businessDate);
+    const expenses = await db.models.expenses.listBetween(data.organization.id, monthRange(month));
+    return {
+      filename: `Expenses-${data.organization.name.replace(/[^a-z0-9]+/gi, '-')}-${month}.csv`,
+      lines: expenseCsv(expenses),
+    };
+  }
+
   // CSV for one GSTR-1 section: /workspace/<business>/gst_returns?download=csv&section=b2b.
   async function exportGstr1(user, organizationId, route) {
     const data = await base(user, organizationId);
@@ -275,5 +321,5 @@ export function createWorkspacePageData({
     };
   }
 
-  return { load, exportDocuments, exportGstr1 };
+  return { load, exportDocuments, exportGstr1, exportExpenses };
 }

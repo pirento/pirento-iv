@@ -95,6 +95,12 @@ export function createModels(context) {
         present(await collection('organizations').findOne({}, { ...options(), sort: { _id: 1 } })),
     },
     customers: business('customers'),
+    // Expenses of one business between two dates (from inclusive, to exclusive), newest first.
+    expenses: {
+      ...business('expenses'),
+      listBetween: (organizationId, { from, to }) =>
+        all('expenses', { organizationId, billDate: { $gte: from, $lt: to } }, { billDate: -1, id: -1 }),
+    },
     documents: {
       ...business('documents'),
       findById: (id) => oneDocument({ id }),
@@ -220,6 +226,7 @@ export function createModels(context) {
           'formats',
           'business_products',
           'payments',
+          'expenses',
         ]);
         if (!allowed.has(name)) throw new Error('Unsupported resource model.');
         const record = await one(name, { id });

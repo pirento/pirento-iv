@@ -235,6 +235,7 @@ async function initializeApplication(options, environment, db) {
   app.locals.workspaceData = pageData.load;
   app.locals.documentExport = pageData.exportDocuments;
   app.locals.gstr1Export = pageData.exportGstr1;
+  app.locals.expenseExport = pageData.exportExpenses;
   app.locals.ledgerExport = (user, organizationId, route) =>
     route.id
       ? ledger.exportStatement(user, organizationId, route.id, route.query)
