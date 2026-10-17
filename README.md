@@ -56,22 +56,23 @@ When `.env` exists the application reads it instead of `.example.env`; hosting e
 
 ## What is included
 
-| Area               | Available behavior                                                                                                                                           |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Accounts           | Shared login/signup/reset limits, account approval, staff assignments, disable/reactivate, password reset, own/admin session controls and security activity. |
-| Organizations      | Five Venturecore divisions, independent Shri Sarraf, additional organizations, separate seller identities, GST registrations, banks and branding.            |
-| Contacts           | Customers, B2B buyers and vendors; search, edit, archive/restore, shipping defaults and GST lookup.                                                          |
-| Customer ledger    | Customer balances, current-status invoice/receipt/void statements, date filters, full CSV and printable reports with explicit history limitations.           |
-| Payment reminders  | Manual preview/queue, unpaid invoice/installment targets, per-business automatic timing and delivery history.                                                |
-| Recurring invoices | Weekly, monthly, quarterly and yearly schedules that create reviewable drafts, with pause/resume, duplicate protection and retained history.                 |
-| Documents          | Invoices, quotations, proformas and delivery challans; drafts, preview, print, PDF and CSV exports.                                                          |
-| Financial workflow | Financial-year numbering, invoice conversion, issued/final locks, partial receipts, payment correction and audit events.                                     |
-| Catalog            | Products/services, SKU and HSN/SAC, archive/restore, duplication, business-product selection and saved pricing.                                              |
-| Pricing            | Standard quantity/rate, recurring periods and detailed jewellery weight/making calculations.                                                                 |
-| Formats            | Fifteen built-in presets, five layouts, custom colors, columns, fonts, paper settings, logos and signature/stamp/QR areas.                                   |
-| Installments       | Equal, monthly/weekly, optional down payment and 70/20/10 schedules; receipts allocated to the earliest installment.                                         |
-| Payments and email | Business-specific Razorpay/Cashfree links, signed webhook handling, payment synchronization, Resend email, PDF attachments and retry history.                |
-| Operations         | Administrator-only verified MongoDB snapshots, scheduled backups, restore/recovery commands and SQLite import.                                               |
+| Area               | Available behavior                                                                                                                                                                                                           |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Accounts           | Shared login/signup/reset limits, account approval, staff assignments and permission levels (full / no delete / view only), disable/reactivate, password change and reset, own/admin session controls and security activity. |
+| Organizations      | Five Venturecore divisions, independent Shri Sarraf, additional organizations, separate seller identities, GST registrations, banks and branding.                                                                            |
+| Contacts           | Customers, B2B buyers and vendors; search, edit, archive/restore, shipping defaults and GST lookup.                                                                                                                          |
+| GST returns        | Monthly GSTR-1 tables (B2B, B2CL, B2CS, HSN summary, 0% lines) per seller GSTIN with CSV downloads for the GST offline tool or a CA.                                                                                         |
+| Customer ledger    | Customer balances, current-status invoice/receipt/void statements, date filters, full CSV and printable reports with explicit history limitations.                                                                           |
+| Payment reminders  | Manual preview/queue, unpaid invoice/installment targets, per-business automatic timing and delivery history.                                                                                                                |
+| Recurring invoices | Weekly, monthly, quarterly and yearly schedules that create reviewable drafts, with pause/resume, duplicate protection and retained history.                                                                                 |
+| Documents          | Invoices, quotations, proformas and delivery challans; drafts, preview, print, PDF and CSV exports.                                                                                                                          |
+| Financial workflow | Financial-year numbering, invoice conversion, issued/final locks, partial receipts, payment correction and audit events.                                                                                                     |
+| Catalog            | Products/services, SKU and HSN/SAC, archive/restore, duplication, business-product selection and saved pricing.                                                                                                              |
+| Pricing            | Standard quantity/rate, recurring periods and detailed jewellery weight/making calculations.                                                                                                                                 |
+| Formats            | Fifteen built-in presets, five layouts, custom colors, columns, fonts, paper settings, logos and signature/stamp/QR areas.                                                                                                   |
+| Installments       | Equal, monthly/weekly, optional down payment and 70/20/10 schedules; receipts allocated to the earliest installment.                                                                                                         |
+| Payments and email | Business-specific Razorpay/Cashfree links, signed webhook handling, payment synchronization, Resend email, PDF attachments and retry history.                                                                                |
+| Operations         | Administrator-only verified MongoDB snapshots, scheduled backups, restore/recovery commands and SQLite import.                                                                                                               |
 
 Each organization owns its contacts, catalog, products, formats and documents. Historical documents keep saved seller, buyer, format, product, branding and pricing details. Updating a current business or contact does not silently rewrite issued documents.
 

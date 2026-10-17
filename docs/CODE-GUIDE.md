@@ -70,6 +70,8 @@ Read these files in order. Each one starts with a comment that explains what it 
 | Change Razorpay / Cashfree behaviour | `src/services/integrations/payments/` (`payment-gateways.js` picks the provider for each business).                                                                                                                                                                       |
 | Change settings / environment        | `src/config/environment.js`, `src/config/production.js` and `.example.env` (keep it blank).                                                                                                                                                                               |
 | Change styles                        | `public/css/app.css` (global, has section comments) or the page file listed in `pageStylesheets` in `workspace-controller.js`.                                                                                                                                            |
+| Change staff permissions             | `src/middleware/access.js` (what each level may do) and `STAFF_PERMISSIONS` in `src/services/auth/auth.js`.                                                                                                                                                               |
+| Change the GST return (GSTR-1)       | `src/services/pages/gstr1.js` (tables and CSV), `gstr1Invoices()` in `src/models/workspace-queries.js`, `views/gst/gstr1.ejs`.                                                                                                                                            |
 
 ## Rules to keep
 
@@ -83,6 +85,9 @@ Read these files in order. Each one starts with a comment that explains what it 
   Throw `HttpError(status, message)` for expected failures.
 - **Keep views simple.** Views get data from controllers and never call the database. Use `<%= %>`
   (escaped) for anything a user typed.
+- **Read documents through `db.models`.** Saved documents and email payloads hold `stored-image:<hash>`
+  references instead of images (`src/models/image-store.js`); the models put the images back. A raw
+  collection read returns the references.
 - **Use India dates.** Use `indiaBusinessDate()` (`shared/business-date.js`) for "today", not the
   server's clock date.
 
