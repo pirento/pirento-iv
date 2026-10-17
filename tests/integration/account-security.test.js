@@ -8,6 +8,7 @@ import { createAuth } from '../../src/services/auth/auth.js';
 import { createAuthSecurity } from '../../src/services/auth/security.js';
 import { createAccountRateLimiter } from '../../src/services/auth/account-rate-limit.js';
 import { twoStepCode } from '../../src/services/auth/two-step.js';
+import { attachPageRoutes } from '../../src/routes/pages.js';
 import { createFixture, integrationEnabled } from './fixture.js';
 
 const native = {
@@ -720,5 +721,49 @@ test(
       'two-step-removed-by-admin',
       'two-step-disabled',
     ]);
+  },
+);
+
+test(
+  'Administrators must turn on two-step login before using the workspace when required',
+  native,
+  async (t) => {
+    const { backend, base } = await createFixture(t, {
+      environment: { ...ownerEnvironment, ADMIN_TWO_STEP: 'required' },
+    });
+    attachPageRoutes(backend);
+    const owner = await login(base);
+    const organizationId = 'pipeline2-legal';
+    const workspace = (path) =>
+      fetch(`${base}/workspace/${organizationId}/${path}`, {
+        headers: { Cookie: owner.cookie },
+        redirect: 'manual',
+      });
+    const customers = () =>
+      fetch(`${base}/api/customers?organizationId=${organizationId}`, { headers: { Cookie: owner.cookie } });
+
+    const blocked = await customers();
+    assert.equal(blocked.status, 403);
+    assert.equal((await blocked.json()).code, 'TWO_STEP_SETUP_REQUIRED');
+    const redirected = await workspace('overview');
+    assert.equal(redirected.status, 302);
+    assert.equal(redirected.headers.get('location'), `/workspace/${organizationId}/sessions`);
+    const sessionsPage = await workspace('sessions');
+    assert.equal(sessionsPage.status, 200);
+    assert.match(await sessionsPage.text(), /Administrators must turn on two-step login/);
+
+    const setup = await request(base, '/two-step/setup', { method: 'POST', cookie: owner.cookie, body: {} });
+    const stored = await backend.db.models.auth.userById(owner.user.id);
+    assert.match(stored.totp_pending, /^v1:/);
+    assert.equal(stored.totp_pending.includes(setup.data.secret), false, 'the key is stored encrypted');
+    const code = twoStepCode(setup.data.secret, Math.floor(Date.now() / 30_000));
+    const enabled = await request(base, '/two-step/enable', {
+      method: 'POST',
+      cookie: owner.cookie,
+      body: { code },
+    });
+    assert.equal(enabled.status, 200, JSON.stringify(enabled.data));
+    assert.equal((await customers()).status, 200);
+    assert.equal((await workspace('overview')).status, 200);
   },
 );

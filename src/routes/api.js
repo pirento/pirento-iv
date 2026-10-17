@@ -49,7 +49,8 @@ export function registerApiRoutes(app, context) {
   if (auth) app.use('/api/auth', auth.router);
   app.get('/api/health', controllers.health.status);
   app.get('/api/ready', controllers.health.ready);
-  if (auth) app.use('/api', auth.requireSession, auth.mutationGuard, createAccessGuard(db));
+  if (auth)
+    app.use('/api', auth.requireSession, auth.mutationGuard, auth.requireTwoStepSetup, createAccessGuard(db));
   if (auth) app.use('/api/backups', auth.requireAdmin);
   app.use('/api', online.router);
   app.get('/api/backups/status', controllers.backups.status);

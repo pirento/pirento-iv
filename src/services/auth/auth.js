@@ -14,7 +14,13 @@ import express from 'express';
 import { z } from 'zod';
 import { createAccountRateLimiter } from './account-rate-limit.js';
 import { createAuthSecurity } from './security.js';
-import { newTwoStepSecret, qrSvg, twoStepSetupUrl, verifyTwoStepCode } from './two-step.js';
+import {
+  createTwoStepVault,
+  newTwoStepSecret,
+  qrSvg,
+  twoStepSetupUrl,
+  verifyTwoStepCode,
+} from './two-step.js';
 // Session cookie name, session length (12 h) and password-reset link lifetime (30 min).
 const COOKIE = 'venturecore_session';
 const SESSION_MS = 12 * 60 * 60 * 1000;
@@ -105,7 +111,8 @@ function safeUser(row) {
 }
 /**
  * Creates the auth service. Returns { router (mounted at /api/auth), requireSession,
- * requireAdmin, getSessionUser, initializeOwner, mutationGuard, listUsers, sessionPage, listAudit }.
+ * requireAdmin, requireTwoStepSetup, twoStepSetupRequired, getSessionUser, initializeOwner, mutationGuard,
+ * listUsers, sessionPage, listAudit }.
  */
 export function createAuth(db, options = {}) {
   const environment = options.environment ?? process.env;
@@ -115,6 +122,13 @@ export function createAuth(db, options = {}) {
   const publicOrigin = originInput ? new URL(originInput).origin : undefined;
   if (production && (!publicOrigin || !publicOrigin.startsWith('https://')))
     throw new Error('Production account access requires an HTTPS PUBLIC_APP_URL.');
+  const vault = createTwoStepVault(environment, production);
+  // Administrators must use two-step login in production unless ADMIN_TWO_STEP=optional.
+  const adminTwoStep = environment.ADMIN_TWO_STEP?.trim() || (production ? 'required' : 'optional');
+  if (!['required', 'optional'].includes(adminTwoStep))
+    throw new Error('ADMIN_TWO_STEP must be required or optional.');
+  const twoStepSetupRequired = (user) =>
+    adminTwoStep === 'required' && user?.role === 'admin' && !user.twoStepEnabled;
   const router = express.Router();
   const cookieOptions = {
     httpOnly: true,
@@ -157,6 +171,14 @@ export function createAuth(db, options = {}) {
     }
     res.locals.user = user;
     next();
+  };
+  // Middleware for /api business routes: an administrator who must use two-step login sets it up first.
+  const requireTwoStepSetup = (_req, res, next) => {
+    if (!twoStepSetupRequired(res.locals.user)) return next();
+    res.status(403).json({
+      error: 'Administrators must turn on two-step login on My sessions before using the workspace.',
+      code: 'TWO_STEP_SETUP_REQUIRED',
+    });
   };
   // Middleware: 403 unless the signed-in user is an administrator.
   const requireAdmin = (_req, res, next) => {
@@ -314,12 +336,10 @@ export function createAuth(db, options = {}) {
           )
             return null;
           if (latest.totp_secret) {
-            const step = verifyTwoStepCode(
-              latest.totp_secret,
-              input.data.code,
-              now(),
-              latest.totp_last_step ?? -1,
-            );
+            const secret = vault.open(latest.totp_secret);
+            const step = secret
+              ? verifyTwoStepCode(secret, input.data.code, now(), latest.totp_last_step ?? -1)
+              : null;
             if (step === null || !(await db.models.auth.useTwoStepCode(step, latest.id)).changes)
               return { codeRejected: true };
           }
@@ -678,7 +698,7 @@ export function createAuth(db, options = {}) {
       return;
     }
     const secret = newTwoStepSecret();
-    await db.models.auth.setTwoStepPending(secret, new Date(now()).toISOString(), user.id);
+    await db.models.auth.setTwoStepPending(vault.seal(secret), new Date(now()).toISOString(), user.id);
     const url = twoStepSetupUrl(secret, user.email, TWO_STEP_ISSUER);
     res.json({ secret, url, qrSvg: qrSvg(url) });
   });
@@ -691,7 +711,8 @@ export function createAuth(db, options = {}) {
     const user = res.locals.user;
     const enabled = await db.transaction(async () => {
       const row = await userById(user.id);
-      const step = row?.totp_pending ? verifyTwoStepCode(row.totp_pending, input.data.code, now()) : null;
+      const pending = vault.open(row?.totp_pending);
+      const step = pending ? verifyTwoStepCode(pending, input.data.code, now()) : null;
       if (step === null) return false;
       await db.models.auth.enableTwoStep(row.totp_pending, step, new Date(now()).toISOString(), user.id);
       await audit('two-step-enabled', user.id, user.id);
@@ -712,8 +733,9 @@ export function createAuth(db, options = {}) {
     const user = res.locals.user;
     const disabled = await db.transaction(async () => {
       const row = await userById(user.id);
-      const step = row?.totp_secret
-        ? verifyTwoStepCode(row.totp_secret, input.data.code, now(), row.totp_last_step ?? -1)
+      const secret = vault.open(row?.totp_secret);
+      const step = secret
+        ? verifyTwoStepCode(secret, input.data.code, now(), row.totp_last_step ?? -1)
         : null;
       if (step === null) return false;
       await db.models.auth.disableTwoStep(new Date(now()).toISOString(), user.id);
@@ -769,6 +791,8 @@ export function createAuth(db, options = {}) {
     getSessionUser,
     initializeOwner,
     mutationGuard,
+    requireTwoStepSetup,
+    twoStepSetupRequired,
     listUsers: async () => (await db.models.auth.listUsers()).map(safeUser),
     sessionPage: async (req) =>
       security.listSessions(await getSessionUser(req), currentTokenHash(req), req.query),

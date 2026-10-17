@@ -76,6 +76,9 @@ const listUrl = pageNumber => helpers.pageUrl(data, 'sessions', { page: pageNumb
   </section>
   <section class="mg-card security-password" aria-labelledby="two-step-title" data-two-step-card>
     <h2 id="two-step-title">Two-step login</h2>
+    <% if (data.twoStepSetupRequired) { %>
+    <p class="alert alert-info" role="status">Administrators must turn on two-step login before using the workspace. Set it up below.</p>
+    <% } %>
     <div data-error class="mg-message error" role="alert" tabindex="-1" hidden></div>
     <% if (data.user.twoStepEnabled) { %>
     <p>On. Each sign-in asks for a 6-digit code from your authenticator app after your password.</p>

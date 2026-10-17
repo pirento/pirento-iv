@@ -1,10 +1,11 @@
 /**
  * Two-step login codes (TOTP, RFC 6238): 6 digits that change every 30 seconds, as shown by
  * Google Authenticator, Microsoft Authenticator and similar apps. Uses only node:crypto.
- * Also builds the setup link and its QR code (an SVG drawn with pdfmake's built-in QR encoder).
+ * Also builds the setup link and its QR code (an SVG drawn with pdfmake's built-in QR encoder), and
+ * encrypts the saved keys with TWO_STEP_KEY (AES-256-GCM) so database rows and backups do not hold them.
  */
 
-import { createHmac, randomBytes } from 'node:crypto';
+import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes } from 'node:crypto';
 import qrModule from 'pdfmake/js/qrEnc.js';
 
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
@@ -76,4 +77,40 @@ export function qrSvg(text) {
     .map((rect) => `M${rect.x + quiet} ${rect.y + quiet}h${rect.w}v${rect.h}h-${rect.w}z`)
     .join('');
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" shape-rendering="crispEdges"><rect width="${size}" height="${size}" fill="#fff"/><path d="${path}" fill="#000"/></svg>`;
+}
+
+// Development and test databases only: production refuses to start without its own TWO_STEP_KEY.
+const DEVELOPMENT_KEY = createHash('sha256').update('venturecore-development-two-step-key').digest();
+const KEY_FORMAT = /^[0-9a-f]{64}$/i;
+
+/** Returns { seal(secret), open(stored) }: AES-256-GCM with TWO_STEP_KEY (64 hex characters). */
+export function createTwoStepVault(environment, production) {
+  const configured = environment.TWO_STEP_KEY?.trim();
+  if (configured ? !KEY_FORMAT.test(configured) : production)
+    throw new Error('Set TWO_STEP_KEY to 64 hexadecimal characters (for example: openssl rand -hex 32).');
+  const key = configured ? Buffer.from(configured, 'hex') : DEVELOPMENT_KEY;
+  return {
+    seal(secret) {
+      const iv = randomBytes(12);
+      const cipher = createCipheriv('aes-256-gcm', key, iv);
+      const data = Buffer.concat([cipher.update(secret, 'utf8'), cipher.final()]);
+      return ['v1', iv, cipher.getAuthTag(), data]
+        .map((part) => (typeof part === 'string' ? part : part.toString('base64url')))
+        .join(':');
+    },
+    // null when the value cannot be decrypted, for example after TWO_STEP_KEY was changed.
+    open(stored) {
+      const [version, iv, tag, data] = String(stored ?? '').split(':');
+      if (version !== 'v1' || !iv || !tag || !data) return null;
+      try {
+        const decipher = createDecipheriv('aes-256-gcm', key, Buffer.from(iv, 'base64url'));
+        decipher.setAuthTag(Buffer.from(tag, 'base64url'));
+        return Buffer.concat([decipher.update(Buffer.from(data, 'base64url')), decipher.final()]).toString(
+          'utf8',
+        );
+      } catch {
+        return null;
+      }
+    },
+  };
 }

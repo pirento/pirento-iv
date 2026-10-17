@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   base32Encode,
+  createTwoStepVault,
   newTwoStepSecret,
   qrSvg,
   twoStepCode,
@@ -45,4 +46,20 @@ test('new keys, setup links and QR codes have the expected shape', () => {
   const svg = qrSvg(url);
   assert.match(svg, /^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg" viewBox="0 0 \d+ \d+"/);
   assert.ok(svg.length > 1000, 'the QR code has modules');
+});
+
+test('saved keys are encrypted and only open with the same TWO_STEP_KEY', () => {
+  const vault = createTwoStepVault({ TWO_STEP_KEY: 'ab'.repeat(32) }, true);
+  const secret = newTwoStepSecret();
+  const sealed = vault.seal(secret);
+  assert.match(sealed, /^v1:/);
+  assert.equal(sealed.includes(secret), false);
+  assert.notEqual(vault.seal(secret), sealed, 'a fresh IV each time');
+  assert.equal(vault.open(sealed), secret);
+  assert.equal(createTwoStepVault({ TWO_STEP_KEY: 'cd'.repeat(32) }, true).open(sealed), null);
+  assert.equal(vault.open('not-sealed'), null);
+  assert.equal(vault.open(null), null);
+  assert.throws(() => createTwoStepVault({}, true), /TWO_STEP_KEY/);
+  assert.throws(() => createTwoStepVault({ TWO_STEP_KEY: 'short' }, false), /TWO_STEP_KEY/);
+  assert.equal(createTwoStepVault({}, false).open(createTwoStepVault({}, false).seal('KEY')), 'KEY');
 });

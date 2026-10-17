@@ -27,6 +27,7 @@ test(
       ...fixture.environment,
       NODE_ENV: 'production',
       PUBLIC_APP_URL: 'https://billing.example.test',
+      TWO_STEP_KEY: 'a'.repeat(64),
     };
     assert.deepEqual(await inspectHostedDatabase(environment), {
       existing: true,
@@ -74,6 +75,7 @@ test(
             MONGODB_URI: process.env.MONGODB_TEST_URI,
             MONGODB_DATABASE: databaseName,
             PUBLIC_APP_URL: 'https://preflight.example.test',
+            TWO_STEP_KEY: 'a'.repeat(64),
             INITIAL_ADMIN_EMAIL: '',
             INITIAL_ADMIN_PASSWORD: '',
             IV_ALLOW_NEW_DATABASE: 'false',

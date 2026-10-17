@@ -162,6 +162,9 @@ export function createPageController(backend) {
     const route = readWorkspaceRoute(path, search);
     if (!route || route.view === 'not_found')
       return renderError(res, 404, 'This workspace address is not available.');
+    // Administrators who must use two-step login are sent to My sessions until it is on.
+    if (auth?.twoStepSetupRequired(user) && route.view !== 'sessions' && route.organizationId)
+      return res.redirect(`/workspace/${encodeURIComponent(route.organizationId)}/sessions`);
     if (
       user.role !== 'admin' &&
       (adminViews.has(route.view) ||
@@ -192,7 +195,10 @@ export function createPageController(backend) {
       data = await app.locals.workspaceData(user, route.organizationId, { ...route, query: req.query });
       if (['sessions', 'security'].includes(route.view) && !auth)
         return renderError(res, 403, 'Account security requires an authenticated workspace.', data);
-      if (route.view === 'sessions') data.securitySessions = await auth.sessionPage(req);
+      if (route.view === 'sessions') {
+        data.securitySessions = await auth.sessionPage(req);
+        data.twoStepSetupRequired = auth.twoStepSetupRequired(user);
+      }
       if (route.view === 'security') data.securityAudit = await auth.listAudit(user, req.query);
     } catch (error) {
       if (res.headersSent || res.destroyed) {
