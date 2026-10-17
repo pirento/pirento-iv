@@ -10,6 +10,7 @@
 import { HttpError } from '../middleware/errors.js';
 import { receiptPaise, validReceiptPaise } from './money-expressions.js';
 import { createImageStore } from './image-store.js';
+import { RETENTION_DAYS, expiresAfter } from '../config/retention.js';
 
 /**
  * Native MongoDB models. Business records are complete BSON documents (including
@@ -272,7 +273,15 @@ export function createModels(context) {
         },
       ),
     audit: (id, actor_id, action, user_id, details, created_at) =>
-      insert('auth_audit', { id, actor_id, action, user_id, details, created_at }),
+      insert('auth_audit', {
+        id,
+        actor_id,
+        action,
+        user_id,
+        details,
+        created_at,
+        expiresOn: expiresAfter(created_at, RETENTION_DAYS.securityLog),
+      }),
     deleteSession: (token_hash) => remove('auth_sessions', { token_hash }),
     deleteExpiredSessions: (time) => remove('auth_sessions', { expires_at: { $lte: time } }),
     insertSession: (token_hash, user_id, expires_at, created_at) =>
@@ -760,7 +769,15 @@ export function createModels(context) {
       upsert(
         'online_webhook_events',
         { event_key },
-        { event_key, payload_hash, event_type, status: 'pending', created_at, updated_at },
+        {
+          event_key,
+          payload_hash,
+          event_type,
+          status: 'pending',
+          created_at,
+          updated_at,
+          expiresOn: expiresAfter(created_at, RETENTION_DAYS.webhookEvents),
+        },
       ),
     completeEvent: (updated_at, event_key) =>
       update('online_webhook_events', { event_key }, { status: 'complete', updated_at }),
@@ -843,7 +860,16 @@ export function createModels(context) {
       upsert(
         'cashfree_webhook_events',
         { organization_id, event_key },
-        { organization_id, event_key, payload_hash, event_type, status: 'pending', created_at, updated_at },
+        {
+          organization_id,
+          event_key,
+          payload_hash,
+          event_type,
+          status: 'pending',
+          created_at,
+          updated_at,
+          expiresOn: expiresAfter(created_at, RETENTION_DAYS.webhookEvents),
+        },
       ),
     completeEvent: (updated_at, organization_id, event_key) =>
       update('cashfree_webhook_events', { organization_id, event_key }, { status: 'complete', updated_at }),

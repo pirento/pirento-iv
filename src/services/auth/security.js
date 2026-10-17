@@ -6,6 +6,7 @@
 import { randomUUID } from 'node:crypto';
 import { ObjectId } from 'mongodb';
 import { HttpError } from '../../middleware/errors.js';
+import { RETENTION_DAYS, expiresAfter } from '../../config/retention.js';
 
 // Activity types shown in the Security activity filter, with their display labels.
 export const SECURITY_ACTIONS = Object.freeze([
@@ -348,6 +349,7 @@ export function createAuthSecurity({ db, now = Date.now, audit, logger }) {
             action,
             details: safeSecurityDetails(details),
             created_at: new Date(now()).toISOString(),
+            expiresOn: expiresAfter(new Date(now()).toISOString(), RETENTION_DAYS.securityLog),
           },
           { timeoutMS: 1000, writeConcern: { w: 'majority' } },
         ),

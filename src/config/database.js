@@ -232,6 +232,7 @@ async function initializeCollections(context) {
   }
   await index('auth_rate_limits', { expiresOn: 1 }, { expireAfterSeconds: 0 });
   await index('auth_audit', { created_at: -1, id: -1 });
+  await index('auth_audit', { expiresOn: 1 }, { expireAfterSeconds: 0 });
   await index('auth_audit', { action: 1, created_at: -1, id: -1 });
   await index('auth_audit', { user_id: 1, created_at: -1, id: -1 });
   await index('auth_audit', { actor_id: 1, created_at: -1, id: -1 });
@@ -303,6 +304,7 @@ async function initializeCollections(context) {
       scoped ? { organization_id: 1, event_key: 1 } : { event_key: 1 },
       { unique: true },
     );
+    await index(`${prefix}_webhook_events`, { expiresOn: 1 }, { expireAfterSeconds: 0 });
   }
   await index('cashfree_link_orders', { organization_id: 1, provider_order_id: 1 }, { unique: true });
   for (const id of TRANSACTION_LOCK_IDS)
