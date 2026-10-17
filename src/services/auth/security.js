@@ -34,6 +34,38 @@ const PAGE_SIZE = 50;
 const ACCOUNT_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,119}$/;
 const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
 const SOURCE_SCOPES = new Set(['login', 'signup', 'forgot', 'reset']);
+// Sessions end after this long without activity.
+export const SESSION_IDLE_MS = 60 * 60 * 1000;
+
+/** "Chrome on Windows"-style label from a User-Agent header; IP addresses are not recorded. */
+export function deviceLabel(userAgent = '') {
+  const agent = String(userAgent);
+  const browser = /Edg\//.test(agent)
+    ? 'Edge'
+    : /OPR\/|Opera/.test(agent)
+      ? 'Opera'
+      : /Firefox\//.test(agent)
+        ? 'Firefox'
+        : /Chrome\/|CriOS\//.test(agent)
+          ? 'Chrome'
+          : /Safari\//.test(agent)
+            ? 'Safari'
+            : 'Browser';
+  const system = /Android/.test(agent)
+    ? 'Android'
+    : /iPhone|iPad|iPod/.test(agent)
+      ? 'iPhone/iPad'
+      : /Windows/.test(agent)
+        ? 'Windows'
+        : /CrOS/.test(agent)
+          ? 'ChromeOS'
+          : /Mac OS X|Macintosh/.test(agent)
+            ? 'Mac'
+            : /Linux/.test(agent)
+              ? 'Linux'
+              : 'unknown system';
+  return `${browser} on ${system}`;
+}
 
 function scalar(query, key, fallback = '') {
   const value = query[key];
@@ -159,7 +191,7 @@ export function createAuthSecurity({ db, now = Date.now, audit, logger }) {
     return current;
   }
 
-  async function insertSession(tokenHash, userId, expiresAt, createdAt) {
+  async function insertSession(tokenHash, userId, expiresAt, createdAt, device = '') {
     return sessions.insertOne(
       {
         _id: randomUUID(),
@@ -167,6 +199,8 @@ export function createAuthSecurity({ db, now = Date.now, audit, logger }) {
         user_id: userId,
         expires_at: expiresAt,
         created_at: createdAt,
+        last_seen_at: createdAt,
+        device,
         expiresOn: new Date(expiresAt),
       },
       options(),
@@ -179,13 +213,20 @@ export function createAuthSecurity({ db, now = Date.now, audit, logger }) {
     const requested = securityPageNumber(query.page);
     const current = await requireCurrentUser(user);
     const at = now();
-    const filter = { user_id: current.id, expires_at: { $gt: at } };
+    const filter = {
+      user_id: current.id,
+      expires_at: { $gt: at },
+      $or: [
+        { last_seen_at: { $gt: at - SESSION_IDLE_MS } },
+        { last_seen_at: { $exists: false }, created_at: { $gt: at - SESSION_IDLE_MS } },
+      ],
+    };
     const total = await sessions.countDocuments(filter, options());
     const page = pagination(requested, total);
     const rows = await sessions
       .find(filter, {
         ...options(),
-        projection: { _id: 1, token_hash: 1, created_at: 1, expires_at: 1 },
+        projection: { _id: 1, token_hash: 1, created_at: 1, expires_at: 1, last_seen_at: 1, device: 1 },
       })
       .sort({ created_at: -1, _id: -1 })
       .skip((page.page - 1) * PAGE_SIZE)
@@ -196,6 +237,8 @@ export function createAuthSecurity({ db, now = Date.now, audit, logger }) {
         id: sessionId(row._id),
         createdAt: timestamp(row.created_at),
         expiresAt: timestamp(row.expires_at),
+        lastActiveAt: timestamp(row.last_seen_at ?? row.created_at),
+        device: row.device || 'Unknown device',
         current: row.token_hash === currentTokenHash,
       })),
       total,

@@ -234,13 +234,29 @@ export function createModels(context) {
   // ---------------------------------------------------------------------------
   // Accounts: users, sessions, password resets, audit trail.
   // ---------------------------------------------------------------------------
+  // Sessions created before activity tracking count their sign-in time as the last activity.
+  const activeSince = (cutoff) => ({
+    $or: [
+      { last_seen_at: { $gt: cutoff } },
+      { last_seen_at: { $exists: false }, created_at: { $gt: cutoff } },
+    ],
+  });
   models.auth = {
     userById: (id) => one('auth_users', { id }),
     userByEmail: (email) => one('auth_users', { email: email.toLowerCase() }),
     listUsers: () => all('auth_users', {}, { created_at: -1, id: 1 }),
-    sessionUser: async (token_hash, time, status) => {
-      const session = await one('auth_sessions', { token_hash, expires_at: { $gt: time } });
-      return session ? one('auth_users', { id: session.user_id, status }) : undefined;
+    // A session is valid until expires_at and while it was active after idleCutoff (ms).
+    sessionUser: async (token_hash, time, status, idleCutoff = 0) => {
+      const session = await one('auth_sessions', {
+        token_hash,
+        expires_at: { $gt: time },
+        ...activeSince(idleCutoff),
+      });
+      if (!session) return undefined;
+      // Activity is written at most every 5 minutes per session.
+      if (!(session.last_seen_at > time - 300_000))
+        await update('auth_sessions', { token_hash }, { last_seen_at: time });
+      return one('auth_users', { id: session.user_id, status });
     },
     insertUser: (
       id,

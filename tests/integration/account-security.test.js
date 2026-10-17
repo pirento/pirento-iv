@@ -767,3 +767,36 @@ test(
     assert.equal((await workspace('overview')).status, 200);
   },
 );
+
+test(
+  'Sessions end after 60 idle minutes, stay alive with activity and show their device',
+  native,
+  async (t) => {
+    let instant = new Date();
+    const { base } = await createFixture(t, { environment: ownerEnvironment, now: () => instant });
+    const minutes = (count) => {
+      instant = new Date(instant.getTime() + count * 60_000);
+    };
+    const userAgent =
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
+    const signedIn = await request(base, '/login', {
+      method: 'POST',
+      headers: { 'User-Agent': userAgent },
+      body: {
+        email: ownerEnvironment.INITIAL_ADMIN_EMAIL,
+        password: ownerEnvironment.INITIAL_ADMIN_PASSWORD,
+      },
+    });
+    assert.equal(signedIn.status, 200);
+    const me = async () => (await request(base, '/me', { cookie: signedIn.cookie })).data.user;
+    const listed = (await request(base, '/sessions', { cookie: signedIn.cookie })).data.sessions;
+    assert.equal(listed[0].device, 'Chrome on Windows');
+
+    minutes(30);
+    assert.ok(await me(), 'activity after 30 minutes keeps the session');
+    minutes(50);
+    assert.ok(await me(), '50 minutes after the last activity is still within the limit');
+    minutes(61);
+    assert.equal(await me(), null, '61 idle minutes end the session');
+  },
+);

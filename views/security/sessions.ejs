@@ -21,7 +21,7 @@ const listUrl = pageNumber => helpers.pageUrl(data, 'sessions', { page: pageNumb
     </div>
     <button class="button" type="button" data-sessions-revoke-others <%= result.total > 1 ? '' : 'disabled' %>>Sign out other sessions</button>
   </section>
-  <p class="security-muted">Session times are shown in Indian Standard Time (IST). A session ends when you sign out or when its expiry time is reached.</p>
+  <p class="security-muted">Session times are shown in Indian Standard Time (IST). A session ends when you sign out, after 60 minutes without activity, or when its expiry time is reached.</p>
   <div class="security-session-list" data-session-list>
     <% for (const session of result.sessions) { %>
       <article class="mg-card security-session" data-session-id="<%= session.id %>">
@@ -29,9 +29,12 @@ const listUrl = pageNumber => helpers.pageUrl(data, 'sessions', { page: pageNumb
           <h2><%= session.current ? 'This session' : 'Other session' %></h2>
           <% if (session.current) { %><span class="mg-badge" data-session-current>Current</span><% } %>
         </header>
+        <p class="security-muted" data-session-device><%= session.device %></p>
         <dl>
           <dt>Signed in</dt>
           <dd><%= helpers.displayDateTime(session.createdAt) %> IST</dd>
+          <dt>Last active</dt>
+          <dd><%= helpers.displayDateTime(session.lastActiveAt) %> IST</dd>
           <dt>Expires</dt>
           <dd><%= helpers.displayDateTime(session.expiresAt) %> IST</dd>
         </dl>

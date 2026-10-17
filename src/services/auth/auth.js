@@ -13,7 +13,7 @@ import { createHash, randomBytes, randomUUID, scrypt, timingSafeEqual } from 'no
 import express from 'express';
 import { z } from 'zod';
 import { createAccountRateLimiter } from './account-rate-limit.js';
-import { createAuthSecurity } from './security.js';
+import { SESSION_IDLE_MS, createAuthSecurity, deviceLabel } from './security.js';
 import {
   createTwoStepVault,
   newTwoStepSecret,
@@ -21,7 +21,7 @@ import {
   twoStepSetupUrl,
   verifyTwoStepCode,
 } from './two-step.js';
-// Session cookie name, session length (12 h) and password-reset link lifetime (30 min).
+// Session cookie name, session length (12 h, ending sooner after 60 min idle) and password-reset link lifetime (30 min).
 const COOKIE = 'venturecore_session';
 const SESSION_MS = 12 * 60 * 60 * 1000;
 const RESET_MS = 30 * 60 * 1000;
@@ -156,7 +156,8 @@ export function createAuth(db, options = {}) {
   async function getSessionUser(req) {
     const token = sessionToken(req);
     if (!token) return null;
-    const row = await db.models.auth.sessionUser(tokenHash(token), now(), 'active');
+    const time = now();
+    const row = await db.models.auth.sessionUser(tokenHash(token), time, 'active', time - SESSION_IDLE_MS);
     return row ? safeUser(row) : null;
   }
   // Middleware: 401 unless a valid session cookie is present; puts the user in res.locals.user.
@@ -346,7 +347,13 @@ export function createAuth(db, options = {}) {
           const oldToken = sessionToken(req);
           if (oldToken) await db.models.auth.deleteSession(tokenHash(oldToken));
           await db.models.auth.deleteExpiredSessions(now());
-          await security.insertSession(tokenHash(token), row.id, now() + SESSION_MS, now());
+          await security.insertSession(
+            tokenHash(token),
+            row.id,
+            now() + SESSION_MS,
+            now(),
+            deviceLabel(req.get('user-agent')),
+          );
           await db.models.auth.setLastLogin(new Date(now()).toISOString(), row.id);
           await audit('login', row.id, row.id);
           return safeUser(await userById(row.id));
