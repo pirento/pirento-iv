@@ -39,9 +39,9 @@ import {
   initialDocumentForm,
   pricingFields,
   pricingSummary,
-  readBrandImage,
   validatePricing,
 } from './document-ui.js';
+import { readImage } from '/js/core/images.js';
 import {
   CONTACT_HANDOFF_PARAM,
   beginContactHandoff,
@@ -633,7 +633,7 @@ editor.addEventListener('change', async (event) => {
     uploadCount += 1;
     updateSaveAvailability();
     try {
-      const value = await readBrandImage(file);
+      const value = await readImage(file);
       update('branding', { ...currentBranding(), [target.dataset.brandUpload]: value });
       refreshBranding();
     } catch (error) {

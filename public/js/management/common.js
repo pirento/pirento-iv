@@ -91,26 +91,6 @@ export function afterSave(fallback, key, record) {
   location.assign(fallback);
 }
 
-/** Read and decode an image before storing the data URL in a form. */
-export async function readLogo(file) {
-  if (!file || !['image/png', 'image/jpeg', 'image/webp'].includes(file.type))
-    throw new Error('Choose a PNG, JPG or WebP image.');
-  if (file.size > 500 * 1024) throw new Error('Your logo must be smaller than 500 KB.');
-  const dataUrl = await new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(new Error('Unable to read this image.'));
-    reader.readAsDataURL(file);
-  });
-  await new Promise((resolve, reject) => {
-    const image = new Image();
-    image.onload = resolve;
-    image.onerror = () => reject(new Error('This file could not be opened as an image.'));
-    image.src = dataUrl;
-  });
-  return dataUrl;
-}
-
 /** Two-letter initials for a logo placeholder. */
 export function initials(name, fallback = 'BP') {
   return (

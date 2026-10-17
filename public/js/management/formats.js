@@ -7,16 +7,8 @@ import { getPageData, rememberToast } from '../core/page.js';
 import { defaultFormatFor } from '/shared/types.js';
 import { documentColors } from '/shared/pdf.js';
 import { TEMPLATE_PRESETS } from '/shared/template-presets.js';
-import {
-  api,
-  sendJson,
-  asInput,
-  showError,
-  withBusy,
-  preserveReturnLinks,
-  afterSave,
-  readLogo,
-} from './common.js';
+import { api, sendJson, asInput, showError, withBusy, preserveReturnLinks, afterSave } from './common.js';
+import { readImage } from '../core/images.js';
 
 const data = getPageData();
 const root = document.getElementById('formats-page');
@@ -168,7 +160,7 @@ if (form) {
     showError('', form);
     await withBusy(form, async () => {
       try {
-        form.elements.namedItem('logoUrl').value = await readLogo(file);
+        form.elements.namedItem('logoUrl').value = await readImage(file);
         form.elements.namedItem('showLogo').checked = true;
         form.querySelector('[data-upload-name]').textContent = file.name;
         updatePreview();
