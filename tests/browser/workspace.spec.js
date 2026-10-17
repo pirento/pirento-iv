@@ -345,4 +345,6 @@ test('an expense fills from a vendor contact, previews its GST, saves, edits and
   page.once('dialog', (dialog) => dialog.accept());
   await page.getByRole('button', { name: 'Delete' }).click();
   await expect(page.getByText('No expenses this month')).toBeVisible();
+  await page.getByRole('link', { name: 'Reports' }).click();
+  await expect(page.getByRole('heading', { name: 'Reports', level: 1 })).toBeVisible();
 });

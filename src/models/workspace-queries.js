@@ -1,6 +1,6 @@
 /**
  * MongoDB queries for workspace pages: paged document lists with search/filters, overview
- * totals (received, outstanding, overdue) and CSV export of matching documents.
+ * totals (received, outstanding, overdue), CSV export of matching documents and Reports page rows.
  */
 
 import { paidAmount, balanceDue, installmentBalances } from '../../shared/types.js';
@@ -228,5 +228,71 @@ export function createWorkspaceQueries(db) {
       .toArray();
   }
 
-  return { documentPage, documentExport, overview, gstr1Invoices };
+  /** Rows for the Reports page (services/pages/reports.js): the year's invoices and receipts, and invoices still owed. */
+  async function reportData(organizationId, { from, to }) {
+    const fields = {
+      _id: 0,
+      id: 1,
+      kind: 1,
+      status: 1,
+      customerId: 1,
+      'customerSnapshot.name': 1,
+      issueDate: 1,
+    };
+    const [invoices, openInvoices, receipts] = await Promise.all([
+      db
+        .collection('documents')
+        .find(
+          {
+            organizationId,
+            kind: 'invoice',
+            status: { $nin: ['draft', 'cancelled'] },
+            issueDate: { $gte: from, $lt: to },
+          },
+          { ...options(), projection: { ...fields, 'totals.taxable': 1, 'totals.total': 1 } },
+        )
+        .toArray(),
+      db
+        .collection('documents')
+        .find(
+          { organizationId, kind: 'invoice', status: { $in: ['sent', 'partially_paid'] } },
+          {
+            ...options(),
+            projection: {
+              ...fields,
+              dueDate: 1,
+              totals: 1,
+              amountPaid: 1,
+              balanceDue: 1,
+              installmentPlan: 1,
+            },
+          },
+        )
+        .toArray(),
+      // Older receipts can omit organizationId; those count only when their invoice is in this business.
+      db
+        .collection('payments')
+        .find(
+          {
+            $or: [{ organizationId }, { organizationId: null }],
+            voidedAt: null,
+            paidOn: { $gte: from, $lt: to },
+          },
+          { ...options(), projection: { _id: 0, organizationId: 1, documentId: 1, amount: 1, paidOn: 1 } },
+        )
+        .toArray(),
+    ]);
+    const legacyIds = receipts.filter((row) => !row.organizationId).map((row) => row.documentId);
+    const owned = new Set(
+      legacyIds.length
+        ? await db
+            .collection('documents')
+            .distinct('id', { organizationId, id: { $in: legacyIds } }, options())
+        : [],
+    );
+    const payments = receipts.filter((row) => row.organizationId || owned.has(row.documentId));
+    return { invoices, openInvoices, payments };
+  }
+
+  return { documentPage, documentExport, overview, gstr1Invoices, reportData };
 }

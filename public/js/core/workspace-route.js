@@ -14,6 +14,7 @@ export const WORKSPACE_VIEWS = [
   'ledger',
   'gst_returns',
   'expenses',
+  'reports',
   'reminders',
   'recurring',
   'organizations',

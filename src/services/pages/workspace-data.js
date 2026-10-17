@@ -16,6 +16,7 @@ import { createDirectoryQueries } from '../../models/directory-queries.js';
 import { readDirectoryFilters, directoryPageLinks } from './directory-list.js';
 import { buildGstr1, gstr1Csv, GSTR1_SECTIONS, monthRange, readGstr1Filters } from './gstr1.js';
 import { expenseCsv, expenseTotals, readExpenseMonth } from '../expenses/expenses.js';
+import { buildReport, financialYearRange, readReportYear } from './reports.js';
 import { EXPENSE_CATEGORIES } from '../validation/validation.js';
 import { safeWorkspaceReturn } from '../../../public/js/core/workspace-route.js';
 
@@ -168,6 +169,16 @@ export function createWorkspacePageData({
       read('gstr1', () => gstr1Report(organizationId, route, result.businessDate));
     if (route?.view === 'expenses')
       read('expensePage', () => expensePage(organizationId, route, result.businessDate));
+    if (route?.view === 'reports')
+      read('report', async () => {
+        const year = readReportYear(route.query, result.businessDate);
+        const range = financialYearRange(year);
+        const [rows, expenses] = await Promise.all([
+          queries.reportData(organizationId, range),
+          db.models.expenses.listBetween(organizationId, range),
+        ]);
+        return buildReport({ ...rows, expenses, year, asOf: result.businessDate });
+      });
     if (legacy || route.view === 'integrations')
       read('integrationStatus', async () => {
         const payment = await online.getStatus(organizationId);
