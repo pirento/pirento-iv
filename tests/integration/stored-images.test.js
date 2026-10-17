@@ -79,6 +79,22 @@ test('Documents and email payloads store each image once and read back unchanged
       listed.find((document) => document.id === second.id),
       second,
     );
+    // Only printed / matching fields are copied; internal contact data stays on the contact.
+    assert.deepEqual(Object.keys(raw.customerSnapshot).sort(), [
+      'active',
+      'address',
+      'contactPerson',
+      'email',
+      'gstin',
+      'id',
+      'name',
+      'organizationId',
+      'pan',
+      'phone',
+      'roles',
+      'stateCode',
+    ]);
+    assert.equal('gstRegistrations' in raw.organizationSnapshot, false);
     // Two invoices share one stored copy of each image.
     assert.equal(await db.collection('images').countDocuments({ _id: hash(logoUrl) }), 1);
   });

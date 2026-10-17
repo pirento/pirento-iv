@@ -15,6 +15,7 @@ import { indiaBusinessDate } from '../../shared/business-date.js';
 import { wholePaise } from '../../shared/money.js';
 import { HttpError } from '../middleware/errors.js';
 import { DOCUMENT_VERSION_CONFLICT } from './documents/document-writes.js';
+import { businessSnapshot, customerSnapshot } from './documents/snapshots.js';
 
 /** Builds the service. `context` provides { db, now, mailer, online }. */
 export function createWorkspaceService(context) {
@@ -338,8 +339,8 @@ export function createWorkspaceService(context) {
       createdAt: timestamp,
       updatedAt: timestamp,
       version: 1,
-      customerSnapshot: customer,
-      organizationSnapshot: organization,
+      customerSnapshot: customerSnapshot(customer),
+      organizationSnapshot: businessSnapshot(organization),
       totals,
       sourceQuotationId: source?.kind === 'quotation' ? source.id : null,
       convertedInvoiceId: null,
