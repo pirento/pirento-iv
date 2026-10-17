@@ -1,7 +1,13 @@
+/**
+ * Account security features: "My sessions" (list / sign out sessions), administrator session
+ * revocation for a staff account, and the paginated security activity log with filters.
+ */
+
 import { randomUUID } from 'node:crypto';
 import { ObjectId } from 'mongodb';
 import { HttpError } from '../../middleware/errors.js';
 
+// Activity types shown in the Security activity filter, with their display labels.
 export const SECURITY_ACTIONS = Object.freeze([
   { value: 'login', label: 'Signed in' },
   { value: 'login-unsuccessful', label: 'Unsuccessful sign-in observed' },
@@ -31,6 +37,7 @@ function scalar(query, key, fallback = '') {
   return value;
 }
 
+/** Validates a ?page= value (1 when missing); throws 400 for anything else. */
 export function securityPageNumber(value) {
   if (value === undefined || value === '') return 1;
   if (typeof value !== 'string' || !/^[1-9][0-9]{0,5}$/.test(value))
@@ -48,6 +55,7 @@ function day(value) {
   return value;
 }
 
+/** Validates the activity filters from the query string: action, from/to dates, userId and page. */
 export function readSecurityAuditFilters(query = {}) {
   if (!query || typeof query !== 'object' || Array.isArray(query))
     throw new HttpError(400, 'Provide valid activity filters.');
@@ -118,6 +126,7 @@ function pagination(page, total) {
   return { page: Math.min(page, pageCount), pageSize: PAGE_SIZE, total, pageCount };
 }
 
+/** Returns the session and activity operations used by src/services/auth/auth.js. */
 export function createAuthSecurity({ db, now = Date.now, audit, logger }) {
   const sessions = db.collection('auth_sessions');
   const records = db.collection('auth_audit');

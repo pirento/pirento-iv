@@ -1,3 +1,12 @@
+/**
+ * Production entry point (`npm start`).
+ *
+ * Startup order: load configuration (.env / .example.env / host variables) -> run the
+ * production preflight -> build the Express app (src/app.js) -> start the HTTP server
+ * and background workers (email queue, backups, reminders, recurring invoices).
+ * SIGINT/SIGTERM trigger a graceful shutdown; crashes are logged and stop the process.
+ */
+
 import { createApplication } from './src/app.js';
 import { loadEnvironment } from './src/config/environment.js';
 import { validateHostedProduction } from './src/config/production.js';

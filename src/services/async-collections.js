@@ -4,6 +4,7 @@ export async function mapAsync(values, mapper) {
   for (let index = 0; index < values.length; index++) result.push(await mapper(values[index], index, values));
   return result;
 }
+// Async flatMap / filter / find / some / every / forEach, also one item at a time.
 export async function flatMapAsync(values, mapper) {
   return (await mapAsync(values, mapper)).flat();
 }

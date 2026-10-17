@@ -1,3 +1,8 @@
+/**
+ * Document preview page (views/documents/preview.ejs): Print, Download PDF (browser-pdf.js) and
+ * the convert / delivery-challan actions shown above the document.
+ */
+
 import { api, sendJson } from '/js/core/api.js';
 import { getPageData } from '/js/core/page.js';
 import { documentUrl } from './document-ui.js';

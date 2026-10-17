@@ -1,3 +1,12 @@
+/**
+ * Data access layer (the "M" in MVC): every read and write to MongoDB goes through these models.
+ *
+ * db.models.<group>.<operation>(...). Groups: organizations, documents, payments, events,
+ * catalog, businessProducts, formats, sequences (document numbers), settings, ownership,
+ * auth (users, sessions, password resets, audit), email (outbox queue), razorpay, cashfree.
+ * Each call automatically joins the current transaction, if one is running.
+ */
+
 import { HttpError } from '../middleware/errors.js';
 import { receiptPaise, validReceiptPaise } from './money-expressions.js';
 
@@ -8,6 +17,9 @@ import { receiptPaise, validReceiptPaise } from './money-expressions.js';
  * Every operation inherits the current transaction session from the database context.
  */
 export function createModels(context) {
+  // ---------------------------------------------------------------------------
+  // Low-level helpers shared by all models (find one / list / insert / update / replace ...).
+  // ---------------------------------------------------------------------------
   const options = () => ({ ...context.options(), ignoreUndefined: true });
   const collection = (name) => context.collection(name);
   const present = (value) => {
@@ -58,6 +70,7 @@ export function createModels(context) {
       .toArray();
     return { [alias]: rows[0]?.amount ?? 0 };
   };
+  // Standard model for a business-owned collection: findById, list(organizationId), insert, save, remove.
   const business = (name, newestFirst = true) => ({
     findById: (id) => one(name, { id }),
     list: (organizationId) => all(name, { organizationId }, { _id: newestFirst ? -1 : 1 }),
@@ -65,6 +78,9 @@ export function createModels(context) {
     save: (record) => replace(name, record),
     remove: (id) => remove(name, { id }),
   });
+  // ---------------------------------------------------------------------------
+  // Business records: businesses, documents, receipts, catalog, formats, numbering, settings.
+  // ---------------------------------------------------------------------------
   const models = {
     organizations: {
       ...business('organizations', false),
@@ -190,6 +206,7 @@ export function createModels(context) {
       },
       save: (settings) => update('workspace_settings', { id: 1 }, settings, { upsert: true }),
     },
+    // Answers "which business owns this record?" for the access guard (src/middleware/access.js).
     ownership: {
       resource: async (name, id) => {
         const allowed = new Set([
@@ -210,6 +227,9 @@ export function createModels(context) {
       },
     },
   };
+  // ---------------------------------------------------------------------------
+  // Accounts: users, sessions, password resets, audit trail.
+  // ---------------------------------------------------------------------------
   models.auth = {
     userById: (id) => one('auth_users', { id }),
     userByEmail: (email) => one('auth_users', { email: email.toLowerCase() }),
@@ -290,6 +310,10 @@ export function createModels(context) {
   };
   // A claim token fences every worker write. In particular, an undefined token
   // must never be omitted from a MongoDB filter by ignoreUndefined.
+  // ---------------------------------------------------------------------------
+  // Email outbox: queued emails are "claimed" by one worker at a time with an expiring lease,
+  // so two servers never send the same email.
+  // ---------------------------------------------------------------------------
   const emailClaimFilter = (id, claim_token, at) => {
     if (
       typeof id !== 'string' ||
@@ -609,6 +633,9 @@ export function createModels(context) {
         3_000,
       ),
   };
+  // ---------------------------------------------------------------------------
+  // Online payment providers: payment links, verified payments and webhook events.
+  // ---------------------------------------------------------------------------
   function providerModels(prefix, scoped) {
     const links = `${prefix}_payment_links`,
       payments = `${prefix}_verified_payments`;
@@ -624,6 +651,7 @@ export function createModels(context) {
       setUrl: (url, id) => update(links, { id }, { url }),
     };
   }
+  // Razorpay payment links and payments.
   models.razorpay = {
     ...providerModels('online', false),
     paymentById: (provider_payment_id) => one('online_verified_payments', { provider_payment_id }),
@@ -679,6 +707,7 @@ export function createModels(context) {
     linkByProviderReference: (provider_id, reference_id) =>
       one('online_payment_links', { provider_id, reference_id }),
   };
+  // Cashfree payment links, orders and payments (always scoped to one business).
   models.cashfree = {
     ...providerModels('cashfree', true),
     orderById: (organization_id, provider_order_id) =>

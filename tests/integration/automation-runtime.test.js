@@ -1,3 +1,5 @@
+/** Integration tests: the real runtime runs recurring invoices and reminders, then drains before closing MongoDB. */
+
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { performance } from 'node:perf_hooks';

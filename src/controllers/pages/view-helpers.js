@@ -1,3 +1,10 @@
+/**
+ * Helper functions available inside every EJS template as `helpers.*`.
+ *
+ * Dates are always shown in India time (Asia/Kolkata). Also includes URL builders for
+ * workspace pages, the sidebar navigation, SVG icons and safe JSON/HTML escaping.
+ */
+
 import * as types from '../../../shared/types.js';
 import * as pdf from '../../../shared/pdf.js';
 import * as billing from '../../../shared/billing-presets.js';
@@ -7,6 +14,7 @@ import * as contacts from '../../../shared/contact-types.js';
 import { workspaceUrl } from '../../../public/js/core/workspace-route.js';
 import { documentStatus } from '../../../shared/document-status.js';
 
+/** Today's date in India as YYYY-MM-DD. */
 export function today() {
   return new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Kolkata',
@@ -15,6 +23,7 @@ export function today() {
     day: '2-digit',
   }).format(new Date());
 }
+/** Formats a date as "05 Oct 2026" (India time); returns "—" when empty or invalid. */
 export function displayDate(value) {
   if (!value) return '—';
   const date = new Date(String(value).length === 10 ? `${value}T12:00:00Z` : value);
@@ -27,6 +36,7 @@ export function displayDate(value) {
       }).format(date)
     : '—';
 }
+/** Formats a date and time as "05 Oct 2026, 10:30 am" (India time). */
 export function displayDateTime(value) {
   const date = value ? new Date(value) : null;
   return date && Number.isFinite(date.getTime())
@@ -40,18 +50,22 @@ export function displayDateTime(value) {
       }).format(date)
     : 'Not available';
 }
+// Short alias for documentStatus() used inside the EJS views.
 export const statusOf = documentStatus;
+/** Document kind -> workspace URL section (e.g. delivery_note -> /shipping). */
 export const documentViews = {
   invoice: 'invoices',
   quotation: 'quotations',
   proforma: 'proformas',
   delivery_note: 'shipping',
 };
+/** True only for inline PNG/JPEG/WebP data or an https:// image URL. */
 export function safeImage(value = '') {
   return (
     /^data:image\/(?:png|jpeg|webp);base64,[a-z\d+/=]+$/i.test(value) || /^https:\/\/[^\s]+$/i.test(value)
   );
 }
+/** "A T Elevator" -> "AT" (used for avatar badges). */
 export const initials = (value) =>
   String(value || '')
     .split(/\s+/)
@@ -60,6 +74,7 @@ export const initials = (value) =>
     .map((part) => part[0])
     .join('')
     .toUpperCase();
+/** Builds a workspace URL for the current business, e.g. url(data, 'invoices', 'edit', id). */
 export const url = (data, view, action, id, extra = {}) =>
   workspaceUrl({
     organizationId: data.route.organizationId,
@@ -78,6 +93,7 @@ export function pageUrl(data, view, query = {}, action, id) {
   return `${path}${params.size ? `?${params}` : ''}`;
 }
 
+// Inline SVG icons used by the sidebar and buttons (no icon font or external files).
 const iconPaths = {
   grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
   document:
@@ -99,6 +115,7 @@ function icon(name) {
   return `<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round">${iconPaths[name] || iconPaths.document}</svg>`;
 }
 
+/** Sidebar menu groups for the current user; admin-only sections are hidden for staff. */
 function navigation(data) {
   const groups = [
     {
@@ -152,6 +169,7 @@ function navigation(data) {
   return groups;
 }
 
+/** Everything templates can call as helpers.<name>. Shared business constants are spread in too. */
 export const helpers = {
   ...types,
   ...pdf,

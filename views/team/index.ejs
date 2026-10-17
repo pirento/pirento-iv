@@ -1,3 +1,4 @@
+<%# Admin page /workspace/<id>/team: users, invites, roles and business access. Script: /js/management/team.js. -%>
 <%
 const users = [...(data.teamUsers || [])].sort((a,b) => Number(b.status === 'pending') - Number(a.status === 'pending') || b.createdAt.localeCompare(a.createdAt));
 const placeholder = {id:'',name:'',email:'',company:'',status:'pending',role:'staff',organizationIds:[],createdAt:null,lastLoginAt:null};

@@ -1,3 +1,11 @@
+/**
+ * Razorpay payment links for invoices.
+ *
+ * Creates a link for the invoice balance, syncs its status from Razorpay, and records a receipt
+ * only after the payment is verified with Razorpay (amount, currency and invoice must match).
+ * Webhooks are verified with the HMAC signature before anything is processed.
+ */
+
 import { mapAsync } from '../../async-collections.js';
 import { createHash, createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { Router } from 'express';
@@ -5,6 +13,8 @@ import { balanceDue, paidAmount } from '../../../../shared/types.js';
 import { indiaBusinessDate } from '../../../../shared/business-date.js';
 import { discardProviderResponse, readProviderJson } from '../provider-http.js';
 import { transactionForRecord } from '../../transaction-ownership.js';
+
+/** Payment error with an HTTP status and a message safe to show the user. */
 export class OnlinePaymentError extends Error {
   status;
   providerRejected;
@@ -15,6 +25,7 @@ export class OnlinePaymentError extends Error {
   }
 }
 
+/** Converts any error into { status, message } for the API response. */
 export function paymentErrorResponse(error, fallback) {
   if (error instanceof OnlinePaymentError) return { status: error.status, message: error.message };
   if (error?.code === 11000)
@@ -36,11 +47,13 @@ function providerPaise(value) {
         : NaN;
   return Number.isSafeInteger(amount) && amount >= 0 ? amount : NaN;
 }
+/** Checks a Razorpay webhook body against its HMAC-SHA256 signature (constant-time compare). */
 export function verifyRazorpaySignature(body, signature, secret) {
   if (!secret || typeof signature !== 'string' || !/^[a-fA-F0-9]{64}$/.test(signature)) return false;
   const expected = createHmac('sha256', secret).update(body).digest();
   return timingSafeEqual(expected, Buffer.from(signature, 'hex'));
 }
+/** Returns the Razorpay module for one credential profile (status, links, sync, webhooks). */
 export function createOnlinePayments(options) {
   const { db, getDocument, recordVerifiedPayment } = options;
   const env = options.env ?? process.env;

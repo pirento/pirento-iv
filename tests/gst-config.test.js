@@ -1,3 +1,5 @@
+/** Unit tests: GST lookup provider selection (portal, custom URL, Sandbox). */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createGstIntegration } from '../src/services/integrations/gst/gst-config.js';

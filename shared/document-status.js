@@ -1,3 +1,5 @@
+/** Display status of a document, e.g. an unpaid invoice past its due date shows as "overdue". */
+
 import { installmentBalances } from './types.js';
 import { indiaBusinessDate } from './business-date.js';
 

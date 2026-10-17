@@ -1,3 +1,5 @@
+/* Customer ledger and payment reminder pages: filters, tables, statements, reminder policy and preview. */
+
 .finance-filters {
   display: flex;
   flex-wrap: wrap;

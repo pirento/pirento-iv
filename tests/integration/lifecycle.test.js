@@ -1,3 +1,5 @@
+/** Integration tests: end-to-end workspace lifecycle - login, seeding, documents, numbering, access and backups. */
+
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import test from 'node:test';

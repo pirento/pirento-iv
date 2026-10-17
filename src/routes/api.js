@@ -1,7 +1,21 @@
+/**
+ * API route table: every /api URL and the controller handler that serves it.
+ *
+ * Request pipeline for /api (in order): security headers -> payment-provider webhooks
+ * (raw body, no session) -> query validation -> same-origin and JSON checks -> body parser
+ * -> /api/auth routes -> health probes -> session + CSRF + organization access checks
+ * -> resource handlers -> 404 -> JSON error handler (src/middleware/api-errors.js).
+ *
+ * To add an endpoint: write the handler in src/controllers/api/<resource>.controller.js,
+ * then register the path here.
+ */
+
 import express from 'express';
 import { securityHeaders, validateResourceQueries } from '../middleware/http-security.js';
 import { createAccessGuard } from '../middleware/access.js';
 import { HttpError } from '../middleware/errors.js';
+
+/** Registers all /api middleware and routes on the Express app, in the order shown above. */
 export function registerApiRoutes(app, context) {
   const { controllers, auth, online, db, environment, errorHandler } = context;
   app.use(securityHeaders(environment.NODE_ENV === 'production'));

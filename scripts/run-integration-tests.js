@@ -1,3 +1,8 @@
+/**
+ * `npm run test:integration` - runs tests/integration/*.test.js against the test replica set in
+ * MONGODB_TEST_URI. Fails when the URI is missing or any test is skipped.
+ */
+
 import { spawn } from 'node:child_process';
 import { readdirSync } from 'node:fs';
 import { resolve } from 'node:path';

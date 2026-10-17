@@ -1,3 +1,8 @@
+/**
+ * Team access page (views/team/index.ejs, admin only): approve/disable accounts, set role and
+ * assigned businesses, and sign out a member's sessions.
+ */
+
 import { getPageData } from '../core/page.js';
 import { api, sendJson, showError, withBusy, initials, dateTime, setMessage } from './common.js';
 

@@ -1,5 +1,8 @@
+/** Pricing method fields on the catalog form (standard, recurring, jewellery) with a live total preview. */
+
 import { linePriceBreakdown, money } from '/shared/types.js';
 
+/** The pricing object from the form, or undefined for standard pricing. */
 export function readPricing(form) {
   const value = (key) => form.elements.namedItem(key)?.value;
   const number = (key) => Number(value(key));
@@ -22,6 +25,7 @@ export function readPricing(form) {
   };
 }
 
+/** Checks the pricing inputs; returns an error message or ''. */
 export function validatePricing(pricing) {
   if (!pricing || pricing.mode === 'standard') return '';
   if (pricing.mode === 'recurring') {
@@ -59,6 +63,7 @@ export function validatePricing(pricing) {
   return '';
 }
 
+/** Shows the right fields for the chosen method and updates the preview when inputs change. */
 export function bindPricing(form, { quantity = 1, onChange } = {}) {
   const root = form.querySelector('[data-pricing]');
   if (!root) return;

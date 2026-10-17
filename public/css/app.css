@@ -1,3 +1,9 @@
+/*
+ * Global styles for every page (loaded by both layouts): fonts, colour tokens, base elements,
+ * workspace shell, buttons, forms, tables, alerts, dashboard, login pages, responsive and print.
+ * Page-specific styles are in the other files (see pageStylesheets in workspace-controller.js).
+ */
+
 @font-face {
   font-family: 'DM Sans';
   font-style: normal;
@@ -26,6 +32,8 @@
   font-display: swap;
   src: url('/fonts/dm-sans-latin-700-normal.woff2') format('woff2');
 }
+
+/* --- Colour tokens and base elements --- */
 :root {
   --ink: #202d29;
   --muted: #67716b;
@@ -122,6 +130,8 @@ hr {
   outline: 3px solid #26705b66;
   outline-offset: 3px;
 }
+
+/* --- Small utilities and accessibility helpers --- */
 .muted,
 .optional {
   color: var(--muted);
@@ -146,6 +156,8 @@ hr {
 .skip-link:focus {
   top: 10px;
 }
+
+/* --- Workspace shell: sidebar, business switcher and navigation --- */
 .sidebar {
   width: 248px;
   position: fixed;
@@ -282,6 +294,8 @@ hr {
   font-size: 11px;
   font-weight: 600;
 }
+
+/* --- Workspace shell: main area, top bar and footer --- */
 .workspace-main {
   margin-left: 248px;
   min-height: 100vh;
@@ -373,6 +387,8 @@ hr {
 .sidebar-overlay {
   display: none;
 }
+
+/* --- Buttons --- */
 .button {
   display: inline-flex;
   align-items: center;
@@ -441,6 +457,8 @@ hr {
 .actions.end {
   justify-content: flex-end;
 }
+
+/* --- Cards, layout grids and form fields --- */
 .card {
   border: 1px solid var(--line);
   background: var(--surface);
@@ -560,6 +578,8 @@ input[type='color'] {
   gap: 10px;
   justify-content: flex-end;
 }
+
+/* --- Section headings, alerts, links and badges --- */
 .section-heading {
   font-size: 15px;
   margin-bottom: 16px;
@@ -629,6 +649,8 @@ input[type='color'] {
   background: #fcf4df;
   color: #987627;
 }
+
+/* --- Tables --- */
 .table-wrap {
   width: 100%;
   overflow: auto;
@@ -679,6 +701,8 @@ tbody tr:hover {
 .row-actions button {
   font-size: 11px;
 }
+
+/* --- Filters and tabs --- */
 .filters {
   display: flex;
   gap: 12px;
@@ -717,6 +741,8 @@ tbody tr:hover {
   border-bottom-color: var(--green);
   font-weight: 600;
 }
+
+/* --- Empty and error states --- */
 .empty-state {
   text-align: center;
   padding: 60px 25px;
@@ -742,6 +768,8 @@ tbody tr:hover {
   display: block;
   margin-bottom: 12px;
 }
+
+/* --- Toast notifications --- */
 .toast-region {
   position: fixed;
   right: 24px;
@@ -764,6 +792,8 @@ tbody tr:hover {
 .toast-error {
   background: #943b37;
 }
+
+/* --- Overview dashboard: metrics and quick actions --- */
 .metrics-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -828,6 +858,8 @@ tbody tr:hover {
 .summary-line:last-child {
   border: 0;
 }
+
+/* --- Business cards, image fields, GST registrations and chart bars --- */
 .business-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -912,6 +944,8 @@ tbody tr:hover {
   font-size: 9px;
   color: var(--muted);
 }
+
+/* --- Login, signup and password pages --- */
 .auth-layout {
   display: grid;
   grid-template-columns: 47% 53%;
@@ -1033,6 +1067,8 @@ tbody tr:hover {
   top: 12px;
   font-size: 10px;
 }
+
+/* --- Responsive layout: wide, tablet and phone screens --- */
 @media (min-width: 1450px) {
   .page-content {
     padding: 40px 52px;
@@ -1270,6 +1306,8 @@ tbody tr:hover {
     flex-wrap: wrap;
   }
 }
+
+/* --- Print --- */
 @media print {
   .skip-link,
   .sidebar,
@@ -1304,6 +1342,8 @@ tbody tr:hover {
     box-shadow: none;
   }
 }
+
+/* --- Document action bar and menus --- */
 .document-actions {
   position: relative;
 }
@@ -1355,6 +1395,8 @@ tbody tr:hover {
 .action-menu .danger {
   color: var(--danger);
 }
+
+/* --- Help page --- */
 .help-list {
   margin: 0;
   padding-left: 20px;
@@ -1365,6 +1407,7 @@ tbody tr:hover {
   padding: 5px 0;
 }
 
+/* --- Overflow guards: let grid children shrink on narrow screens --- */
 .dashboard-grid > * {
   min-width: 0;
 }
@@ -1379,6 +1422,7 @@ tbody tr:hover {
   min-width: 540px;
 }
 
+/* --- Synthetic preview banner and print watermark --- */
 .preview-notice {
   display: flex;
   flex-wrap: wrap;

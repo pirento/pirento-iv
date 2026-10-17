@@ -1,3 +1,8 @@
+/**
+ * MongoDB queries for workspace pages: paged document lists with search/filters, overview
+ * totals (received, outstanding, overdue) and CSV export of matching documents.
+ */
+
 import { paidAmount, balanceDue, installmentBalances } from '../../shared/types.js';
 import { documentStatus } from '../../shared/document-status.js';
 import { roundedPaise } from './money-expressions.js';
@@ -34,6 +39,7 @@ const received = {
   $ifNull: ['$amountPaid', { $cond: [{ $eq: ['$status', 'paid'] }, '$totals.total', 0] }],
 };
 
+/** Filter for issued invoices with a balance whose due date (or an installment's) is before `asOf`. */
 function overdueFilter(asOf) {
   const installments = { $ifNull: ['$installmentPlan.installments', []] };
   const earlierInstallments = {
@@ -95,6 +101,7 @@ export function documentListFilter(organizationId, kind, filters, asOf) {
   return filter;
 }
 
+/** Returns the list/summary/export queries bound to the database. */
 export function createWorkspaceQueries(db) {
   const options = () => db.options();
   const summaries = (filter) =>

@@ -1,3 +1,16 @@
+/**
+ * Documents API (/api/documents): invoices, quotations, proformas and delivery challans.
+ *
+ * Covers create/update/delete, quotation->invoice conversion, delivery challans from an
+ * invoice, manual receipts, installment plans, finalizing a paid invoice, and invoice email.
+ *
+ * Important rules enforced here:
+ * - Updates must send the document `version` (stale browser tabs get a 409 conflict).
+ * - New documents send a `requestId`, so a retried save never creates a duplicate.
+ * - Issued/paid documents lock their financial fields; kind and business never change.
+ * Shared write logic: src/services/workspace-service.js and services/documents/document-writes.js.
+ */
+
 import { z } from 'zod';
 import { HttpError } from '../../middleware/errors.js';
 import { blankShipping, calculateTotals, DOCUMENT_LABELS, getDocumentFormat } from '../../../shared/types.js';
@@ -38,10 +51,12 @@ export function createController(context) {
   } = context;
   const writer = createDocumentWriter({ db, now, newDocument, getOrganization, getCustomer });
   return {
+    // GET /api/documents/:id/messages
     listMessages: async (req, res) => {
       await getDocument(req.params.id);
       res.json(await mailer.listMessages(req.params.id));
     },
+    // POST /api/documents/:id/email
     sendEmail: async (req, res) => {
       const input = z
         .object({
@@ -77,6 +92,7 @@ export function createController(context) {
         message,
       });
     },
+    // GET /api/documents
     list: async (req, res) => {
       const organization = await scopedOrganization(req.query.organizationId);
       const kind =
@@ -88,12 +104,14 @@ export function createController(context) {
         : await db.models.documents.list(organization.id);
       res.json(rows);
     },
+    // POST /api/documents
     create: async (req, res) => {
       const input = documentSchema.parse(req.body);
       const { requestId } = z.object({ requestId: z.guid().optional() }).parse(req.body);
       const result = await writer.create(input, requestId?.toLowerCase());
       res.status(result.created ? 201 : 200).json(result.document);
     },
+    // PUT /api/documents/:id
     update: async (req, res) => {
       const input = documentSchema.parse(req.body);
       const { version } = z
@@ -244,6 +262,7 @@ export function createController(context) {
       );
       res.json(result);
     },
+    // DELETE /api/documents/:id
     remove: async (req, res) => {
       await transactionForRecord(
         db,
@@ -267,6 +286,7 @@ export function createController(context) {
         ok: true,
       });
     },
+    // POST /api/documents/:id/convert
     convert: async (req, res) => {
       let created = false;
       const invoice = await transactionForRecord(
@@ -329,6 +349,7 @@ export function createController(context) {
       );
       res.status(created ? 201 : 200).json(invoice);
     },
+    // POST /api/documents/:id/delivery-note
     createDeliveryNote: async (req, res) => {
       let created = false;
       const document = await transactionForRecord(
@@ -398,12 +419,14 @@ export function createController(context) {
       );
       res.status(created ? 201 : 200).json(document);
     },
+    // GET /api/documents/:id/payments
     listPayments: async (req, res) => {
       const document = await getDocument(req.params.id);
       if (document.kind !== 'invoice')
         throw new HttpError(400, 'Payments can be recorded only against invoices.');
       res.json(await paymentDetails(document.id));
     },
+    // PUT /api/documents/:id/installments
     updateInstallments: async (req, res) => {
       const { plan, version } = z
         .object({
@@ -437,6 +460,7 @@ export function createController(context) {
       );
       res.json(details);
     },
+    // POST /api/documents/:id/payments
     recordPayment: async (req, res) => {
       const input = paymentSchema.parse(req.body);
       if (/^(razorpay|cashfree):/.test(input.requestId))
@@ -460,6 +484,7 @@ export function createController(context) {
       );
       res.status(result.created ? 201 : 200).json(result.details);
     },
+    // POST /api/documents/:id/finalize
     finalize: async (req, res) => {
       const details = await transactionForRecord(
         db,

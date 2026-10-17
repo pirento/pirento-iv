@@ -1,8 +1,11 @@
+/** `npm run audit:readiness` - checks Node version, installed dependencies and the blank .example.env template. */
+
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { createRequire } from 'node:module';
 import { inspectExampleTemplate } from './environment-template.js';
 const require = createRequire(import.meta.url);
+/** Returns { project, node, checkedDependencies, findings[] }; an empty findings list means ready. */
 export function auditProject(root = process.cwd()) {
   const findings = [];
   const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));

@@ -1,3 +1,5 @@
+/** Integration tests: Razorpay/Cashfree links, signed webhooks, idempotency and invoice email. */
+
 import assert from 'node:assert/strict';
 import { createHmac, randomUUID } from 'node:crypto';
 import test from 'node:test';

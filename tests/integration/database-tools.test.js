@@ -1,3 +1,5 @@
+/** Integration tests: MongoDB backup/restore with recovery review, and SQLite import. */
+
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createHash, randomUUID } from 'node:crypto';

@@ -1,3 +1,8 @@
+/**
+ * `npm run check` / `npm run build` - syntax-checks every JavaScript file and compiles every EJS
+ * template, and fails if any TypeScript/JSX file is present. There is no frontend bundle to build.
+ */
+
 import { readdirSync, readFileSync } from 'node:fs';
 import { resolve, extname } from 'node:path';
 import { spawnSync } from 'node:child_process';

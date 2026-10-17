@@ -1,3 +1,6 @@
+/** Safe reading of HTTP responses from payment/GST providers (size-limited JSON). */
+
+/** Parses a provider's JSON response, refusing bodies larger than maxBytes (default 1 MB). */
 export async function readProviderJson(response, maxBytes = 1024 * 1024) {
   const declared = response.headers.get('content-length');
   if (declared && /^\d+$/.test(declared) && Number(declared) > maxBytes) {
@@ -24,6 +27,7 @@ export async function readProviderJson(response, maxBytes = 1024 * 1024) {
     reader.releaseLock();
   }
 }
+/** Releases an unused response body so the connection can be reused. */
 export function discardProviderResponse(response) {
   void response.body?.cancel().catch(() => undefined);
 }

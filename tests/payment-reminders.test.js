@@ -1,3 +1,5 @@
+/** Unit tests: payment reminder dates, targets, policy validation, eligibility and de-duplication keys. */
+
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { indiaBusinessDate } from '../shared/business-date.js';

@@ -1,3 +1,9 @@
+/**
+ * Billing profiles: which units and pricing hints a business sees in the invoice editor
+ * (general, legal, facility, elevator, space, jewellery, ecosystem). Used by server and browser.
+ */
+
+// Profile key -> display label, suggested units and editor hint.
 export const BILLING_PROFILES = {
   general: {
     label: 'General business',
@@ -35,6 +41,7 @@ export const BILLING_PROFILES = {
     hint: 'Choose a business product, then its services or subscriptions',
   },
 };
+/** A business's billing profile: its saved choice, otherwise guessed from its name, else "general". */
 export function billingProfileFor(org) {
   if (org.billingProfile) return org.billingProfile;
   if (/legal/i.test(org.name)) return 'legal';
@@ -45,6 +52,7 @@ export function billingProfileFor(org) {
   if (/ecosystem/i.test(org.name)) return 'ecosystem';
   return 'general';
 }
+// Starting values for a jewellery line (weight, purity, making charges, wastage ...).
 export const emptyJewelleryPricing = () => ({
   mode: 'jewellery',
   jewellery: {
@@ -58,6 +66,7 @@ export const emptyJewelleryPricing = () => ({
     wastagePercent: 0,
   },
 });
+// Default business products created for the PIRENTO ecosystem business on first run.
 export const ECOSYSTEM_PRODUCT_NAMES = [
   'PIRENTO legal',
   'PIRENTO vault',

@@ -1,3 +1,8 @@
+/**
+ * Reverse-proxy trust (TRUST_PROXY setting). Only explicitly listed proxy IPs/ranges may set
+ * the client's address through X-Forwarded-For; login rate limits depend on this address.
+ */
+
 import { BlockList, isIP } from 'node:net';
 
 /** Canonical keys prevent IPv4-mapped IPv6 addresses from receiving a second allowance. */
@@ -50,6 +55,7 @@ export function parseTrustedProxy(value) {
   });
 }
 
+/** Applies TRUST_PROXY to the Express app (empty = trust no proxy). */
 export function configureTrustedProxy(app, environment = process.env) {
   const entries = parseTrustedProxy(environment.TRUST_PROXY);
   if (!entries.length) {

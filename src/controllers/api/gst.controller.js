@@ -1,3 +1,9 @@
+/**
+ * GST taxpayer lookup API (/api/gst). Uses the provider chosen in gst-config.js:
+ * the government portal (with a CAPTCHA the user types), a custom HTTPS provider, or Sandbox.
+ * The GSTIN check digit is validated before any lookup.
+ */
+
 import { z } from 'zod';
 import { HttpError } from '../../middleware/errors.js';
 import { readLimited } from '../../services/integrations/gst/gst-portal.js';
@@ -5,9 +11,11 @@ import { lookupResultSchema, validGstin } from '../../services/validation/valida
 export function createController(context) {
   const { portal, gstProvider, sandboxGst, lookupUrl, apiKey, fetcher } = context;
   return {
+    // GET /api/gst/captcha
     captcha: async (req, res) => {
       res.json(await portal.captcha(req.ip ?? 'local'));
     },
+    // POST /api/gst/lookup
     lookup: async (req, res) => {
       const input = z
         .object({
@@ -32,6 +40,7 @@ export function createController(context) {
         );
       res.json(normalized.data);
     },
+    // GET /api/gst/:gstin
     lookupByGstin: async (req, res) => {
       const number = req.params.gstin.trim().toUpperCase();
       if (!validGstin(number))

@@ -1,3 +1,4 @@
+<%# Pricing fields of a catalog item (standard, recurring or jewellery). Locals: { pricing, rate, unit, quantity }. -%>
 <%
 const mode = pricing?.mode || 'standard';
 const jewellery = pricing?.jewellery || { grossWeight: 0, stoneWeight: 0, purity: '', makingChargeType: 'per_gram', makingCharge: 0, stoneAmount: 0, otherCharges: 0, wastagePercent: 0 };

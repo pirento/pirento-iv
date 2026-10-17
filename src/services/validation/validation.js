@@ -1,16 +1,29 @@
+/**
+ * Input validation (zod schemas) for everything the API accepts.
+ *
+ * Every request body is parsed with one of these schemas before any business logic runs:
+ * strings are trimmed and length-limited, numbers range-checked, and Indian business rules
+ * applied (state codes, GSTIN check digit, financial amounts in whole paise).
+ * A failed parse becomes a 400 response listing each invalid field (src/middleware/api-errors.js).
+ */
+
 import { contactFieldSchemas, validateContactFields } from './contacts.js';
 import { z } from 'zod';
 import './messages.js';
 import { COMPANY_NAME, STATES, calculateLineAmount } from '../../../shared/types.js';
 import { wholePaise } from '../../../shared/money.js';
+// Group company legal name (same as COMPANY_NAME).
 export const LEGAL_NAME = COMPANY_NAME;
 const stateCodes = new Set(STATES.map(([code]) => code));
+// Building blocks: trimmed text with a maximum length; requiredText also rejects empty strings.
 const text = (max = 200) => z.string().trim().max(max);
 const requiredText = (max = 200) => text(max).min(1, 'This field is required.');
+// Two-digit Indian state/UT code from shared/types.js STATES, or empty.
 export const stateCode = text(2).refine(
   (value) => value === '' || stateCodes.has(value),
   'Choose a valid Indian state or union territory.',
 );
+/** True for a correctly formed 15-character GSTIN with a valid state code and check digit. */
 export function validGstin(value) {
   if (!/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(value) || !stateCodes.has(value.slice(0, 2)))
     return false;
@@ -24,6 +37,7 @@ export function validGstin(value) {
   }
   return alphabet[(36 - (sum % 36)) % 36] === value[14];
 }
+// GSTIN field: upper-cased, empty or valid.
 export const gstin = text(15)
   .transform((value) => value.toUpperCase())
   .refine((value) => value === '' || validGstin(value), 'Enter a valid GSTIN, including its check digit.');
@@ -31,15 +45,18 @@ const email = text(254).refine(
   (value) => value === '' || z.string().email().safeParse(value).success,
   'Enter a valid email address.',
 );
+// Document number prefix: 1-4 letters/digits, stored upper-case (e.g. "ATEI").
 const prefix = requiredText(4)
   .transform((value) => value.toUpperCase())
   .refine((value) => /^[A-Z0-9]{1,4}$/.test(value), 'Use 1–4 letters or digits for a document prefix.');
+// Calendar date in YYYY-MM-DD between 2000 and 2199.
 const date = text(10).refine((value) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || value.slice(0, 4) < '2000' || value.slice(0, 4) > '2199')
     return false;
   const parsed = new Date(`${value}T00:00:00.000Z`);
   return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
 }, 'Enter a valid calendar date between 2000 and 2199.');
+// A business/contact's state must be the first two digits of its GSTIN.
 function gstStateMatches(value, ctx) {
   if (value.gstin && value.stateCode !== value.gstin.slice(0, 2)) {
     ctx.addIssue({
@@ -49,6 +66,7 @@ function gstStateMatches(value, ctx) {
     });
   }
 }
+// Uploaded image as inline PNG/JPEG/WebP data (max 500 KB, real image header) or empty.
 const rasterImage = text(700000).refine((value) => {
   if (!value) return true;
   const image = /^data:image\/(png|jpeg|webp);base64,([a-z0-9+/]+={0,2})$/i.exec(value);
@@ -67,10 +85,14 @@ const rasterImage = text(700000).refine((value) => {
     return false;
   }
 }, 'Use an HTTPS logo URL or a PNG, JPEG or WebP image up to 500KB.');
+// ---------------------------------------------------------------------------
+// Schemas for each API resource
+// ---------------------------------------------------------------------------
 export const workspaceSettingsSchema = z.object({
   companyName: requiredText(200),
   dashboardLogoUrl: rasterImage,
 });
+// Business product (a brand/product line shown on documents).
 export const businessProductSchema = z.object({
   organizationId: requiredText(100),
   name: requiredText(200),
@@ -79,6 +101,7 @@ export const businessProductSchema = z.object({
   logoUrl: rasterImage,
   active: z.boolean(),
 });
+// Extra GST registration of a business; the GSTIN must match the chosen state.
 export const gstRegistrationSchema = z
   .object({
     id: requiredText(100),
@@ -88,6 +111,7 @@ export const gstRegistrationSchema = z
     address: text(2000),
   })
   .superRefine(gstStateMatches);
+// A business: legal identity, address, GST registrations, prefixes, bank, branding and gateway choice.
 export const organizationSchema = z
   .object({
     name: requiredText(120),
@@ -184,6 +208,7 @@ export const organizationSchema = z
         message: 'Invoice and quotation prefixes must be different.',
       });
   });
+// A contact (customer / B2B buyer / vendor); field rules shared with contacts.js.
 export const customerSchema = z
   .object({
     ...contactFieldSchemas,
@@ -204,6 +229,7 @@ const hsn = text(8).refine(
 );
 const rate = z.number().finite().min(0).max(100000000);
 const gstRate = z.number().finite().min(0).max(40);
+// How a line is priced: standard qty x rate, recurring period, or jewellery weight + making charges.
 export const pricingSchema = z
   .discriminatedUnion('mode', [
     z.object({
@@ -243,6 +269,7 @@ export const pricingSchema = z
         message: 'Making charge percentage cannot exceed 100.',
       });
   });
+// Per-document/per-format branding: logo choice and signature labels/images.
 export const brandingSchema = z
   .object({
     logoMode: z.enum(['inherit', 'custom', 'none']),
@@ -264,6 +291,7 @@ export const brandingSchema = z
         message: 'Upload a logo or choose inherit / no logo.',
       });
   });
+// A rupee amount of at least ₹0.01 with at most two decimal places (stored as whole paise / 100).
 const moneyAmount = z
   .number()
   .finite()
@@ -271,6 +299,7 @@ const moneyAmount = z
   .max(1400000000)
   .refine((value) => Number.isSafeInteger(wholePaise(value)), 'Amount must have at most two decimal places.')
   .transform((value) => wholePaise(value) / 100);
+// Installment schedule for an invoice (its total must equal the invoice total; see workspace-service.js).
 export const installmentPlanSchema = z
   .object({
     name: requiredText(200),
@@ -304,6 +333,7 @@ export const installmentPlanSchema = z
         message: 'Installments must be ordered by due date.',
       });
   });
+// A catalog product or service.
 export const catalogSchema = z
   .object({
     organizationId: requiredText(100),
@@ -333,6 +363,7 @@ export const catalogSchema = z
         message: 'A catalog unit amount cannot exceed ₹100 crore.',
       });
   });
+// An invoice format (layout, colours, visible columns, paper and font settings).
 export const formatSchema = z.object({
   organizationId: requiredText(100),
   name: requiredText(120),
@@ -365,6 +396,7 @@ export const formatSchema = z.object({
   tableStyle: z.enum(['striped', 'ruled', 'plain']).optional(),
 });
 const optionalDate = z.union([z.literal(''), date]);
+// Shipping / dispatch details printed on invoices and delivery challans.
 export const shippingSchema = z
   .object({
     recipientName: text(200),
@@ -387,6 +419,7 @@ export const shippingSchema = z
         message: 'Delivery date cannot precede dispatch date.',
       });
   });
+// A manual receipt. requestId makes a repeated submit return the same receipt.
 export const paymentSchema = z.object({
   amount: moneyAmount,
   paidOn: date,
@@ -396,9 +429,11 @@ export const paymentSchema = z.object({
   requestId: requiredText(100),
   finalizeWhenPaid: z.boolean().default(true),
 });
+// Voiding a receipt requires a reason (kept in history).
 export const voidPaymentSchema = z.object({
   reason: requiredText(2000),
 });
+// A document as sent by the editor: header fields, line items, totals inputs, shipping and plan.
 export const documentSchema = z
   .object({
     organizationId: requiredText(100),
@@ -499,6 +534,7 @@ export const documentSchema = z
         message: 'Document subtotal cannot exceed ₹100 crore.',
       });
   });
+// Normalized taxpayer details returned by a GST lookup provider.
 export const lookupResultSchema = z
   .object({
     gstin: gstin.refine((value) => value !== ''),

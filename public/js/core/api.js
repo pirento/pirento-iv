@@ -1,3 +1,5 @@
+/** Browser helpers used by every page script: calling the JSON API, form values, toasts, busy buttons, errors. */
+
 /** Every request stays on this origin; credentials are never put in browser code. */
 export async function api(path, options = {}) {
   const url = path.startsWith('/api/') ? path : `/api${path}`;
@@ -21,14 +23,17 @@ export async function api(path, options = {}) {
   return data;
 }
 
+/** fetch() options for a JSON request: sendJson('POST', body). */
 export function sendJson(method, data) {
   return { method, ...(data === undefined ? {} : { body: JSON.stringify(data) }) };
 }
 
+/** A form's fields as a plain object { name: value }. */
 export function formValues(form) {
   return Object.fromEntries(new FormData(form));
 }
 
+/** Escapes text before putting it into HTML. */
 export function escapeHtml(value = '') {
   return String(value ?? '').replace(
     /[&<>"']/g,
@@ -36,6 +41,7 @@ export function escapeHtml(value = '') {
   );
 }
 
+/** Shows a short message in the toast area for 6 seconds ('success' or 'error'). */
 export function showToast(message, type = 'success') {
   const container = document.getElementById('toast-region');
   if (!container) return;
@@ -46,6 +52,7 @@ export function showToast(message, type = 'success') {
   setTimeout(() => notice.remove(), 6000);
 }
 
+/** Disables a button while work runs and optionally shows a label like "Saving…"; call again with false to restore. */
 export function setBusy(element, busy, label) {
   if (!element) return;
   if (busy) {
@@ -59,6 +66,7 @@ export function setBusy(element, busy, label) {
   element.setAttribute('aria-busy', String(Boolean(busy)));
 }
 
+/** Shows a message in the form's [data-form-error] box (or the page error box, else a toast) and focuses it. */
 export function showError(form, message) {
   const box = form?.querySelector('[data-form-error]') || document.querySelector('[data-page-error]');
   if (!box) {
@@ -73,6 +81,7 @@ export function showError(form, message) {
   }
 }
 
+/** Saves text as a file download in the browser. */
 export function downloadText(filename, text, type = 'text/plain;charset=utf-8') {
   const url = URL.createObjectURL(new Blob([text], { type }));
   const link = document.createElement('a');

@@ -1,3 +1,5 @@
+/** Online payment section of the payments page: create, sync and cancel a Razorpay/Cashfree payment link. */
+
 import { api, sendJson } from '/js/core/api.js';
 import { balanceDue, money } from '/shared/types.js';
 import { escape, readableDate } from '/js/documents/document-ui.js';
@@ -13,6 +15,7 @@ const stateLabels = {
   creation_unknown: 'Creation unconfirmed',
 };
 const blockingState = (state) => !['paid', 'cancelled', 'expired'].includes(state);
+/** Returns the link only if it is https on the provider's own host; '' otherwise. */
 export function safePaymentUrl(value, provider) {
   try {
     const url = new URL(value);
@@ -30,6 +33,7 @@ export function safePaymentUrl(value, provider) {
   }
 }
 
+/** Renders and controls the online payment section; callbacks keep the rest of the page in sync. */
 export function createOnlineController({ getDocument, isDisabled, onBusy, onBlocking, onUpdated }) {
   const container = document.querySelector('#online-payment-content');
   let details = null;

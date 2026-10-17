@@ -1,3 +1,8 @@
+/**
+ * The 15 built-in invoice format presets (Standard, Classic, Minimal, Retail, Jewellery ...).
+ * Every business gets one saved format per preset on first run (see models/workspace-seed.js).
+ */
+
 import { defaultFormatFor } from './types.js';
 export const TEMPLATE_PRESETS = [
   {
@@ -201,6 +206,7 @@ export const TEMPLATE_PRESETS = [
     },
   },
 ];
+/** Saved format records for one business, one per preset; the first (Standard) is the default. */
 export function presetFormatsFor(organization, timestamp = new Date().toISOString()) {
   return TEMPLATE_PRESETS.map((preset, index) => ({
     ...defaultFormatFor(organization),

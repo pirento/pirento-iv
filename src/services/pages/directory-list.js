@@ -1,3 +1,8 @@
+/**
+ * Contacts and catalog list pages: filter parsing, page links and CSV export rows.
+ * Lists show 50 rows per page; the invoice editor's search shows 20 at a time.
+ */
+
 import { HttpError } from '../../middleware/errors.js';
 import {
   CONTACT_ROLES,
@@ -7,6 +12,7 @@ import {
 } from '../../../shared/contact-types.js';
 import { calculateLineAmount, pricingDescription } from '../../../shared/types.js';
 
+// Rows per page on the Contacts and Catalog pages / per editor search request / max IDs per lookup.
 export const DIRECTORY_PAGE_SIZE = 50;
 export const LOOKUP_PAGE_SIZE = 20;
 export const LOOKUP_ID_LIMIT = 50;
@@ -48,6 +54,7 @@ export function readDirectoryFilters(kind, query = {}, { lookup = false } = {}) 
   };
 }
 
+/** Turns the active filters into URL query parameters (q, role, type, product, ...). */
 export function directoryParams(kind, filters, extra = {}) {
   const query = new URLSearchParams();
   if (filters.search) query.set('q', filters.search);
@@ -58,6 +65,7 @@ export function directoryParams(kind, filters, extra = {}) {
   return query;
 }
 
+/** Adds previous/next page URLs and the CSV export URL to a page result. */
 export function directoryPageLinks(organizationId, kind, page, returnTo = '') {
   const href = (extra) => {
     const query = directoryParams(kind, page.filters, extra);

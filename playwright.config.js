@@ -1,3 +1,5 @@
+/** Playwright config for `npm run test:browser`: Chromium only, one worker, tests in tests/browser/*.spec.js. */
+
 import { defineConfig, devices } from '@playwright/test';
 import { loadEnvironmentValues } from './src/config/environment.js';
 

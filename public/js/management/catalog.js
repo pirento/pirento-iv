@@ -1,3 +1,8 @@
+/**
+ * Catalog page (views/catalog/index.ejs): add/edit a product or service (including its pricing
+ * method), list filters, CSV export and archive/restore.
+ */
+
 import { getPageData, rememberToast } from '../core/page.js';
 import { bindDirectoryFilters } from '../core/directory-filters.js';
 import { calculateLineAmount } from '/shared/types.js';

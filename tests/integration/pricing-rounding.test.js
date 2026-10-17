@@ -1,3 +1,5 @@
+/** Integration tests: decimal pricing for new documents while saved legacy amounts stay unchanged. */
+
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';

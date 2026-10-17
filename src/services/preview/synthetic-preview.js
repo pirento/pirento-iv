@@ -1,3 +1,11 @@
+/**
+ * Disposable test preview (`npm run start:synthetic-preview`), separate from normal production.
+ *
+ * Starts the app on a brand-new random database filled with clearly fake businesses, blocks
+ * every external integration (payments, email, GST), shows a "TEST PREVIEW" notice and deletes
+ * its database on exit. Real database and provider settings are never read.
+ */
+
 import express from 'express';
 import { MongoClient } from 'mongodb';
 import { randomUUID } from 'node:crypto';
@@ -11,6 +19,7 @@ import { attachPageRoutes } from '../../routes/pages.js';
 import { securityHeaders } from '../../middleware/http-security.js';
 import { createBackend } from '../backend.js';
 
+// Values shown in the preview's notice, headers and disabled-feature responses.
 export const PREVIEW_MODE = 'disposable-synthetic-preview';
 export const PREVIEW_NOTICE =
   'TEMPORARY SYNTHETIC PREVIEW. Test data only. Data is disposable. External integrations are disabled.';
@@ -31,6 +40,7 @@ export const PREVIEW_CSP = [
   "frame-ancestors 'none'",
 ].join('; ');
 
+/** Thrown when the preview settings are incomplete or unsafe. */
 export class PreviewConfigurationError extends Error {}
 
 const bootstrapSchema = z.object({
@@ -90,6 +100,7 @@ export function prepareSyntheticPreviewEnvironment(environment = process.env) {
   };
 }
 
+/** Replacement for fetch() inside the preview: every outgoing provider request is refused. */
 export async function blockedPreviewFetch() {
   throw new Error(PREVIEW_DISABLED);
 }
@@ -99,6 +110,7 @@ export async function blockedPreviewFetch() {
  * random MongoDB namespace; neither a URI database name nor an environment value
  * can select its deletion target. The ownership marker must match before cleanup.
  */
+// Convenience wrapper that returns only the Express app (no close()).
 export async function createSyntheticPreviewApplication(options = {}) {
   const environment = prepareSyntheticPreviewEnvironment(options.environment);
   const databaseName = `venturecore_preview_${randomUUID().replaceAll('-', '')}`;

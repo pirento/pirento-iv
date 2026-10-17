@@ -1,3 +1,4 @@
+<%# Businesses list (/organizations) and one business's settings form (/business_settings). Script: /js/organizations/organizations.js. -%>
 <%
 const isSettings = data.route.view === 'business_settings';
 const source = isSettings ? data.organization : data.organizations.find(org=>org.id===data.route.id);

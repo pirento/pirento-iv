@@ -5,6 +5,7 @@
  */
 const round = (value) => Math.round((value + Number.EPSILON) * 100) / 100;
 
+// Same result shape as linePriceBreakdown in types.js, using the old floating-point rounding.
 export function legacyLinePriceBreakdown(item) {
   const quantity = Number.isFinite(item.quantity) ? item.quantity : 0;
   const rate = Number.isFinite(item.rate) ? item.rate : 0;

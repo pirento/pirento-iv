@@ -1,3 +1,5 @@
+/** Database backups page (views/backups/index.ejs, admin only): create a backup and refresh its status. */
+
 import { getPageData } from '../core/page.js';
 import { api, sendJson, showError, dateTime, setMessage } from './common.js';
 

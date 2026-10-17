@@ -1,3 +1,9 @@
+/**
+ * `npm run start:hostinger` - start command for hosted deployments. Loads the settings, requires
+ * NODE_ENV=production (unless IV_PREVIEW_MODE selects the synthetic preview) and starts server.js,
+ * which runs the production preflight before opening the database for writes.
+ */
+
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -13,6 +19,7 @@ export {
   validateHostedProduction,
 } from '../src/config/production.js';
 
+/** 'production' unless IV_PREVIEW_MODE=disposable-synthetic; any other IV_PREVIEW_MODE value is an error. */
 export function selectHostedMode(environment) {
   if (!environment.IV_PREVIEW_MODE) return 'production';
   if (environment.IV_PREVIEW_MODE === 'disposable-synthetic') return 'disposable-synthetic';

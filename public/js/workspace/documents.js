@@ -1,3 +1,8 @@
+/**
+ * Document list and delete pages (views/workspace/documents.ejs, delete-document.ejs):
+ * convert a quotation/proforma to an invoice, create a delivery challan, delete a draft.
+ */
+
 import { api, sendJson, showToast, setBusy } from '../core/api.js';
 import { getPageData, workspacePath, rememberToast } from '../core/page.js';
 
@@ -15,6 +20,7 @@ exportLink?.addEventListener('click', () => {
   exportLink.href = target.pathname + target.search;
 });
 
+/** Wires buttons matching `selector` to POST (or DELETE) /api/documents/<id><endpoint>, then opens the result. */
 function action(selector, endpoint, message, targetView) {
   document.querySelectorAll(selector).forEach((button) =>
     button.addEventListener('click', async () => {

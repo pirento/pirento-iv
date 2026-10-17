@@ -1,3 +1,8 @@
+/**
+ * Login / signup / forgot-password / reset-password page (views/auth/index.ejs).
+ * Shows/hides the password and submits the form to /api/auth/<mode>, then redirects or shows the result.
+ */
+
 import { api, sendJson, formValues, showError, setBusy } from '../core/api.js';
 import { getPageData, safeReturn, rememberToast } from '../core/page.js';
 const data = getPageData();

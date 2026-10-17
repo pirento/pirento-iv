@@ -1,3 +1,5 @@
+/** Integration tests (`npm run test:integration`, real MongoDB): account rate limits, sessions and security audit. */
+
 import assert from 'node:assert/strict';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import test from 'node:test';

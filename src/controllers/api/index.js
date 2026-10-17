@@ -1,3 +1,8 @@
+/**
+ * Creates every API controller with the shared service context built in src/services/backend.js.
+ * Controller files follow the pattern <resource>.controller.js and export createController(context).
+ */
+
 import { createController as webhooks } from './webhooks.controller.js';
 import { createController as health } from './health.controller.js';
 import { createController as backups } from './backups.controller.js';
@@ -15,6 +20,7 @@ import { createController as gst } from './gst.controller.js';
 import { createController as ledger } from './ledger.controller.js';
 import { createController as reminders } from './reminders.controller.js';
 import { createController as recurring } from './recurring-invoices.controller.js';
+
 /** One controller object per API resource; route paths live in src/routes/api.js. */
 export function createApiControllers(context) {
   return {

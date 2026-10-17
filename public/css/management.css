@@ -1,4 +1,6 @@
 /* Directory, access, format-design and integration pages. */
+
+/* --- Page layout and shared management components --- */
 .mg-page {
   display: grid;
   gap: 22px;
@@ -233,6 +235,8 @@
   background: #fff9eb;
   border-color: #ebdba7;
 }
+
+/* --- Lists: toolbar, tabs, search, table, paging and empty state --- */
 .mg-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -379,6 +383,8 @@
 .mg-suggestion:hover {
   border-color: #8db49a;
 }
+
+/* --- Add/edit forms --- */
 .mg-editor {
   max-width: 850px;
 }
@@ -479,6 +485,8 @@
 .mg-checkbox small {
   font-weight: 400;
 }
+
+/* --- Catalog item type and pricing --- */
 .mg-type-picker {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -551,6 +559,8 @@
   font-size: 13px;
   font-weight: 650;
 }
+
+/* --- Business products --- */
 .mg-product-card {
   display: flex;
   flex-direction: column;
@@ -601,6 +611,8 @@
   display: block;
   margin-top: 5px;
 }
+
+/* --- Formats page: designer, live preview and format cards --- */
 .mg-designer-grid {
   display: grid;
   grid-template-columns: minmax(270px, 1fr) minmax(280px, 1fr);
@@ -732,6 +744,8 @@
   border-radius: 10px;
   margin: 20px 0;
 }
+
+/* --- Team page --- */
 .mg-team-stats {
   padding: 23px;
   border: 1px solid #dce4d5;
@@ -800,6 +814,8 @@
   max-width: 650px;
   margin-bottom: 0;
 }
+
+/* --- Backups page --- */
 .mg-backup-summary {
   margin-bottom: 22px;
 }
@@ -823,6 +839,8 @@
 [data-backup-details] > .mg-message {
   margin-bottom: 22px;
 }
+
+/* --- Integrations page --- */
 .mg-identity-grid {
   display: flex;
   flex-wrap: wrap;
@@ -916,6 +934,8 @@
   gap: 5px;
   align-items: flex-start;
 }
+
+/* --- Responsive --- */
 @media (max-width: 1240px) {
   .mg-grid,
   .mg-format-grid {

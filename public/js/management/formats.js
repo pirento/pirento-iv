@@ -1,3 +1,8 @@
+/**
+ * Invoice formats page (views/formats/index.ejs): edit a format with a live sample preview,
+ * duplicate, set default and delete.
+ */
+
 import { getPageData, rememberToast } from '../core/page.js';
 import { defaultFormatFor } from '/shared/types.js';
 import { documentColors } from '/shared/pdf.js';

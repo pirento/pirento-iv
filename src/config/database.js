@@ -1,3 +1,12 @@
+/**
+ * MongoDB connection, collection/index setup and transactions.
+ *
+ * connectDatabase() opens one shared client, creates the collections and indexes the app needs,
+ * seeds the starting businesses on first run, and returns the database context
+ * ({ models, collection, transaction, close, ... }) used everywhere as `db`.
+ * MongoDB must be a replica set because payments and numbering use transactions.
+ */
+
 import { MongoClient } from 'mongodb';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { createModels } from '../models/repositories.js';
@@ -8,6 +17,7 @@ import {
   transactionScope,
 } from './transaction-scopes.js';
 
+// Every MongoDB collection the application owns. Startup creates any that are missing.
 export const COLLECTIONS = [
   'organizations',
   'customers',
@@ -130,6 +140,7 @@ export async function connectDatabase(options = {}) {
   }
 }
 
+/** Creates missing collections and all indexes (unique keys, query indexes, TTL clean-up). */
 async function initializeCollections(context) {
   const database = context.database;
   const existing = new Set(
@@ -299,5 +310,6 @@ async function initializeCollections(context) {
       .updateOne({ _id: id }, { $setOnInsert: { revision: 0 } }, { upsert: true });
 }
 
+// Short aliases used by older call sites.
 export const initDb = connectDatabase;
 export const transaction = (database, action, options) => database.transaction(action, options);

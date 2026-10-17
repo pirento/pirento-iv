@@ -1,3 +1,5 @@
+/** Integration tests: HTTP readiness, recovery hold, request diagnostics and graceful shutdown with MongoDB. */
+
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { mkdtemp, rm } from 'node:fs/promises';

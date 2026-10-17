@@ -1,3 +1,5 @@
+/** Shared helpers for the management pages (catalog, formats, business products, team, ...). */
+
 import { api, sendJson, showToast } from '../core/api.js';
 import { readWorkspaceRoute } from '../core/workspace-route.js';
 import { rememberNotice } from '../core/optional-storage.js';
@@ -5,6 +7,7 @@ import { rememberNotice } from '../core/optional-storage.js';
 /** Shared browser helpers for ordinary forms and directory pages. */
 export { api, sendJson, showToast };
 
+/** Shows (or clears) the message in the container's [data-error] element. */
 export function showError(message, container = document) {
   const element = container.querySelector('[data-error]');
   if (!element) return;
@@ -13,6 +16,7 @@ export function showError(message, container = document) {
   if (message) element.focus({ preventScroll: true });
 }
 
+/** Disables every control in `container` while `work()` runs, then restores their previous state. */
 export async function withBusy(container, work) {
   if (container.dataset.busy === 'true') return;
   container.dataset.busy = 'true';
@@ -33,11 +37,13 @@ export async function withBusy(container, work) {
   }
 }
 
+/** A saved record without id/createdAt/updatedAt, ready to send back as an update. */
 export function asInput(record) {
   const { id, createdAt, updatedAt, ...input } = record;
   return input;
 }
 
+/** The ?returnTo= workspace URL (e.g. back to the invoice editor), or null when missing/unsafe. */
 export function safeReturnUrl() {
   const raw = new URLSearchParams(location.search).get('returnTo');
   if (!raw || !raw.startsWith('/workspace/') || raw.startsWith('//')) return null;
@@ -50,6 +56,7 @@ export function safeReturnUrl() {
   }
 }
 
+/** Keeps ?returnTo= on navigation links and shows "Resume document" when one is set. */
 export function preserveReturnLinks() {
   const returnUrl = safeReturnUrl();
   if (!returnUrl) return;
@@ -64,6 +71,7 @@ export function preserveReturnLinks() {
   });
 }
 
+/** After saving: remember a toast and go back to returnTo (with the new record's ID) or to `fallback`. */
 export function afterSave(fallback, key, record) {
   const message =
     key === 'formatId'
@@ -103,6 +111,7 @@ export async function readLogo(file) {
   return dataUrl;
 }
 
+/** Two-letter initials for a logo placeholder. */
 export function initials(name, fallback = 'BP') {
   return (
     String(name || '')
@@ -115,6 +124,7 @@ export function initials(name, fallback = 'BP') {
   );
 }
 
+/** Readable date (and time) in India time, or "Not yet". */
 export function dateTime(value, includeTime = true) {
   if (!value) return 'Not yet';
   const date = new Date(value);
@@ -128,6 +138,7 @@ export function dateTime(value, includeTime = true) {
   }).format(date);
 }
 
+/** Shows or hides a status message element. */
 export function setMessage(element, message) {
   if (!element) return;
   element.textContent = message || '';

@@ -1,3 +1,8 @@
+/**
+ * GST taxpayer lookup through the Sandbox (sandbox.co.in) API: GST_PROVIDER=sandbox with
+ * SANDBOX_API_KEY / SANDBOX_API_SECRET. Access tokens and recent results are cached briefly.
+ */
+
 import { lookupResultSchema, validGstin } from '../../validation/validation.js';
 import { discardProviderResponse, readProviderJson } from '../provider-http.js';
 const HOSTS = {
@@ -9,6 +14,7 @@ const CACHE_LIFETIME = 5 * MINUTE;
 const MAX_TOKEN_LIFETIME = 24 * 60 * MINUTE;
 const MAX_CLIENTS = 1000;
 const MAX_CACHE = 500;
+/** Lookup failure with an HTTP status and a message safe to show the user. */
 export class SandboxGstError extends Error {
   status;
   constructor(status, message) {
@@ -88,6 +94,7 @@ function normalizeResult(payload, requested) {
   if (!normalized.success) providerFailure(undefined);
   return normalized.data;
 }
+/** Returns { status, lookup } for the Sandbox provider. */
 export function createSandboxGst(options = {}) {
   const environment = options.environment ?? process.env;
   const selected = environment.SANDBOX_ENVIRONMENT?.trim().toLowerCase() || 'test';

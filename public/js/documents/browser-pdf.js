@@ -1,3 +1,9 @@
+/**
+ * "Download PDF" in the browser. Loads pdfmake from /vendor on first use, prepares images
+ * (PNG/JPEG as-is, WebP converted to PNG) and builds the same layout as the server (shared/pdf.js).
+ * In the synthetic preview the PDF gets a "TEST PREVIEW" watermark.
+ */
+
 import { buildDocumentDefinition, documentLogo, documentSigningBlocks, pdfFileName } from '/shared/pdf.js';
 import { getDocumentFormat } from '/shared/types.js';
 

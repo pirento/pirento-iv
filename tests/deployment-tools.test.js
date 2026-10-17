@@ -1,3 +1,5 @@
+/** Unit tests: release packaging, deployment check and hosted start-up mode selection. */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';

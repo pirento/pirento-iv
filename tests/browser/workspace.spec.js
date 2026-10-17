@@ -1,3 +1,5 @@
+/** Browser tests (`npm run test:browser`): real sign-in, navigation, contacts/catalog, invoices, drafts and payments in Chromium. */
+
 import { readFile } from 'node:fs/promises';
 import { test, expect, signIn, api, customerInput, invoiceInput, seedDirectory } from './fixtures.js';
 

@@ -1,3 +1,12 @@
+/**
+ * `npm run db:backup | db:restore | db:resume` - command-line database backup and recovery.
+ *
+ * backup: verified snapshot into DATABASE_BACKUP_DIR (or --verify=<id> an existing one).
+ * restore: loads a snapshot into a NEW empty database and puts it on a recovery hold.
+ * resume: releases the hold after an operator has reconciled payments and emails.
+ * See docs/MIGRATION.md for the full procedure.
+ */
+
 import { MongoClient, BSON } from 'mongodb';
 import { createHash } from 'node:crypto';
 import {
@@ -50,6 +59,7 @@ const INDEX_OPTIONS = [
   'storageEngine',
 ];
 
+/** A user-facing command error (bad arguments, unsafe path, existing target database ...). */
 export class DatabaseCommandError extends Error {
   constructor(message) {
     super(message);
@@ -57,6 +67,7 @@ export class DatabaseCommandError extends Error {
   }
 }
 
+// Help text printed for --help or invalid arguments.
 export const DATABASE_HELP = `Venturecore MongoDB backup and recovery
 
 Commands:
@@ -83,6 +94,7 @@ and their private folder 700. --acknowledge-reconciliation is accepted as a lega
 Use --help without database credentials to display these instructions.
 `;
 
+/** Database names: 1-63 letters, digits, underscores or hyphens. */
 export function validateDatabaseName(value) {
   if (!value || !/^[A-Za-z0-9_-]{1,63}$/.test(value))
     throw new DatabaseCommandError(
@@ -91,6 +103,7 @@ export function validateDatabaseName(value) {
   return value;
 }
 
+/** Backup/restore files must not be inside the app's code or public folders. */
 export function assertPrivateLocation(target, cwd = process.cwd()) {
   for (const name of ['public', 'shared', 'src', 'views', 'scripts']) {
     const child = relative(resolve(cwd, name), resolve(target));
@@ -315,6 +328,7 @@ export async function commitImportedCollections(context, collections, checksum, 
   return counts;
 }
 
+/** Entry point: runs backup, restore or resume with the parsed command-line arguments. */
 export async function runDatabaseCommand(command, arguments_ = [], options = {}) {
   const environment = options.environment ?? process.env;
   const cwd = options.cwd ?? process.cwd();

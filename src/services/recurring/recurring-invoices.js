@@ -1,3 +1,12 @@
+/**
+ * Recurring invoice schedules.
+ *
+ * A schedule copies a source invoice's items and settings once (the "template") and, on each
+ * scheduled date (weekly / monthly / quarterly / yearly), creates a new DRAFT invoice for review.
+ * Drafts are never issued, emailed or charged automatically. Schedules start paused unless the
+ * admin activates them; processDue() is called once a minute by the automation runner.
+ */
+
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { HttpError } from '../../middleware/errors.js';
@@ -13,17 +22,22 @@ import {
   validRecurrenceDate,
 } from '../../../shared/recurrence-dates.js';
 
+// Error codes the browser uses to show "changed elsewhere" / "request already used" messages.
 export const RECURRING_VERSION_CONFLICT = 'RECURRING_VERSION_CONFLICT';
 export const RECURRING_REQUEST_CONFLICT = 'RECURRING_REQUEST_CONFLICT';
+// dueDays: max payment term in days; maxOccurrences: max drafts per schedule;
+// pageSize: history rows per page; batchSize: schedules processed per automation pass.
 export const RECURRING_LIMITS = Object.freeze({
   dueDays: 365,
   maxOccurrences: 1200,
   pageSize: 25,
   batchSize: 20,
 });
+// Shown in the UI: exactly what a schedule copies from its source invoice and what it re-checks.
 export const RECURRING_SNAPSHOT_POLICY =
   'Items, quantities, rates, discounts, place of supply, notes, terms, branding and selected reference IDs are copied when this schedule is created. Later edits to the source invoice do not change this template. Each occurrence revalidates the current business, contact, catalog, product and format, uses their current identity and format snapshots, and creates a new draft with the scheduled issue date and a fresh financial-year number. Receipts, payment links, installments, delivery links and finalization are never copied. Review each draft before issuing it.';
 
+// Request body schemas for create / update / status / generate.
 const identifier = z.string().trim().min(1).max(100);
 const date = z.string().refine(validRecurrenceDate, 'Use a valid calendar date between 2000 and 2199.');
 const version = z.number().int().nonnegative().safe();
@@ -104,6 +118,7 @@ export function createRecurringInvoices({ db, now = () => new Date(), workspace,
   let processing = null;
   const generations = new Set();
 
+  // --- Reading and saving schedules ---
   async function rawSchedule(organizationId, id) {
     const schedule = await schedules.findOne({ id, organizationId }, db.options());
     if (!schedule) throw new HttpError(404, 'Recurring schedule not found in this business.');
@@ -152,6 +167,7 @@ export function createRecurringInvoices({ db, now = () => new Date(), workspace,
       throw new HttpError(400, 'The resulting due date is outside the supported 2000–2199 range.');
   }
 
+  // --- Building a draft from the schedule template ---
   function frozenTemplate(source) {
     const input = documentSchema.parse({
       organizationId: source.organizationId,
@@ -242,6 +258,7 @@ export function createRecurringInvoices({ db, now = () => new Date(), workspace,
     return { input, organization, customer };
   }
 
+  // --- API operations (called by recurring-invoices.controller.js) ---
   async function create(rawInput, actorId) {
     const input = createSchema.parse(rawInput);
     const hash = fingerprint(input);
@@ -391,6 +408,7 @@ export function createRecurringInvoices({ db, now = () => new Date(), workspace,
     );
   }
 
+  // --- Generating occurrences (manual "Generate now" and the automatic pass) ---
   async function occurrenceResult(schedule, occurrence, created = false) {
     const document = await db.models.documents.findById(occurrence.documentId);
     return {
@@ -602,6 +620,7 @@ export function createRecurringInvoices({ db, now = () => new Date(), workspace,
     await Promise.allSettled([...(processing ? [processing] : []), ...generations]);
   }
 
+  // --- Pages and lists ---
   async function list(organizationId, query = {}) {
     const requestedPage = pageNumber(query.page);
     const total = await schedules.countDocuments({ organizationId });

@@ -1,3 +1,9 @@
+/**
+ * Structured JSON logger (one line per event on stdout).
+ * Only allow-listed event names, error types and fields are written, so passwords, tokens,
+ * customer data and URLs can never end up in the logs by accident.
+ */
+
 const EVENTS = new Set([
   'application_event',
   'request_completed',

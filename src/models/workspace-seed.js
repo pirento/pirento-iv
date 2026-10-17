@@ -1,7 +1,13 @@
+/**
+ * First-run data: the starting businesses, their default invoice formats (15 presets),
+ * workspace settings and the default business products. Never overwrites later user edits.
+ */
+
 import { COMPANY_NAME } from '../../shared/types.js';
 import { presetFormatsFor } from '../../shared/template-presets.js';
 import { billingProfileFor, ECOSYSTEM_PRODUCT_NAMES } from '../../shared/billing-presets.js';
 
+/** Adds any missing preset invoice formats for a business and makes sure one is the default. */
 export async function seedDefaultFormat(database, organization, timestamp = new Date().toISOString()) {
   const formats = await database.models.formats.list(organization.id);
   let defaultFormat = formats.find((format) => format.isDefault);

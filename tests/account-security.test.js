@@ -1,3 +1,5 @@
+/** Unit tests (`npm test`): trusted-proxy parsing, account rate limiting and security-activity filters. */
+
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import express from 'express';

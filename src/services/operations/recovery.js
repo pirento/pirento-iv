@@ -1,3 +1,9 @@
+/**
+ * Recovery hold after a database restore: the app refuses to start until an operator has
+ * reconciled payments and emails and run `npm run db:resume`. Reminders and recurring
+ * schedules stay off until they are re-enabled one by one.
+ */
+
 /** Recovery remains offline until an operator reconciles provider activity. */
 export async function assertDatabaseRecoveryReviewed(db) {
   const state = await db.collection('ops_recovery_state').findOne({ id: 1 }, db.options());
@@ -8,6 +14,11 @@ export async function assertDatabaseRecoveryReviewed(db) {
   }
 }
 
+/**
+ * Runs once on a freshly restored database: signs everyone out, holds queued emails, fails
+ * unsent password resets, disables reminder policies, pauses recurring schedules and marks
+ * recovery as 'pending' until an admin reviews it.
+ */
 export async function prepareRestoredDatabase(db, checksum, now = new Date()) {
   if (!/^[a-f0-9]{64}$/.test(checksum)) throw new Error('A verified backup checksum is required.');
   const names = new Set(
@@ -80,6 +91,7 @@ export async function prepareRestoredDatabase(db, checksum, now = new Date()) {
   });
 }
 
+// Admin confirmation after reviewing a restore: moves the recovery state from 'pending' to 'reviewed'.
 export async function acknowledgeDatabaseRecovery(db, acknowledged, now = new Date()) {
   if (!acknowledged) throw new Error('Recovery requires an explicit reconciliation acknowledgement.');
   const result = await db

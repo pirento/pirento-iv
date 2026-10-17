@@ -1,3 +1,10 @@
+/**
+ * Scheduled database backups. tick() is called periodically and starts a backup when the
+ * configured interval (BACKUP_INTERVAL_MINUTES) has passed since the last successful one.
+ * Only one backup runs at a time; status() feeds the Backups page.
+ */
+
+/** Returns { create, tick, status, initialize, start, stop } for the backup schedule. */
 export function createBackupManager(options) {
   const now = options.now ?? (() => new Date());
   let lastSuccessfulAt = null;

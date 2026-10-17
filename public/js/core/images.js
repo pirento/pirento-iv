@@ -1,3 +1,5 @@
+/** Image upload fields: reads a PNG/JPEG/WebP file (max 500 KB) into an inline data URL with a live preview. */
+
 /** Uploads remain portable data URLs, matching the original 500 KB limit. */
 export async function readImage(file) {
   if (!file || !['image/png', 'image/jpeg', 'image/webp'].includes(file.type))
@@ -18,6 +20,7 @@ export async function readImage(file) {
   return url;
 }
 
+/** Wires every [data-image-field] in a form: file chooser -> hidden value -> preview image. */
 export function bindImageFields(form, onError) {
   form.querySelectorAll('[data-image-field]').forEach((wrapper) => {
     const field = form.elements[wrapper.dataset.imageField];

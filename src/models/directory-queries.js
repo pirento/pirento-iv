@@ -1,8 +1,15 @@
+/**
+ * MongoDB queries for the contacts and catalog directories: filtered, paged lists (50 per page),
+ * editor lookups (20 per page) and cursors for full CSV export.
+ */
+
 import { normalizeContact } from '../../shared/contact-types.js';
 
 // This applies to every predicate, not only sorting: tenant and record identifiers must stay byte-exact.
 export const DIRECTORY_COLLATION = { locale: 'simple' };
+// Stable order: by name, then by ID so equal names never swap between pages.
 export const DIRECTORY_SORT = { name: 1, id: 1 };
+// Escapes regex characters so a search for "a.b" matches the text "a.b" literally.
 const literal = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const withoutId = (record) => {
   const { _id, ...value } = record;
@@ -87,6 +94,7 @@ export function directoryFilter(organizationId, kind, filters, matchingProducts 
   return { $and: conditions };
 }
 
+/** Returns { page, lookup, exportCursor } bound to the database. */
 export function createDirectoryQueries(db) {
   const options = () => ({ ...db.options(), collation: DIRECTORY_COLLATION });
   const present = (kind, row) => (kind === 'customers' ? normalizeContact(withoutId(row)) : withoutId(row));

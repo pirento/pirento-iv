@@ -1,3 +1,9 @@
+/**
+ * Payment reminders API: unpaid invoices due for a reminder, reminder history, the per-business
+ * automatic reminder policy (admin only), and preview/send for one invoice.
+ * Logic lives in src/services/integrations/email/payment-reminders.js.
+ */
+
 import { z } from 'zod';
 import { HttpError } from '../../middleware/errors.js';
 
@@ -31,28 +37,34 @@ export function createController({ reminders, auth, scopedOrganization, getDocum
   }
 
   return {
+    // GET /api/reminders
     list: async (req, res) => {
       const organization = await scope(res, req.query.organizationId);
       res.json(await reminders.list(organization.id, req.query));
     },
+    // GET /api/reminders/history
     history: async (req, res) => {
       const organization = await scope(res, req.query.organizationId);
       res.json(await reminders.history(organization.id, req.query));
     },
+    // GET /api/reminders/policy
     getPolicy: async (req, res) => {
       const organization = await scope(res, req.query.organizationId);
       res.json({ policy: await reminders.getPolicy(organization.id) });
     },
+    // PUT /api/reminders/policy
     updatePolicy: async (req, res) => {
       const organization = await scope(res, req.body?.organizationId, true);
       res.json({
         policy: await reminders.updatePolicy(organization.id, req.body, res.locals.user?.id),
       });
     },
+    // GET /api/documents/:id/reminder-preview
     preview: async (req, res) => {
       const document = await documentScope(req, res);
       res.json(await reminders.preview(document.id, req.query));
     },
+    // POST /api/documents/:id/reminders
     queue: async (req, res) => {
       const document = await documentScope(req, res);
       res.status(202).json(await reminders.enqueueManual(document.id, req.body));

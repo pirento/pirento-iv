@@ -1,3 +1,5 @@
+/** Unit tests: synthetic preview settings - own database, HTTPS origin, no credentials, no network. */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {

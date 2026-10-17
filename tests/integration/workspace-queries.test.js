@@ -1,3 +1,5 @@
+/** Integration tests: page queries (document lists, overview, overdue) and backup inventory. */
+
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFile, writeFile } from 'node:fs/promises';

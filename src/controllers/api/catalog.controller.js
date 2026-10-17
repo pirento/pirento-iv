@@ -1,3 +1,8 @@
+/**
+ * Catalog API (/api/catalog): products and services that can be added to documents.
+ * Search and CSV export come from directory-read.js. Items cannot move between businesses.
+ */
+
 import { randomUUID } from 'node:crypto';
 import { transaction } from '../../config/database.js';
 import { transactionForRecord } from '../../services/transaction-ownership.js';
@@ -16,10 +21,12 @@ export function createController(context) {
   } = context;
   return {
     ...directoryReaders(context, 'catalog'),
+    // GET /api/catalog
     list: async (req, res) => {
       const organization = await scopedOrganization(req.query.organizationId);
       res.json(await db.models.catalog.list(organization.id));
     },
+    // POST /api/catalog
     create: async (req, res) => {
       const input = catalogSchema.parse(req.body);
       const item = await transaction(
@@ -42,6 +49,7 @@ export function createController(context) {
       );
       res.status(201).json(item);
     },
+    // PUT /api/catalog/:id
     update: async (req, res) => {
       const input = catalogSchema.parse(req.body);
       const item = await transactionForRecord(

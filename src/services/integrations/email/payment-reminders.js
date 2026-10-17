@@ -1,3 +1,11 @@
+/**
+ * Payment reminders for unpaid invoices and installments.
+ *
+ * Manual: preview, then queue one reminder. Automatic: off by default; when an admin enables
+ * it for a business, reminders go out on the configured days around each due date (default:
+ * 3 days before, on the day, 3 and 7 days after). Missed days after downtime are skipped.
+ */
+
 import { z } from 'zod';
 import { indiaBusinessDate } from '../../../../shared/business-date.js';
 import { DOCUMENT_SUMMARY_FIELDS } from '../../../models/workspace-queries.js';
@@ -57,6 +65,7 @@ function availableItem(item, email) {
 }
 
 /** Explicit per-business policy; invoice/payment EMAIL_AUTOMATION keeps its existing meaning. */
+/** Returns { getPolicy, updatePolicy, list, history, preview, enqueueManual, processDue, stop }. */
 export function createPaymentReminders({ db, mailer, now = () => new Date(), logger }) {
   let stopping = false;
   let activeRun = null;

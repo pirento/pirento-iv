@@ -1,3 +1,11 @@
+/**
+ * Converts any error thrown by an /api handler into a JSON response.
+ *
+ * Validation errors -> 400 with field messages, known service errors -> their own status,
+ * duplicate records -> 409, everything unexpected -> 500 with a generic message and the
+ * request ID (details only go to the server log).
+ */
+
 import { z } from 'zod';
 import { HttpError } from './errors.js';
 import '../services/validation/messages.js';

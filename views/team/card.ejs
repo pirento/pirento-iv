@@ -1,3 +1,4 @@
+<%# One team member card. Locals: { member }. Also rendered with a placeholder inside a <template>. -%>
 <%
 const initials = String(member.name || '').trim().split(/\s+/).slice(0,2).map(word => word[0] || '').join('').toUpperCase();
 const date = value => value ? new Intl.DateTimeFormat('en-IN', { year:'numeric',month:'short',day:'numeric',timeZone:'Asia/Kolkata' }).format(new Date(value)) : 'Not yet';

@@ -1,3 +1,9 @@
+/**
+ * Contacts API (/api/customers): customers, B2B buyers and vendors of one business.
+ * Search and CSV export come from directory-read.js. A contact used by a saved document
+ * cannot be deleted (archive it instead).
+ */
+
 import { randomUUID } from 'node:crypto';
 import { customerSchema } from '../../services/validation/validation.js';
 import { normalizeContact } from '../../services/validation/contacts.js';
@@ -8,10 +14,12 @@ export function createController(context) {
   const { db, getOrganization, getCustomer, scopedOrganization } = context;
   return {
     ...directoryReaders(context, 'customers'),
+    // GET /api/customers
     list: async (req, res) => {
       const organization = await scopedOrganization(req.query.organizationId);
       res.json((await db.models.customers.list(organization.id)).map((row) => normalizeContact(row)));
     },
+    // POST /api/customers
     create: async (req, res) => {
       const input = customerSchema.parse(req.body);
       const customer = await db.transaction(
@@ -25,6 +33,7 @@ export function createController(context) {
       );
       res.status(201).json(customer);
     },
+    // PUT /api/customers/:id
     update: async (req, res) => {
       const input = customerSchema.parse(req.body);
       const customer = await transactionForRecord(
@@ -40,6 +49,7 @@ export function createController(context) {
       );
       res.json(customer);
     },
+    // DELETE /api/customers/:id
     remove: async (req, res) => {
       await transactionForRecord(
         db,

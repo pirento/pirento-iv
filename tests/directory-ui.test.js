@@ -1,3 +1,5 @@
+/** Unit tests: Contacts/Catalog browser helpers - storage failures, request shapes, editor search and CSV. */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { rememberNotice, clearWorkspaceStorage } from '../public/js/core/optional-storage.js';

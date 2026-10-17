@@ -1,3 +1,5 @@
+/** Unit tests: .env / .example.env loading and production setting checks. */
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';

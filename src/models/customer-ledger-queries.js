@@ -1,5 +1,12 @@
+/**
+ * MongoDB queries behind the customer ledger: customer balances, statement entries
+ * (invoices, receipts, voided receipts) and their totals, read in one consistent snapshot.
+ * Business rules and CSV formatting live in src/services/ledger/.
+ */
+
 import { receiptPaise, validReceiptPaise } from './money-expressions.js';
 
+// Projections: read only the fields the ledger shows, never whole documents.
 const ORGANIZATION_FIELDS = {
   _id: 0,
   id: 1,

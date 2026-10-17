@@ -1,7 +1,13 @@
+/**
+ * Loads configuration: hosting environment variables first, then .env (or .example.env when
+ * no .env exists). Also validates the public HTTPS address used for links and cookies.
+ */
+
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import dotenv from 'dotenv';
 
+/** Thrown for a missing or invalid setting; the message names the setting, never its value. */
 export class EnvironmentConfigurationError extends Error {}
 
 /**
@@ -22,6 +28,7 @@ export function loadEnvironmentValues({ cwd = process.cwd(), environment = proce
   return environment;
 }
 
+/** PUBLIC_APP_URL must be exactly an https:// origin: no path, query, login or trailing slash. */
 export function assertHttpsPublicOrigin(value) {
   let valid = false;
   try {
