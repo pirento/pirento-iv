@@ -197,6 +197,7 @@ export async function createSyntheticPreviewApplication(options = {}) {
       'paymentDetails',
       'documentExport',
       'ledgerExport',
+      'gstr1Export',
       'reportError',
       'requestDiagnostics',
     ])

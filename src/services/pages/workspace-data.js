@@ -14,6 +14,7 @@ import { createWorkspaceQueries } from '../../models/workspace-queries.js';
 import { DOCUMENT_KINDS, readDocumentFilters, documentListUrl, documentCsv } from './document-list.js';
 import { createDirectoryQueries } from '../../models/directory-queries.js';
 import { readDirectoryFilters, directoryPageLinks } from './directory-list.js';
+import { buildGstr1, gstr1Csv, GSTR1_SECTIONS, monthRange, readGstr1Filters } from './gstr1.js';
 import { safeWorkspaceReturn } from '../../../public/js/core/workspace-route.js';
 
 /** Page-specific loading keeps unrelated financial snapshots and operations off normal navigation. */
@@ -153,6 +154,8 @@ export function createWorkspacePageData({
       );
     }
     if (route?.view === 'recurring') read('recurring', () => recurringInvoices.page(organizationId, route));
+    if (route?.view === 'gst_returns')
+      read('gstr1', () => gstr1Report(organizationId, route, result.businessDate));
     if (legacy || route.view === 'integrations')
       read('integrationStatus', async () => {
         const payment = await online.getStatus(organizationId);
@@ -226,6 +229,31 @@ export function createWorkspacePageData({
     return result;
   }
 
+  // GSTR-1 tables for /workspace/<business>/gst_returns?month=YYYY-MM&gstin=..., with download links.
+  async function gstr1Report(organizationId, route, businessDate) {
+    const filters = readGstr1Filters(route.query, businessDate);
+    const report = buildGstr1(
+      await queries.gstr1Invoices(organizationId, monthRange(filters.month)),
+      filters,
+    );
+    const pageUrl = `/workspace/${encodeURIComponent(organizationId)}/gst_returns`;
+    const downloads = Object.fromEntries(
+      Object.keys(GSTR1_SECTIONS).map((section) => [
+        section,
+        `${pageUrl}?${new URLSearchParams({ month: report.month, gstin: report.gstin, download: 'csv', section })}`,
+      ]),
+    );
+    return { ...report, sections: GSTR1_SECTIONS, rows: report.sections, downloads };
+  }
+
+  // CSV for one GSTR-1 section: /workspace/<business>/gst_returns?download=csv&section=b2b.
+  async function exportGstr1(user, organizationId, route) {
+    const data = await base(user, organizationId);
+    const filters = readGstr1Filters(route.query, data.businessDate);
+    const invoices = await queries.gstr1Invoices(data.organization.id, monthRange(filters.month));
+    return gstr1Csv(buildGstr1(invoices, filters), String(route.query.section ?? ''));
+  }
+
   // Streams the CSV for /workspace/<business>/<invoices|quotations|...>?download=csv.
   async function exportDocuments(user, organizationId, route) {
     const kind = DOCUMENT_KINDS[route.view];
@@ -239,5 +267,5 @@ export function createWorkspacePageData({
     };
   }
 
-  return { load, exportDocuments };
+  return { load, exportDocuments, exportGstr1 };
 }

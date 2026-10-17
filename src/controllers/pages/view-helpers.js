@@ -134,6 +134,7 @@ function navigation(data) {
         { view: 'ledger', label: 'Customer ledger', icon: 'document' },
         { view: 'reminders', label: 'Payment reminders', icon: 'people' },
         { view: 'recurring', label: 'Recurring invoices', icon: 'archive' },
+        { view: 'gst_returns', label: 'GST returns', icon: 'document' },
       ],
     },
     {
