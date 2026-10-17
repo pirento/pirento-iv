@@ -12,6 +12,7 @@ export const WORKSPACE_VIEWS = [
   'shipping',
   'customers',
   'ledger',
+  'gst_returns',
   'reminders',
   'recurring',
   'organizations',

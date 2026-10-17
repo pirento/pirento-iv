@@ -196,5 +196,37 @@ export function createWorkspaceQueries(db) {
     return { ...summary, recent, activeContacts, activeCatalog, availableFormats };
   }
 
-  return { documentPage, documentExport, overview };
+  /** Issued and cancelled invoices dated in [from, to) with the fields GSTR-1 needs (services/pages/gstr1.js). */
+  function gstr1Invoices(organizationId, { from, to }) {
+    return db
+      .collection('documents')
+      .find(
+        {
+          organizationId,
+          kind: 'invoice',
+          status: { $ne: 'draft' },
+          issueDate: { $gte: from, $lt: to },
+        },
+        {
+          ...options(),
+          projection: {
+            _id: 0,
+            number: 1,
+            status: 1,
+            issueDate: 1,
+            placeOfSupply: 1,
+            discountPercent: 1,
+            items: 1,
+            totals: 1,
+            'customerSnapshot.name': 1,
+            'customerSnapshot.gstin': 1,
+            'organizationSnapshot.gstin': 1,
+            'organizationSnapshot.stateCode': 1,
+          },
+        },
+      )
+      .toArray();
+  }
+
+  return { documentPage, documentExport, overview, gstr1Invoices };
 }

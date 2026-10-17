@@ -1,4 +1,4 @@
-<%# Page /workspace/<id>/sessions: the signed-in user's active sessions. Script: /js/security/sessions.js. -%>
+<%# Page /workspace/<id>/sessions: the signed-in user's active sessions and password change. Script: /js/security/sessions.js. -%>
 <%
 const result = data.securitySessions;
 const page = result.pagination;
@@ -9,7 +9,7 @@ const listUrl = pageNumber => helpers.pageUrl(data, 'sessions', { page: pageNumb
     <div>
       <span class="mg-eyebrow">YOUR ACCOUNT</span>
       <h1>My sessions</h1>
-      <p>Review your active sign-ins and end sessions you no longer need. These sessions belong to your account across every business in this workspace.</p>
+      <p>Review your active sign-ins, end sessions you no longer need and change your password. These sessions belong to your account across every business in this workspace.</p>
     </div>
     <a class="button" href="<%= listUrl(page.page) %>">Refresh</a>
   </header>
@@ -55,7 +55,26 @@ const listUrl = pageNumber => helpers.pageUrl(data, 'sessions', { page: pageNumb
     previousUrl: page.page > 1 ? listUrl(page.page - 1) : '',
     nextUrl: page.page < page.pageCount ? listUrl(page.page + 1) : ''
   }) %>
-  <p class="security-muted">If you do not recognise a session, sign it out and reset your password. Signing out prevents future requests from that session; work already accepted may finish.</p>
+  <section class="mg-card security-password" aria-labelledby="change-password-title">
+    <h2 id="change-password-title">Change password</h2>
+    <form data-password-form>
+      <div class="mg-form-grid">
+        <label class="mg-field"
+          >Current password<input name="currentPassword" type="password" autocomplete="current-password" maxlength="256" required
+        /></label>
+        <label class="mg-field"
+          >New password<input name="newPassword" type="password" autocomplete="new-password" minlength="12" maxlength="256" required
+        /></label>
+        <label class="mg-field"
+          >Confirm new password<input name="confirmPassword" type="password" autocomplete="new-password" minlength="12" maxlength="256" required
+        /></label>
+      </div>
+      <div data-error class="mg-message error" role="alert" tabindex="-1" hidden></div>
+      <p class="mg-hint">Use at least 12 characters. Your other sessions are signed out; this one stays signed in.</p>
+      <button class="button primary" type="submit">Change password</button>
+    </form>
+  </section>
+  <p class="security-muted">If you do not recognise a session, sign it out and change your password. Signing out prevents future requests from that session; work already accepted may finish.</p>
   <%- include('session-confirmation') %>
 </div>
 <script type="module" src="/js/security/sessions.js"></script>

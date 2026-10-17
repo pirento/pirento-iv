@@ -21,6 +21,7 @@ const titles = {
   shipping: 'Delivery challans',
   customers: 'Contacts',
   ledger: 'Customer ledger',
+  gst_returns: 'GST returns (GSTR-1)',
   reminders: 'Payment reminders',
   recurring: 'Recurring invoices',
   organizations: 'Businesses',
@@ -64,6 +65,7 @@ const pageStylesheets = {
   'payments/panel': documentStyles,
   'workspace/documents': ['document-list'],
   'ledger/index': ['receivables'],
+  'gst/gstr1': ['receivables'],
   'ledger/statement': ['receivables'],
   'reminders/index': ['receivables'],
   'recurring/index': ['recurring'],
@@ -171,10 +173,12 @@ export function createPageController(backend) {
     let data;
     try {
       if (
-        ((documentKinds[route.view] && !route.action) || route.view === 'ledger') &&
+        ((documentKinds[route.view] && !route.action) || ['ledger', 'gst_returns'].includes(route.view)) &&
         req.query.download === 'csv'
       ) {
-        const exportFile = route.view === 'ledger' ? app.locals.ledgerExport : app.locals.documentExport;
+        const exportFile =
+          { ledger: app.locals.ledgerExport, gst_returns: app.locals.gstr1Export }[route.view] ??
+          app.locals.documentExport;
         const exported = await exportFile(user, route.organizationId, {
           ...route,
           query: req.query,
@@ -225,6 +229,7 @@ export function createPageController(backend) {
         overview: 'workspace/overview',
         customers: 'contacts/index',
         ledger: route.id ? 'ledger/statement' : 'ledger/index',
+        gst_returns: 'gst/gstr1',
         reminders: 'reminders/index',
         recurring: 'recurring/index',
         organizations: 'organizations/index',

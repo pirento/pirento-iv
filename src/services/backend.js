@@ -34,6 +34,7 @@ import { createAutomationRunner } from './operations/automation-runner.js';
 import { createCustomerLedger } from './ledger/customer-ledger.js';
 import { createPaymentReminders } from './integrations/email/payment-reminders.js';
 import { createRecurringInvoices } from './recurring/recurring-invoices.js';
+import { migrateStoredImages } from '../models/image-store.js';
 
 /**
  * Builds the API application: returns the Express app with the services on app.locals.services
@@ -210,6 +211,8 @@ async function initializeApplication(options, environment, db) {
     automations,
   };
   app.locals.initialize = async () => {
+    await db.models.email.compactSent();
+    await migrateStoredImages(db);
     const owner = await auth?.initializeOwner();
     await backups.initialize();
     readiness.markReady();
@@ -231,6 +234,7 @@ async function initializeApplication(options, environment, db) {
   });
   app.locals.workspaceData = pageData.load;
   app.locals.documentExport = pageData.exportDocuments;
+  app.locals.gstr1Export = pageData.exportGstr1;
   app.locals.ledgerExport = (user, organizationId, route) =>
     route.id
       ? ledger.exportStatement(user, organizationId, route.id, route.query)

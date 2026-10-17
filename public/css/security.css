@@ -147,3 +147,20 @@
     padding: 20px;
   }
 }
+.security-password form,
+.security-team-password {
+  display: grid;
+  gap: 12px;
+}
+.security-password form {
+  margin-top: 16px;
+}
+.security-team-password {
+  padding-top: 18px;
+  margin-top: 18px;
+  border-top: 1px solid #e3e9df;
+}
+.security-password .button,
+.security-team-password .button {
+  justify-self: start;
+}

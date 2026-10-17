@@ -1,4 +1,7 @@
-/** My sessions page (views/security/sessions.ejs): confirm and sign out one session or all other sessions. */
+/**
+ * My sessions page (views/security/sessions.ejs): confirm and sign out one session or all other
+ * sessions, and change your own password.
+ */
 
 import { getPageData } from '../core/page.js';
 import { api, sendJson, showError, withBusy, dateTime } from '../management/common.js';
@@ -64,6 +67,32 @@ form.addEventListener('submit', async (event) => {
     } catch (error) {
       if (error.status === 401) location.assign('/login');
       else showError(error.message, form);
+    }
+  });
+});
+
+const passwordForm = root.querySelector('[data-password-form]');
+passwordForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const values = Object.fromEntries(new FormData(passwordForm));
+  if (values.newPassword !== values.confirmPassword) {
+    showError('The new password and its confirmation do not match.', passwordForm);
+    return;
+  }
+  showError('', passwordForm);
+  await withBusy(passwordForm, async () => {
+    try {
+      const result = await api(
+        '/auth/password',
+        sendJson('POST', { currentPassword: values.currentPassword, newPassword: values.newPassword }),
+      );
+      try {
+        sessionStorage.setItem('vc:toast', result.message);
+      } catch {}
+      location.reload();
+    } catch (error) {
+      if (error.status === 401) location.assign('/login');
+      else showError(error.message, passwordForm);
     }
   });
 });

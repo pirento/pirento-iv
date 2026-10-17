@@ -183,6 +183,8 @@ Use SIGTERM or SIGINT for an orderly restart. The process immediately becomes un
 
 ## Backup storage and cutover
 
+**Upgrading to the storage update (unreleased):** back up first and stop older application processes. The first start converts existing documents and unsent emails to stored-image references (new `images` collection) and trims emails that were already sent. This runs once, and a marker in `workspace_metadata` skips it afterwards. Backups and restores include the `images` collection automatically. Older versions cannot read converted records, so rolling back requires restoring the pre-upgrade backup.
+
 Set `DATABASE_BACKUP_DIR` to a private persistent directory outside public assets. Set `BACKUP_ENABLED=true`, `BACKUP_INTERVAL_MINUTES` and `BACKUP_RETENTION_COUNT` for scheduled snapshots. The default schedule is one snapshot per day with seven retained. Keep one scheduled backup writer per directory. Copy verified backups off the application host according to your operational needs.
 
 The app must have permission to create private backup directories/files. The backup permission checks target POSIX filesystems. Use Linux or WSL for the backup/import tooling if running on a platform that cannot enforce those permissions. The EJSON data and manifest form one recovery set. [Migration and recovery](MIGRATION.md) explains restore and reconciliation.

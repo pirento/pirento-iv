@@ -578,7 +578,10 @@ test(
           assert.deepEqual(deliveries[1], deliveries[0]);
           const after = await db.models.email.findById(before.id);
           assert.equal(after.first_attempt_at, before.first_attempt_at);
-          assert.deepEqual(after.payload, before.payload);
+          assert.deepEqual(after.payload, {
+            organizationId: before.payload.organizationId,
+            reminder: before.payload.reminder,
+          });
           assert.equal(after.status, 'sent');
         } finally {
           await worker.stop({ graceMs: 0 });

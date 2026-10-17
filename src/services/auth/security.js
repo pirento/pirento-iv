@@ -20,6 +20,8 @@ export const SECURITY_ACTIONS = Object.freeze([
   { value: 'password-reset-requested', label: 'Password reset requested' },
   { value: 'password-reset-delivery-failed', label: 'Password reset delivery failed' },
   { value: 'password-reset-completed', label: 'Password reset completed' },
+  { value: 'password-changed', label: 'Password changed' },
+  { value: 'password-set-by-admin', label: 'Password set by administrator' },
   { value: 'owner-provisioned', label: 'Initial administrator provisioned' },
   { value: 'other', label: 'Other account activity' },
 ]);

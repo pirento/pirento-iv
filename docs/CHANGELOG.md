@@ -8,6 +8,14 @@ Release notes, API contract changes and upgrade instructions for each version, n
 - Synthetic preview restores the full original notice: a "TEST PREVIEW — NOT A VALID INVOICE" watermark on every printed page, the warning not to enter real data or credentials, and a guard that blocks links leaving the preview origin.
 - Backup-location checks now cover the actual application folders (`public`, `shared`, `src`, `views`, `scripts`).
 - Release-checkpoint files are consolidated: phase documents are merged into this changelog, `npm run audit:readiness` runs `scripts/readiness-audit.js`, and the redundant `audit:phase56`, `test:phase5` and `test:phase6` scripts are removed (`npm test` covers those tests).
+- **Smaller database.** Business images (logo, signatures, stamp, payment QR) are stored once in a new `images` collection instead of being copied into every document and email record. Reads put them back, so pages, PDFs and emails are unchanged. Measured with four ordinary images: an invoice record went from 404 KB to 2.5 KB and a queued email from 408 KB to 7.6 KB.
+- **Sent emails keep only their history.** Once an email is sent, its record keeps the business ID (and reminder details) instead of a full invoice copy, HTML and PDF. Queued, held and failed emails keep everything for exact retries.
+- **Passwords.** Signed-in users can change their password on **My sessions** (other sessions are signed out). Administrators can set a new password for another person from **Team access**. API: `POST /api/auth/password`, `POST /api/auth/users/:id/password`.
+- **Staff permission levels** on **Team access**: Full (default, unchanged), Edit without delete (no deleting, voiding receipts or cancelling documents) and View only. The server enforces them. `PATCH /api/auth/users/:id` accepts an optional `permission`, and user objects now include it.
+- **GST returns (GSTR-1)** page under Receivables: B2B, B2CL, B2CS, HSN summary (B2B/B2C) and 0% lines for a month and seller GSTIN, each downloadable as CSV with the GST offline tool's headings.
+- Unused empty files `shared/auth-types.js`, `shared/messaging-types.js` and `shared/online-payment-types.js` are removed, and every source file now starts with a short description (see [Code guide](CODE-GUIDE.md)).
+
+**Upgrade (unreleased changes):** take a backup first and stop older application processes. On first start the new version converts existing documents and unsent emails to stored-image references and trims already-sent emails, once. Older versions cannot read the converted records, so going back to an older version means restoring the backup taken before the upgrade.
 
 <a id="v2.5.0"></a>
 
