@@ -35,6 +35,12 @@ const date = value => value ? new Intl.DateTimeFormat('en-IN', { year:'numeric',
           <option value="staff" <%= member.role === 'staff' ? 'selected' : '' %>>Staff — assigned organizations</option>
           <option value="admin" <%= member.role === 'admin' ? 'selected' : '' %>>Administrator — full workspace</option>
         </select></label
+      ><label class="mg-field" data-permission-field <%= member.role === 'admin' ? 'hidden' : '' %>
+        >Staff permission<select name="permission">
+          <% for (const [key,label] of [['full','Full — create, edit and delete'],['no-delete','Edit — cannot delete, void or cancel'],['view','View only — cannot change anything']]) { %>
+          <option value="<%= key %>" <%= (member.permission || 'full') === key ? 'selected' : '' %>><%= label %></option>
+          <% } %>
+        </select></label
       >
     </div>
     <p class="mg-note" data-admin-note <%= member.role === 'admin' ? '' : 'hidden' %>>

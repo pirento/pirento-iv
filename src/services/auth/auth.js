@@ -40,11 +40,14 @@ const login = z
     password: z.string().min(1).max(256),
   })
   .strict();
+// Staff permission levels (administrators always have full access); a missing value means 'full'.
+export const STAFF_PERMISSIONS = ['full', 'no-delete', 'view'];
 const access = z
   .object({
     role: z.enum(['admin', 'staff']),
     status: z.enum(['pending', 'active', 'disabled']),
     organizationIds: z.array(z.string().min(1).max(120)).max(1000),
+    permission: z.enum(STAFF_PERMISSIONS).optional(),
   })
   .strict();
 const tokenHash = (value) => createHash('sha256').update(value).digest('hex');
@@ -85,6 +88,7 @@ function safeUser(row) {
     role: row.role,
     status: row.status,
     organizationIds: row.organization_ids,
+    permission: row.permission ?? 'full',
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     lastLoginAt: row.last_login_at,
@@ -478,16 +482,20 @@ export function createAuth(db, options = {}) {
           });
           return false;
         }
+        const currentPermission = currentTarget.permission ?? 'full';
+        const permission = input.data.permission ?? currentPermission;
         await db.models.auth.updateAccess(
           input.data.role,
           input.data.status,
           organizationIds,
+          permission,
           new Date(now()).toISOString(),
           target.id,
         );
         if (
           currentTarget.status !== input.data.status ||
           currentTarget.role !== input.data.role ||
+          currentPermission !== permission ||
           JSON.stringify(currentTarget.organization_ids) !== JSON.stringify(organizationIds)
         ) {
           await db.models.auth.deleteUserSessions(target.id);
@@ -498,10 +506,12 @@ export function createAuth(db, options = {}) {
             role: currentTarget.role,
             status: currentTarget.status,
             organizationIds: currentTarget.organization_ids,
+            permission: currentPermission,
           },
           after: {
             ...input.data,
             organizationIds,
+            permission,
           },
         });
         return true;

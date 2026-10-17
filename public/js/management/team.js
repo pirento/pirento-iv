@@ -1,6 +1,6 @@
 /**
  * Team access page (views/team/index.ejs, admin only): approve/disable accounts, set role and
- * assigned businesses, sign out a member's sessions and set a new password for them.
+ * assigned businesses and staff permission, sign out a member's sessions and set a new password.
  */
 
 import { getPageData } from '../core/page.js';
@@ -74,6 +74,7 @@ if (data.user.role === 'admin') {
     return {
       status: form.elements.namedItem('status').value,
       role: form.elements.namedItem('role').value,
+      permission: form.elements.namedItem('permission').value,
       organizationIds: [...form.querySelectorAll('[name="organizationIds"]:checked')].map(
         (input) => input.value,
       ),
@@ -86,11 +87,13 @@ if (data.user.role === 'admin') {
     const changed =
       draft.role !== user.role ||
       draft.status !== user.status ||
+      (draft.role === 'staff' && draft.permission !== user.permission) ||
       [...draft.organizationIds].sort().join(',') !== [...user.organizationIds].sort().join(',');
     const organizationRequired =
       draft.role === 'staff' && draft.status === 'active' && !draft.organizationIds.length;
     card.querySelector('[data-admin-note]').hidden = draft.role !== 'admin';
     card.querySelector('[data-organization-options]').hidden = draft.role === 'admin';
+    card.querySelector('[data-permission-field]').hidden = draft.role === 'admin';
     const save = card.querySelector('[data-save-access]');
     save.disabled = !changed || organizationRequired;
     save.textContent =
@@ -128,6 +131,7 @@ if (data.user.role === 'admin') {
             sendJson('PATCH', {
               ...draft,
               organizationIds: draft.role === 'admin' ? [] : draft.organizationIds,
+              permission: draft.role === 'admin' ? 'full' : draft.permission,
             }),
           );
           users = users.map((user) => (user.id === saved.id ? saved : user));
@@ -183,6 +187,7 @@ if (data.user.role === 'admin') {
     const form = card.querySelector('[data-access-form]');
     form.elements.namedItem('status').value = user.status;
     form.elements.namedItem('role').value = user.role;
+    form.elements.namedItem('permission').value = user.permission;
     form.querySelectorAll('[name="organizationIds"]').forEach((input) => {
       input.checked = user.organizationIds.includes(input.value);
     });

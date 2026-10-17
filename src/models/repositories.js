@@ -310,8 +310,8 @@ export function createModels(context) {
     countUsers: async (role, status) => ({
       count: await collection('auth_users').countDocuments({ role, status }, options()),
     }),
-    updateAccess: (role, status, organization_ids, updated_at, id) =>
-      update('auth_users', { id }, { role, status, organization_ids, updated_at }),
+    updateAccess: (role, status, organization_ids, permission, updated_at, id) =>
+      update('auth_users', { id }, { role, status, organization_ids, permission, updated_at }),
   };
   // A claim token fences every worker write. In particular, an undefined token
   // must never be omitted from a MongoDB filter by ignoreUndefined.

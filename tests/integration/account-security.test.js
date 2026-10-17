@@ -548,3 +548,79 @@ test(
     );
   },
 );
+
+test(
+  'Staff permission levels limit changes on the server and end sessions when changed',
+  native,
+  async (t) => {
+    const { backend, base } = await createFixture(t, { environment: ownerEnvironment });
+    const owner = await login(base);
+    const api = async (path, cookie, method = 'GET', body) => {
+      const response = await fetch(`${base}/api${path}`, {
+        method,
+        headers: { 'Content-Type': 'application/json', Cookie: cookie },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      });
+      return { status: response.status, data: await response.json() };
+    };
+    const organizationId = 'pipeline2-legal';
+    const email = 'permission-staff@example.test';
+    const password = 'PermissionStaff2026!';
+    await request(base, '/signup', { method: 'POST', body: { name: 'Permission Staff', email, password } });
+    const staff = await backend.db.models.auth.userByEmail(email);
+    const setAccess = (body) =>
+      request(base, `/users/${staff.id}`, { method: 'PATCH', cookie: owner.cookie, body });
+    const staffLogin = async () =>
+      (await request(base, '/login', { method: 'POST', body: { email, password } })).cookie;
+    const customer = {
+      organizationId,
+      name: 'Permission customer',
+      email: '',
+      phone: '',
+      gstin: '',
+      address: '',
+      stateCode: '09',
+      contactPerson: '',
+    };
+
+    const viewOnly = await setAccess({
+      role: 'staff',
+      status: 'active',
+      organizationIds: [organizationId],
+      permission: 'view',
+    });
+    assert.equal(viewOnly.status, 200, JSON.stringify(viewOnly.data));
+    assert.equal(viewOnly.data.permission, 'view');
+    let cookie = await staffLogin();
+    assert.equal((await api(`/customers?organizationId=${organizationId}`, cookie)).status, 200);
+    const blocked = await api('/customers', cookie, 'POST', customer);
+    assert.equal(blocked.status, 403);
+    assert.match(blocked.data.error, /view records but not change them/);
+
+    const noDelete = await setAccess({
+      role: 'staff',
+      status: 'active',
+      organizationIds: [organizationId],
+      permission: 'no-delete',
+    });
+    assert.equal(noDelete.status, 200);
+    assert.equal((await api('/me', cookie)).status, 401, 'a permission change ends existing sessions');
+    cookie = await staffLogin();
+    const created = await api('/customers', cookie, 'POST', customer);
+    assert.equal(created.status, 201, JSON.stringify(created.data));
+    assert.equal((await api(`/customers/${created.data.id}`, cookie, 'DELETE')).status, 403);
+    assert.equal((await api('/payments/any-receipt/void', cookie, 'POST', { reason: 'x' })).status, 403);
+    assert.equal((await api('/documents/any-document', cookie, 'PUT', { status: 'cancelled' })).status, 403);
+    assert.equal((await api(`/customers/${created.data.id}`, owner.cookie, 'DELETE')).status, 200);
+
+    // Omitting the permission keeps the current one; older staff records read as full access.
+    const kept = await setAccess({ role: 'staff', status: 'active', organizationIds: [organizationId] });
+    assert.equal(kept.data.permission, 'no-delete');
+    await backend.db.collection('auth_users').updateOne({ id: staff.id }, { $unset: { permission: '' } });
+    assert.equal(
+      (await request(base, '/users', { cookie: owner.cookie })).data.find((u) => u.id === staff.id)
+        .permission,
+      'full',
+    );
+  },
+);
