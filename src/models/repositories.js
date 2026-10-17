@@ -9,6 +9,7 @@
 
 import { HttpError } from '../middleware/errors.js';
 import { receiptPaise, validReceiptPaise } from './money-expressions.js';
+import { createImageStore } from './image-store.js';
 
 /**
  * Native MongoDB models. Business records are complete BSON documents (including
@@ -30,7 +31,11 @@ export function createModels(context) {
   const one = async (name, filter) => present(await collection(name).findOne(filter, options()));
   // Existing databases need no bulk rewrite: absent versions are read as revision zero.
   const documentRecord = (record) => (record ? { ...record, version: record.version ?? 0 } : undefined);
-  const oneDocument = async (filter) => documentRecord(await one('documents', filter));
+  // Documents and email payloads keep image references; reads put the images back (see image-store.js).
+  const images = createImageStore(context);
+  const oneDocument = async (filter) => documentRecord(await images.unpack(await one('documents', filter)));
+  const allDocuments = async (filter = {}) =>
+    (await images.unpackAll(await all('documents', filter, { _id: -1 }))).map(documentRecord);
   const all = async (name, filter = {}, sort = { _id: 1 }) =>
     (await collection(name).find(filter, options()).sort(sort).toArray()).map(present);
   const insert = async (name, record) => {
@@ -92,11 +97,9 @@ export function createModels(context) {
     documents: {
       ...business('documents'),
       findById: (id) => oneDocument({ id }),
-      list: async (organizationId, kind) =>
-        (await all('documents', { organizationId, ...(kind ? { kind } : {}) }, { _id: -1 })).map(
-          documentRecord,
-        ),
-      listAll: async () => (await all('documents')).map(documentRecord),
+      list: (organizationId, kind) => allDocuments({ organizationId, ...(kind ? { kind } : {}) }),
+      listAll: async () => (await images.unpackAll(await all('documents'))).map(documentRecord),
+      insert: async (record) => insert('documents', await images.pack(record)),
       findByNumber: (number) => oneDocument({ number }),
       findByCustomer: (customerId) => oneDocument({ customerId }),
       save: async (record, expectedVersion) => {
@@ -108,7 +111,7 @@ export function createModels(context) {
             : { version: expectedVersion };
         const result = await collection('documents').replaceOne(
           { id: record.id, organizationId: record.organizationId, ...versionFilter },
-          structuredClone(record),
+          structuredClone(await images.pack(record)),
           options(),
         );
         return { changes: result.matchedCount };
@@ -355,9 +358,10 @@ export function createModels(context) {
       first_attempt_at: null,
     };
   };
+  const unpackEmail = async (row) => row && { ...row, payload: await images.unpack(row.payload) };
   models.email = {
-    findById: (id) => one('email_outbox', { id }),
-    findByEvent: (event_key) => one('email_outbox', { event_key }),
+    findById: async (id) => unpackEmail(await one('email_outbox', { id })),
+    findByEvent: async (event_key) => unpackEmail(await one('email_outbox', { event_key })),
     list: (document_id) => all('email_outbox', { document_id }, { created_at: -1, _id: -1 }),
     countReminders: (organizationId) =>
       collection('email_outbox').countDocuments(
@@ -373,7 +377,7 @@ export function createModels(context) {
           .limit(limit)
           .toArray()
       ).map(present),
-    enqueue: (
+    enqueue: async (
       id,
       event_key,
       document_id,
@@ -404,7 +408,7 @@ export function createModels(context) {
           next_attempt_at,
           last_error,
           has_payment_link,
-          payload,
+          payload: await images.pack(payload),
           attempts: 0,
           sent_at: null,
           lease_until: null,
@@ -513,19 +517,21 @@ export function createModels(context) {
       ),
     claim: async (updated_at, lease_until, due, expired, claim_token) => {
       emailClaimFilter('claim', claim_token, updated_at);
-      return present(
-        await collection('email_outbox').findOneAndUpdate(
-          {
-            $or: [
-              { status: 'queued', next_attempt_at: { $lte: due } },
-              {
-                status: 'sending',
-                $or: [{ lease_until: { $lte: expired } }, { lease_until: null }],
-              },
-            ],
-          },
-          { $set: { status: 'sending', updated_at, lease_until, claim_token }, $inc: { attempts: 1 } },
-          { ...emailOptions(), sort: { created_at: 1, _id: 1 }, returnDocument: 'after' },
+      return unpackEmail(
+        present(
+          await collection('email_outbox').findOneAndUpdate(
+            {
+              $or: [
+                { status: 'queued', next_attempt_at: { $lte: due } },
+                {
+                  status: 'sending',
+                  $or: [{ lease_until: { $lte: expired } }, { lease_until: null }],
+                },
+              ],
+            },
+            { $set: { status: 'sending', updated_at, lease_until, claim_token }, $inc: { attempts: 1 } },
+            { ...emailOptions(), sort: { created_at: 1, _id: 1 }, returnDocument: 'after' },
+          ),
         ),
       );
     },
@@ -576,13 +582,23 @@ export function createModels(context) {
       }),
     setPaymentLink: (has_payment_link, id, claim_token, at) =>
       emailMutation(unattemptedEmailFilter(id, claim_token, at), { $set: { has_payment_link } }),
-    setPayload: (payload, id, claim_token, at) =>
-      emailMutation(unattemptedEmailFilter(id, claim_token, at), { $set: { payload } }),
-    setReminderPayload: (payload, recipient, subject, id, claim_token, at) =>
-      emailMutation(
-        { ...emailClaimFilter(id, claim_token, at), kind: 'payment_reminder', first_attempt_at: null },
-        { $set: { payload, recipient, subject, has_payment_link: 0 } },
-      ),
+    // The claim filter is built first so invalid worker arguments still throw immediately.
+    setPayload: (payload, id, claim_token, at) => {
+      const filter = unattemptedEmailFilter(id, claim_token, at);
+      return images.pack(payload).then((packed) => emailMutation(filter, { $set: { payload: packed } }));
+    },
+    setReminderPayload: (payload, recipient, subject, id, claim_token, at) => {
+      const filter = {
+        ...emailClaimFilter(id, claim_token, at),
+        kind: 'payment_reminder',
+        first_attempt_at: null,
+      };
+      return images
+        .pack(payload)
+        .then((packed) =>
+          emailMutation(filter, { $set: { payload: packed, recipient, subject, has_payment_link: 0 } }),
+        );
+    },
     deferReminderPreparation: (last_error, updated_at, next_attempt_at, id, claim_token) =>
       emailMutation(
         {

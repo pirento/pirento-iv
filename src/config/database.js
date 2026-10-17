@@ -52,6 +52,7 @@ export const COLLECTIONS = [
   'workspace_metadata',
   'transaction_locks',
   'ops_recovery_state',
+  'images',
 ];
 
 /**
