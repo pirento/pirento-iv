@@ -7,6 +7,8 @@ import express from 'express';
 import { createAuth } from '../../src/services/auth/auth.js';
 import { createAuthSecurity } from '../../src/services/auth/security.js';
 import { createAccountRateLimiter } from '../../src/services/auth/account-rate-limit.js';
+import { twoStepCode } from '../../src/services/auth/two-step.js';
+import { attachPageRoutes } from '../../src/routes/pages.js';
 import { createFixture, integrationEnabled } from './fixture.js';
 
 const native = {
@@ -455,5 +457,346 @@ test(
     assert.doesNotMatch(JSON.stringify(result.data), /private-password|mongodb|secret/);
     assert.equal(passwordLookups, 0);
     assert.equal(await backend.db.collection('auth_sessions').countDocuments(), 0);
+  },
+);
+
+test(
+  'Passwords can be changed by their owner and set by an administrator, ending the right sessions',
+  native,
+  async (t) => {
+    const { backend, base } = await createFixture(t, { environment: ownerEnvironment });
+    const owner = await login(base);
+    const ownerElsewhere = await login(base);
+    const post = (path, cookie, body) => request(base, path, { method: 'POST', cookie, body });
+    const staffEmail = 'password-staff@example.test';
+    await post('/signup', '', {
+      name: 'Password Staff',
+      email: staffEmail,
+      password: 'StaffFirstPassword2026',
+    });
+    const staff = await backend.db.models.auth.userByEmail(staffEmail);
+    const approved = await request(base, `/users/${staff.id}`, {
+      method: 'PATCH',
+      cookie: owner.cookie,
+      body: { role: 'staff', status: 'active', organizationIds: ['pipeline2-legal'] },
+    });
+    assert.equal(approved.status, 200, JSON.stringify(approved.data));
+    const staffSession = await post('/login', '', { email: staffEmail, password: 'StaffFirstPassword2026' });
+    assert.equal(staffSession.status, 200);
+
+    const newOwnerPassword = 'OwnerChangedPassword2026!';
+    const wrong = await post('/password', owner.cookie, {
+      currentPassword: 'not-the-current-password',
+      newPassword: newOwnerPassword,
+    });
+    assert.equal(wrong.status, 400);
+    assert.match(wrong.data.error, /current password is incorrect/);
+    const short = await post('/password', owner.cookie, {
+      currentPassword: ownerEnvironment.INITIAL_ADMIN_PASSWORD,
+      newPassword: 'short',
+    });
+    assert.equal(short.status, 400);
+    assert.match(short.data.error, /12 characters/);
+    const changed = await post('/password', owner.cookie, {
+      currentPassword: ownerEnvironment.INITIAL_ADMIN_PASSWORD,
+      newPassword: newOwnerPassword,
+    });
+    assert.equal(changed.status, 200, JSON.stringify(changed.data));
+    assert.ok(
+      (await request(base, '/me', { cookie: owner.cookie })).data.user,
+      'this session stays signed in',
+    );
+    assert.equal((await request(base, '/me', { cookie: ownerElsewhere.cookie })).data.user, null);
+    const ownerEmail = ownerEnvironment.INITIAL_ADMIN_EMAIL;
+    assert.equal(
+      (await post('/login', '', { email: ownerEmail, password: ownerEnvironment.INITIAL_ADMIN_PASSWORD }))
+        .status,
+      401,
+    );
+    assert.equal((await post('/login', '', { email: ownerEmail, password: newOwnerPassword })).status, 200);
+
+    const byStaff = await post(`/users/${owner.user.id}/password`, staffSession.cookie, {
+      password: 'StaffCannotSetThis2026',
+    });
+    assert.equal(byStaff.status, 403);
+    const ownAccount = await post(`/users/${owner.user.id}/password`, owner.cookie, {
+      password: 'AnotherOwnerPassword2026',
+    });
+    assert.equal(ownAccount.status, 409);
+    const set = await post(`/users/${staff.id}/password`, owner.cookie, {
+      password: 'StaffSecondPassword2026',
+    });
+    assert.equal(set.status, 200, JSON.stringify(set.data));
+    assert.equal((await request(base, '/me', { cookie: staffSession.cookie })).data.user, null);
+    assert.equal(
+      (await post('/login', '', { email: staffEmail, password: 'StaffFirstPassword2026' })).status,
+      401,
+    );
+    assert.equal(
+      (await post('/login', '', { email: staffEmail, password: 'StaffSecondPassword2026' })).status,
+      200,
+    );
+
+    const actions = await backend.db
+      .collection('auth_audit')
+      .find({ action: { $in: ['password-changed', 'password-set-by-admin'] } })
+      .toArray();
+    assert.deepEqual(
+      actions.map((row) => [row.action, row.user_id, row.actor_id]),
+      [
+        ['password-changed', owner.user.id, owner.user.id],
+        ['password-set-by-admin', staff.id, owner.user.id],
+      ],
+    );
+  },
+);
+
+test(
+  'Staff permission levels limit changes on the server and end sessions when changed',
+  native,
+  async (t) => {
+    const { backend, base } = await createFixture(t, { environment: ownerEnvironment });
+    const owner = await login(base);
+    const api = async (path, cookie, method = 'GET', body) => {
+      const response = await fetch(`${base}/api${path}`, {
+        method,
+        headers: { 'Content-Type': 'application/json', Cookie: cookie },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      });
+      return { status: response.status, data: await response.json() };
+    };
+    const organizationId = 'pipeline2-legal';
+    const email = 'permission-staff@example.test';
+    const password = 'PermissionStaff2026!';
+    await request(base, '/signup', { method: 'POST', body: { name: 'Permission Staff', email, password } });
+    const staff = await backend.db.models.auth.userByEmail(email);
+    const setAccess = (body) =>
+      request(base, `/users/${staff.id}`, { method: 'PATCH', cookie: owner.cookie, body });
+    const staffLogin = async () =>
+      (await request(base, '/login', { method: 'POST', body: { email, password } })).cookie;
+    const customer = {
+      organizationId,
+      name: 'Permission customer',
+      email: '',
+      phone: '',
+      gstin: '',
+      address: '',
+      stateCode: '09',
+      contactPerson: '',
+    };
+
+    const viewOnly = await setAccess({
+      role: 'staff',
+      status: 'active',
+      organizationIds: [organizationId],
+      permission: 'view',
+    });
+    assert.equal(viewOnly.status, 200, JSON.stringify(viewOnly.data));
+    assert.equal(viewOnly.data.permission, 'view');
+    let cookie = await staffLogin();
+    assert.equal((await api(`/customers?organizationId=${organizationId}`, cookie)).status, 200);
+    const blocked = await api('/customers', cookie, 'POST', customer);
+    assert.equal(blocked.status, 403);
+    assert.match(blocked.data.error, /view records but not change them/);
+
+    const noDelete = await setAccess({
+      role: 'staff',
+      status: 'active',
+      organizationIds: [organizationId],
+      permission: 'no-delete',
+    });
+    assert.equal(noDelete.status, 200);
+    assert.equal((await api('/me', cookie)).status, 401, 'a permission change ends existing sessions');
+    cookie = await staffLogin();
+    const created = await api('/customers', cookie, 'POST', customer);
+    assert.equal(created.status, 201, JSON.stringify(created.data));
+    assert.equal((await api(`/customers/${created.data.id}`, cookie, 'DELETE')).status, 403);
+    assert.equal((await api('/payments/any-receipt/void', cookie, 'POST', { reason: 'x' })).status, 403);
+    assert.equal((await api('/documents/any-document', cookie, 'PUT', { status: 'cancelled' })).status, 403);
+    assert.equal((await api(`/customers/${created.data.id}`, owner.cookie, 'DELETE')).status, 200);
+
+    // Omitting the permission keeps the current one; older staff records read as full access.
+    const kept = await setAccess({ role: 'staff', status: 'active', organizationIds: [organizationId] });
+    assert.equal(kept.data.permission, 'no-delete');
+    await backend.db.collection('auth_users').updateOne({ id: staff.id }, { $unset: { permission: '' } });
+    assert.equal(
+      (await request(base, '/users', { cookie: owner.cookie })).data.find((u) => u.id === staff.id)
+        .permission,
+      'full',
+    );
+  },
+);
+
+test(
+  'Two-step login asks for an authenticator code, accepts each code once and can be removed',
+  native,
+  async (t) => {
+    let instant = new Date();
+    const { backend, base } = await createFixture(t, { environment: ownerEnvironment, now: () => instant });
+    const post = (path, cookie, body) => request(base, path, { method: 'POST', cookie, body });
+    const step = () => Math.floor(instant.getTime() / 30_000);
+    const nextStep = () => {
+      instant = new Date(instant.getTime() + 30_000);
+    };
+    const owner = await login(base);
+    const credentials = {
+      email: ownerEnvironment.INITIAL_ADMIN_EMAIL,
+      password: ownerEnvironment.INITIAL_ADMIN_PASSWORD,
+    };
+
+    const setup = await post('/two-step/setup', owner.cookie, {});
+    assert.equal(setup.status, 200);
+    const { secret } = setup.data;
+    assert.match(secret, /^[A-Z2-7]{32}$/);
+    assert.match(setup.data.qrSvg, /^<svg /);
+    const right = twoStepCode(secret, step());
+    const wrong = right === '000000' ? '000001' : '000000';
+    assert.equal((await post('/two-step/enable', owner.cookie, { code: wrong })).status, 400);
+    assert.equal((await post('/two-step/enable', owner.cookie, { code: right })).status, 200);
+    assert.equal((await request(base, '/me', { cookie: owner.cookie })).data.user.twoStepEnabled, true);
+    const stored = await backend.db.models.auth.userById(owner.user.id);
+    assert.equal(stored.totp_pending, null);
+    assert.equal(
+      JSON.stringify((await request(base, '/users', { cookie: owner.cookie })).data).includes(secret),
+      false,
+    );
+
+    const noCode = await post('/login', '', credentials);
+    assert.equal(noCode.status, 401);
+    assert.equal(noCode.data.code, 'TWO_STEP_REQUIRED');
+    assert.equal(noCode.cookie, '', 'no session without the code');
+    const reused = await post('/login', '', { ...credentials, code: right });
+    assert.equal(reused.status, 401, 'the code used to turn it on cannot sign in');
+    assert.equal(reused.data.code, 'TWO_STEP_REQUIRED');
+    nextStep();
+    const fresh = twoStepCode(secret, step());
+    const signedIn = await post('/login', '', { ...credentials, code: fresh });
+    assert.equal(signedIn.status, 200, JSON.stringify(signedIn.data));
+    assert.equal(
+      (await post('/login', '', { ...credentials, code: fresh })).status,
+      401,
+      'a code works once',
+    );
+    assert.equal(
+      (await post('/login', '', { ...credentials, password: 'not-the-password', code: fresh })).data.code,
+      undefined,
+      'a wrong password does not reveal that two-step login is on',
+    );
+
+    const staffEmail = 'two-step-staff@example.test';
+    const staffPassword = 'TwoStepStaffPassword2026';
+    await post('/signup', '', { name: 'Two Step Staff', email: staffEmail, password: staffPassword });
+    const staff = await backend.db.models.auth.userByEmail(staffEmail);
+    await request(base, `/users/${staff.id}`, {
+      method: 'PATCH',
+      cookie: signedIn.cookie,
+      body: { role: 'staff', status: 'active', organizationIds: ['pipeline2-legal'] },
+    });
+    const staffSession = await post('/login', '', { email: staffEmail, password: staffPassword });
+    const staffSecret = (await post('/two-step/setup', staffSession.cookie, {})).data.secret;
+    assert.equal(
+      (await post('/two-step/enable', staffSession.cookie, { code: twoStepCode(staffSecret, step()) }))
+        .status,
+      200,
+    );
+    assert.equal((await post(`/users/${staff.id}/two-step/remove`, staffSession.cookie, {})).status, 403);
+    assert.equal((await post(`/users/${owner.user.id}/two-step/remove`, signedIn.cookie, {})).status, 409);
+    assert.equal((await post(`/users/${staff.id}/two-step/remove`, signedIn.cookie, {})).status, 200);
+    assert.equal((await post('/login', '', { email: staffEmail, password: staffPassword })).status, 200);
+
+    nextStep();
+    const off = await post('/two-step/disable', signedIn.cookie, { code: twoStepCode(secret, step()) });
+    assert.equal(off.status, 200, JSON.stringify(off.data));
+    assert.equal((await post('/login', '', credentials)).status, 200);
+    const actions = (
+      await backend.db
+        .collection('auth_audit')
+        .find({ action: /^two-step/ })
+        .sort({ created_at: 1, _id: 1 })
+        .toArray()
+    ).map((row) => row.action);
+    assert.deepEqual(actions, [
+      'two-step-enabled',
+      'two-step-enabled',
+      'two-step-removed-by-admin',
+      'two-step-disabled',
+    ]);
+  },
+);
+
+test(
+  'Administrators must turn on two-step login before using the workspace when required',
+  native,
+  async (t) => {
+    const { backend, base } = await createFixture(t, {
+      environment: { ...ownerEnvironment, ADMIN_TWO_STEP: 'required' },
+    });
+    attachPageRoutes(backend);
+    const owner = await login(base);
+    const organizationId = 'pipeline2-legal';
+    const workspace = (path) =>
+      fetch(`${base}/workspace/${organizationId}/${path}`, {
+        headers: { Cookie: owner.cookie },
+        redirect: 'manual',
+      });
+    const customers = () =>
+      fetch(`${base}/api/customers?organizationId=${organizationId}`, { headers: { Cookie: owner.cookie } });
+
+    const blocked = await customers();
+    assert.equal(blocked.status, 403);
+    assert.equal((await blocked.json()).code, 'TWO_STEP_SETUP_REQUIRED');
+    const redirected = await workspace('overview');
+    assert.equal(redirected.status, 302);
+    assert.equal(redirected.headers.get('location'), `/workspace/${organizationId}/sessions`);
+    const sessionsPage = await workspace('sessions');
+    assert.equal(sessionsPage.status, 200);
+    assert.match(await sessionsPage.text(), /Administrators must turn on two-step login/);
+
+    const setup = await request(base, '/two-step/setup', { method: 'POST', cookie: owner.cookie, body: {} });
+    const stored = await backend.db.models.auth.userById(owner.user.id);
+    assert.match(stored.totp_pending, /^v1:/);
+    assert.equal(stored.totp_pending.includes(setup.data.secret), false, 'the key is stored encrypted');
+    const code = twoStepCode(setup.data.secret, Math.floor(Date.now() / 30_000));
+    const enabled = await request(base, '/two-step/enable', {
+      method: 'POST',
+      cookie: owner.cookie,
+      body: { code },
+    });
+    assert.equal(enabled.status, 200, JSON.stringify(enabled.data));
+    assert.equal((await customers()).status, 200);
+    assert.equal((await workspace('overview')).status, 200);
+  },
+);
+
+test(
+  'Sessions end after 60 idle minutes, stay alive with activity and show their device',
+  native,
+  async (t) => {
+    let instant = new Date();
+    const { base } = await createFixture(t, { environment: ownerEnvironment, now: () => instant });
+    const minutes = (count) => {
+      instant = new Date(instant.getTime() + count * 60_000);
+    };
+    const userAgent =
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
+    const signedIn = await request(base, '/login', {
+      method: 'POST',
+      headers: { 'User-Agent': userAgent },
+      body: {
+        email: ownerEnvironment.INITIAL_ADMIN_EMAIL,
+        password: ownerEnvironment.INITIAL_ADMIN_PASSWORD,
+      },
+    });
+    assert.equal(signedIn.status, 200);
+    const me = async () => (await request(base, '/me', { cookie: signedIn.cookie })).data.user;
+    const listed = (await request(base, '/sessions', { cookie: signedIn.cookie })).data.sessions;
+    assert.equal(listed[0].device, 'Chrome on Windows');
+
+    minutes(30);
+    assert.ok(await me(), 'activity after 30 minutes keeps the session');
+    minutes(50);
+    assert.ok(await me(), '50 minutes after the last activity is still within the limit');
+    minutes(61);
+    assert.equal(await me(), null, '61 idle minutes end the session');
   },
 );

@@ -12,6 +12,10 @@ export const WORKSPACE_VIEWS = [
   'shipping',
   'customers',
   'ledger',
+  'gst_returns',
+  'expenses',
+  'credit_notes',
+  'reports',
   'reminders',
   'recurring',
   'organizations',
@@ -65,6 +69,10 @@ export function readWorkspaceRoute(pathname, search = '') {
       if ((action === 'new' && id) || (action !== 'new' && !id)) return invalid;
       if (action === 'payments' && view !== 'invoices') return invalid;
     } else if (view === 'ledger') {
+      if (action !== 'preview' || !id) return invalid;
+    } else if (view === 'expenses') {
+      if (action !== 'edit' || !id) return invalid;
+    } else if (view === 'credit_notes') {
       if (action !== 'preview' || !id) return invalid;
     } else if (view === 'recurring') {
       if (!['new', 'edit'].includes(action) || (action === 'new' ? Boolean(id) : !id)) return invalid;

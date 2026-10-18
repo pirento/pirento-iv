@@ -3,7 +3,8 @@
  *
  * Administrators can use everything. Staff accounts may only touch the businesses
  * assigned to them: this checks organizationId in the query/body, and for URLs like
- * /api/<resource>/<id> it looks up which business owns that record.
+ * /api/<resource>/<id> it looks up which business owns that record. Staff permission
+ * 'view' cannot change anything; 'no-delete' cannot delete, void receipts or cancel documents or credit notes.
  */
 
 /**
@@ -21,6 +22,25 @@ export function createAccessGuard(db) {
     }
     if (user.role === 'admin') {
       next();
+      return;
+    }
+    if (!['GET', 'HEAD'].includes(req.method) && user.permission === 'view') {
+      res.status(403).json({
+        error: 'Your account can view records but not change them. Ask an administrator for edit access.',
+      });
+      return;
+    }
+    if (
+      user.permission === 'no-delete' &&
+      (req.method === 'DELETE' ||
+        (req.method === 'POST' && /^\/payments\/[^/]+\/void$/.test(req.path)) ||
+        (req.method === 'POST' && /^\/credit-notes\/[^/]+\/cancel$/.test(req.path)) ||
+        (req.method === 'PUT' && /^\/documents\/[^/]+$/.test(req.path) && req.body?.status === 'cancelled'))
+    ) {
+      res.status(403).json({
+        error:
+          'Only an administrator can delete records, void receipts or cancel documents or credit notes for your account.',
+      });
       return;
     }
     const allowed = new Set(user.organizationIds);
@@ -61,6 +81,8 @@ export function createAccessGuard(db) {
       formats: 'formats',
       'business-products': 'business_products',
       payments: 'payments',
+      expenses: 'expenses',
+      'credit-notes': 'credit_notes',
     };
     const table = Object.hasOwn(tables, resource) ? tables[resource] : undefined;
     const directoryRead =

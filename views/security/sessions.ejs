@@ -1,4 +1,4 @@
-<%# Page /workspace/<id>/sessions: the signed-in user's active sessions. Script: /js/security/sessions.js. -%>
+<%# Page /workspace/<id>/sessions: the signed-in user's active sessions and password change. Script: /js/security/sessions.js. -%>
 <%
 const result = data.securitySessions;
 const page = result.pagination;
@@ -9,7 +9,7 @@ const listUrl = pageNumber => helpers.pageUrl(data, 'sessions', { page: pageNumb
     <div>
       <span class="mg-eyebrow">YOUR ACCOUNT</span>
       <h1>My sessions</h1>
-      <p>Review your active sign-ins and end sessions you no longer need. These sessions belong to your account across every business in this workspace.</p>
+      <p>Review your active sign-ins, end sessions you no longer need and change your password. These sessions belong to your account across every business in this workspace.</p>
     </div>
     <a class="button" href="<%= listUrl(page.page) %>">Refresh</a>
   </header>
@@ -21,7 +21,7 @@ const listUrl = pageNumber => helpers.pageUrl(data, 'sessions', { page: pageNumb
     </div>
     <button class="button" type="button" data-sessions-revoke-others <%= result.total > 1 ? '' : 'disabled' %>>Sign out other sessions</button>
   </section>
-  <p class="security-muted">Session times are shown in Indian Standard Time (IST). A session ends when you sign out or when its expiry time is reached.</p>
+  <p class="security-muted">Session times are shown in Indian Standard Time (IST). A session ends when you sign out, after 60 minutes without activity, or when its expiry time is reached.</p>
   <div class="security-session-list" data-session-list>
     <% for (const session of result.sessions) { %>
       <article class="mg-card security-session" data-session-id="<%= session.id %>">
@@ -29,9 +29,12 @@ const listUrl = pageNumber => helpers.pageUrl(data, 'sessions', { page: pageNumb
           <h2><%= session.current ? 'This session' : 'Other session' %></h2>
           <% if (session.current) { %><span class="mg-badge" data-session-current>Current</span><% } %>
         </header>
+        <p class="security-muted" data-session-device><%= session.device %></p>
         <dl>
           <dt>Signed in</dt>
           <dd><%= helpers.displayDateTime(session.createdAt) %> IST</dd>
+          <dt>Last active</dt>
+          <dd><%= helpers.displayDateTime(session.lastActiveAt) %> IST</dd>
           <dt>Expires</dt>
           <dd><%= helpers.displayDateTime(session.expiresAt) %> IST</dd>
         </dl>
@@ -55,7 +58,54 @@ const listUrl = pageNumber => helpers.pageUrl(data, 'sessions', { page: pageNumb
     previousUrl: page.page > 1 ? listUrl(page.page - 1) : '',
     nextUrl: page.page < page.pageCount ? listUrl(page.page + 1) : ''
   }) %>
-  <p class="security-muted">If you do not recognise a session, sign it out and reset your password. Signing out prevents future requests from that session; work already accepted may finish.</p>
+  <section class="mg-card security-password" aria-labelledby="change-password-title">
+    <h2 id="change-password-title">Change password</h2>
+    <form data-password-form>
+      <div class="mg-form-grid">
+        <label class="mg-field"
+          >Current password<input name="currentPassword" type="password" autocomplete="current-password" maxlength="256" required
+        /></label>
+        <label class="mg-field"
+          >New password<input name="newPassword" type="password" autocomplete="new-password" minlength="12" maxlength="256" required
+        /></label>
+        <label class="mg-field"
+          >Confirm new password<input name="confirmPassword" type="password" autocomplete="new-password" minlength="12" maxlength="256" required
+        /></label>
+      </div>
+      <div data-error class="mg-message error" role="alert" tabindex="-1" hidden></div>
+      <p class="mg-hint">Use at least 12 characters. Your other sessions are signed out; this one stays signed in.</p>
+      <button class="button primary" type="submit">Change password</button>
+    </form>
+  </section>
+  <section class="mg-card security-password" aria-labelledby="two-step-title" data-two-step-card>
+    <h2 id="two-step-title">Two-step login</h2>
+    <% if (data.twoStepSetupRequired) { %>
+    <p class="alert alert-info" role="status">Administrators must turn on two-step login before using the workspace. Set it up below.</p>
+    <% } %>
+    <div data-error class="mg-message error" role="alert" tabindex="-1" hidden></div>
+    <% if (data.user.twoStepEnabled) { %>
+    <p>On. Each sign-in asks for a 6-digit code from your authenticator app after your password.</p>
+    <form data-two-step-form data-action="disable">
+      <label class="mg-field"
+        >Current code from your app<input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required
+      /></label>
+      <button class="button" type="submit">Turn off two-step login</button>
+    </form>
+    <% } else { %>
+    <p>Off. Turn it on to ask for a 6-digit code from an authenticator app (Google Authenticator, Microsoft Authenticator or similar) after your password. Recommended for administrators.</p>
+    <button class="button primary" type="button" data-two-step-setup>Set up two-step login</button>
+    <form data-two-step-form data-action="enable" hidden>
+      <p>1. Scan this QR code with your authenticator app, or enter the key by hand.</p>
+      <img class="security-qr" data-two-step-qr alt="QR code to add this account to an authenticator app" width="200" height="200" />
+      <p>Key: <code data-two-step-secret></code> · <a data-two-step-link href="#">Open in authenticator app</a></p>
+      <label class="mg-field"
+        >2. Enter the 6-digit code the app shows<input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required
+      /></label>
+      <button class="button primary" type="submit">Turn on two-step login</button>
+    </form>
+    <% } %>
+  </section>
+  <p class="security-muted">If you do not recognise a session, sign it out and change your password. Signing out prevents future requests from that session; work already accepted may finish.</p>
   <%- include('session-confirmation') %>
 </div>
 <script type="module" src="/js/security/sessions.js"></script>

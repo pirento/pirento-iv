@@ -21,6 +21,10 @@ const titles = {
   shipping: 'Delivery challans',
   customers: 'Contacts',
   ledger: 'Customer ledger',
+  gst_returns: 'GST returns (GSTR-1)',
+  expenses: 'Expenses',
+  credit_notes: 'Credit notes',
+  reports: 'Reports',
   reminders: 'Payment reminders',
   recurring: 'Recurring invoices',
   organizations: 'Businesses',
@@ -64,6 +68,11 @@ const pageStylesheets = {
   'payments/panel': documentStyles,
   'workspace/documents': ['document-list'],
   'ledger/index': ['receivables'],
+  'gst/gstr1': ['receivables'],
+  'expenses/index': ['receivables'],
+  'credit-notes/index': ['receivables'],
+  'credit-notes/print': ['receivables'],
+  'reports/index': ['receivables'],
   'ledger/statement': ['receivables'],
   'reminders/index': ['receivables'],
   'recurring/index': ['recurring'],
@@ -160,6 +169,9 @@ export function createPageController(backend) {
     const route = readWorkspaceRoute(path, search);
     if (!route || route.view === 'not_found')
       return renderError(res, 404, 'This workspace address is not available.');
+    // Administrators who must use two-step login are sent to My sessions until it is on.
+    if (auth?.twoStepSetupRequired(user) && route.view !== 'sessions' && route.organizationId)
+      return res.redirect(`/workspace/${encodeURIComponent(route.organizationId)}/sessions`);
     if (
       user.role !== 'admin' &&
       (adminViews.has(route.view) ||
@@ -171,10 +183,16 @@ export function createPageController(backend) {
     let data;
     try {
       if (
-        ((documentKinds[route.view] && !route.action) || route.view === 'ledger') &&
+        ((documentKinds[route.view] && !route.action) ||
+          ['ledger', 'gst_returns', 'expenses'].includes(route.view)) &&
         req.query.download === 'csv'
       ) {
-        const exportFile = route.view === 'ledger' ? app.locals.ledgerExport : app.locals.documentExport;
+        const exportFile =
+          {
+            ledger: app.locals.ledgerExport,
+            gst_returns: app.locals.gstr1Export,
+            expenses: app.locals.expenseExport,
+          }[route.view] ?? app.locals.documentExport;
         const exported = await exportFile(user, route.organizationId, {
           ...route,
           query: req.query,
@@ -188,7 +206,10 @@ export function createPageController(backend) {
       data = await app.locals.workspaceData(user, route.organizationId, { ...route, query: req.query });
       if (['sessions', 'security'].includes(route.view) && !auth)
         return renderError(res, 403, 'Account security requires an authenticated workspace.', data);
-      if (route.view === 'sessions') data.securitySessions = await auth.sessionPage(req);
+      if (route.view === 'sessions') {
+        data.securitySessions = await auth.sessionPage(req);
+        data.twoStepSetupRequired = auth.twoStepSetupRequired(user);
+      }
       if (route.view === 'security') data.securityAudit = await auth.listAudit(user, req.query);
     } catch (error) {
       if (res.headersSent || res.destroyed) {
@@ -225,6 +246,10 @@ export function createPageController(backend) {
         overview: 'workspace/overview',
         customers: 'contacts/index',
         ledger: route.id ? 'ledger/statement' : 'ledger/index',
+        gst_returns: 'gst/gstr1',
+        expenses: 'expenses/index',
+        credit_notes: route.id ? 'credit-notes/print' : 'credit-notes/index',
+        reports: 'reports/index',
         reminders: 'reminders/index',
         recurring: 'recurring/index',
         organizations: 'organizations/index',

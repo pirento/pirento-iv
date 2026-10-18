@@ -34,6 +34,8 @@ export function createController(context) {
             (payment.organizationId != null && payment.organizationId !== document.organizationId)
           )
             throw new HttpError(409, 'The saved payment does not belong to this invoice business.');
+          if (payment.creditNoteId)
+            throw new HttpError(409, 'This entry is a credit note. Cancel the credit note to undo it.');
           if (/^(razorpay|cashfree):/.test(payment.requestId))
             throw new HttpError(
               409,

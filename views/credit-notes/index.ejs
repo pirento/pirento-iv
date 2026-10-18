@@ -1,0 +1,106 @@
+<%# Credit notes page /workspace/<id>/credit_notes?month=YYYY-MM (add &documentId=<invoice> to issue one against that invoice). Script: /js/workspace/credit-notes.js. -%>
+<%
+const page = data.creditNotePage;
+const invoice = page.invoice;
+const amount = value => helpers.money(value || 0);
+%>
+<header class="page-header">
+  <div>
+    <span class="eyebrow">ACCOUNTS</span>
+    <h1>Credit notes</h1>
+    <p>Credit notes lower what a buyer owes on an issued invoice: goods returned, a discount after the sale or a correction. Open an invoice and choose Credit note to issue one.</p>
+  </div>
+</header>
+<% if (invoice) { %>
+  <section class="card" id="credit-note-editor">
+    <div class="finance-section-heading">
+      <h2>Credit note against <%= invoice.number %></h2>
+      <a class="text-button" href="<%= helpers.url(data, 'invoices', 'preview', invoice.id) %>">Back to invoice</a>
+    </div>
+    <p class="finance-basis"><%= invoice.customerName %> · Invoice dated <%= helpers.displayDate(invoice.issueDate) %> · Total <%= amount(invoice.total) %> · Balance due <strong><%= amount(invoice.balanceDue) %></strong></p>
+    <% if (!invoice.canCredit) { %>
+      <div class="alert alert-info">A credit note can be issued only while an issued invoice still has a balance due. Refunds of paid invoices are not recorded here.</div>
+    <% } else { %>
+      <form class="stack" data-credit-note-form data-invoice-id="<%= invoice.id %>" data-interstate="<%= invoice.interstate %>" data-balance="<%= invoice.balanceDue %>">
+        <div class="alert alert-error" data-form-error hidden role="alert"></div>
+        <div class="form-grid">
+          <label class="field">Credit note date<input type="date" name="noteDate" value="<%= data.businessDate %>" min="<%= invoice.issueDate %>" max="<%= data.businessDate %>" required /></label>
+          <label class="field">
+            Reason
+            <select name="reason">
+              <% for (const reason of page.reasons) { %><option><%= reason %></option><% } %>
+            </select>
+          </label>
+          <label class="field">Amount before GST (₹)<input type="number" name="taxable" min="0.01" step="0.01" required /></label>
+          <label class="field">
+            GST rate
+            <select name="gstRate">
+              <% for (const rate of invoice.rates) { %><option value="<%= rate %>"><%= rate %>%</option><% } %>
+            </select>
+          </label>
+          <label class="field full-width">Notes <span class="optional">(optional)</span><input name="notes" maxlength="500" /></label>
+        </div>
+        <p class="finance-basis" data-credit-note-preview aria-live="polite"></p>
+        <div class="form-actions">
+          <button class="button button-primary" type="submit">Issue credit note</button>
+        </div>
+      </form>
+    <% } %>
+  </section>
+<% } %>
+<section class="card">
+  <form class="finance-filters" method="get" action="<%= helpers.url(data, 'credit_notes') %>">
+    <label class="field">
+      Month
+      <input type="month" name="month" value="<%= page.month %>" required />
+    </label>
+    <button class="button" type="submit">Show month</button>
+  </form>
+  <% if (page.notes.length) { %>
+    <div tabindex="0" role="region" aria-label="Credit notes" class="table-wrap">
+      <table class="finance-table">
+        <thead>
+          <tr>
+            <th>Credit note</th>
+            <th>Invoice</th>
+            <th>Reason</th>
+            <th class="text-right">Before GST</th>
+            <th class="text-right">GST</th>
+            <th class="text-right">Total</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% for (const note of page.notes) { %>
+            <tr>
+              <td>
+                <strong><%= note.number %></strong>
+                <small><%= helpers.displayDate(note.noteDate) %><%= note.status === 'cancelled' ? ' · Cancelled' : '' %></small>
+              </td>
+              <td>
+                <a href="<%= helpers.url(data, 'invoices', 'preview', note.invoiceId) %>"><%= note.invoiceNumber %></a>
+                <small><%= note.customerSnapshot.name %></small>
+              </td>
+              <td><%= note.reason %></td>
+              <td class="text-right"><%= amount(note.taxable) %></td>
+              <td class="text-right"><%= amount(note.tax) %> <small><%= note.gstRate %>%</small></td>
+              <td class="text-right"><strong><%= amount(note.total) %></strong></td>
+              <td>
+                <a class="text-button" href="<%= helpers.url(data, 'credit_notes', 'preview', note.id) %>">View / print</a>
+                <% if (note.status !== 'cancelled') { %>
+                  <button class="text-button" type="button" data-credit-note-cancel="<%= note.id %>" data-credit-note-number="<%= note.number %>">Cancel</button>
+                <% } %>
+              </td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  <% } else { %>
+    <div class="empty-state">
+      <h2>No credit notes in <%= page.month %></h2>
+      <p>Issued credit notes appear here, in the GST returns (CDNR / CDNUR) and in Reports.</p>
+    </div>
+  <% } %>
+</section>
+<script type="module" src="/js/workspace/credit-notes.js"></script>

@@ -63,6 +63,14 @@
             maxlength="256"
             required /></label
         ><% } %> <% } %> <% if (data.authView === 'login') { %>
+        <label class="field" data-two-step hidden
+          >Authentication code<input
+            name="code"
+            inputmode="numeric"
+            autocomplete="one-time-code"
+            pattern="[0-9]{6}"
+            maxlength="6" /><small>Open your authenticator app and enter the 6-digit code.</small></label
+        >
         <div class="auth-options"><a href="/forgot-password">Forgot password?</a></div>
         <% } %>
         <button class="button button-primary button-full" type="submit">

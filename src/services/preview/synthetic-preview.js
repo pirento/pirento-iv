@@ -8,7 +8,7 @@
 
 import express from 'express';
 import { MongoClient } from 'mongodb';
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -97,6 +97,9 @@ export function prepareSyntheticPreviewEnvironment(environment = process.env) {
     BACKUP_ENABLED: 'false',
     EMAIL_AUTOMATION: 'false',
     SHRI_SARRAF_EMAIL_AUTOMATION: 'false',
+    // Disposable data: a fresh two-step key per run, and two-step login stays optional.
+    TWO_STEP_KEY: randomBytes(32).toString('hex'),
+    ADMIN_TWO_STEP: 'optional',
   };
 }
 
@@ -197,6 +200,8 @@ export async function createSyntheticPreviewApplication(options = {}) {
       'paymentDetails',
       'documentExport',
       'ledgerExport',
+      'gstr1Export',
+      'expenseExport',
       'reportError',
       'requestDiagnostics',
     ])

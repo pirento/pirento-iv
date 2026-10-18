@@ -185,7 +185,9 @@ export function buildCustomerStatement(
         id: `receipt:${payment.id}`,
         type: 'receipt',
         date: paidOn,
-        description: `Receipt${payment.method ? ` — ${String(payment.method).replaceAll('_', ' ')}` : ''}`,
+        description: payment.creditNoteId
+          ? 'Credit note'
+          : `Receipt${payment.method ? ` — ${String(payment.method).replaceAll('_', ' ')}` : ''}`,
         debitPaise: 0,
         creditPaise: amount,
       });

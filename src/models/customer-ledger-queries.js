@@ -60,6 +60,7 @@ const PAYMENT_FIELDS = {
   amount: 1,
   paidOn: 1,
   method: 1,
+  creditNoteId: 1,
   reference: 1,
   createdAt: 1,
   providerPaidAt: 1,

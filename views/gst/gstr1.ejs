@@ -1,0 +1,85 @@
+<%# GST returns page /workspace/<id>/gst_returns?month=YYYY-MM&gstin=...: GSTR-1 tables with a CSV per table (data from src/services/pages/gstr1.js). No page script. -%>
+<%
+const report = data.gstr1;
+const numeric = new Set(['Total Number', 'Cancelled', 'Invoice Value', 'Note Value', 'Rate', 'Taxable Value', 'Cess Amount', 'Total Quantity', 'Total Value', 'Integrated Tax Amount', 'Central Tax Amount', 'State/UT Tax Amount', 'Nil Rated Supplies', 'Exempted(other than nil rated/non GST supply)', 'Non-GST supplies']);
+%>
+<header class="page-header">
+  <div>
+    <span class="eyebrow">ACCOUNTS</span>
+    <h1>GST returns (GSTR-1)</h1>
+    <p>Outward supplies of <%= data.organization.name %> for one month, from issued invoices and credit notes. Download each table as CSV for the GST offline tool or your CA.</p>
+  </div>
+</header>
+<section class="card">
+  <form class="finance-filters" method="get" action="<%= helpers.url(data, 'gst_returns') %>">
+    <label class="field">
+      Return period
+      <input type="month" name="month" value="<%= report.month %>" required />
+    </label>
+    <label class="field">
+      Seller GSTIN
+      <select name="gstin" <%= report.gstins.length ? '' : 'disabled' %>>
+        <% for (const gstin of report.gstins) { %>
+          <option value="<%= gstin %>" <%= gstin === report.gstin ? 'selected' : '' %>><%= gstin %></option>
+        <% } %>
+        <% if (!report.gstins.length) { %><option value="">No GSTIN on this month's invoices</option><% } %>
+      </select>
+    </label>
+    <button class="button" type="submit">Show return</button>
+  </form>
+  <div class="metrics-grid finance-metrics">
+    <% for (const [label, value] of [
+      ['Invoices', report.totals.invoices],
+      ['Invoice value', helpers.money(Number(report.totals.value))],
+      ['Taxable value', helpers.money(Number(report.totals.taxable))],
+      ['GST', helpers.money(Number(report.totals.tax))]
+    ]) { %>
+      <section class="metric">
+        <div class="metric-label"><%= label %></div>
+        <div class="metric-value"><%= value %></div>
+        <div class="metric-hint"><%= report.gstin || 'No seller GSTIN' %></div>
+      </section>
+    <% } %>
+  </div>
+  <% if (report.withoutGstin) { %>
+    <div class="alert alert-info"><%= report.withoutGstin %> invoice(s) this month were issued without a seller GSTIN and are not part of this return.</div>
+  <% } %>
+  <% if (report.missingHsn) { %>
+    <div class="alert alert-info"><%= report.missingHsn %> invoice line(s) have no HSN/SAC code. Add codes to your products so the HSN summary is complete.</div>
+  <% } %>
+</section>
+<% for (const [key, section] of Object.entries(report.sections)) { const rows = report.rows[key]; %>
+  <section class="card">
+    <div class="finance-section-heading">
+      <h2><%= section.title %></h2>
+      <span class="muted"><%= rows.length %> row(s)</span>
+      <% if (rows.length) { %><a class="button" href="<%= report.downloads[key] %>" download>Download CSV</a><% } %>
+    </div>
+    <% if (rows.length) { %>
+      <div tabindex="0" role="region" aria-label="<%= section.title %>" class="table-wrap">
+        <table class="finance-table">
+          <thead>
+            <tr>
+              <% for (const column of section.columns) { %><th class="<%= numeric.has(column) ? 'text-right' : '' %>"><%= column %></th><% } %>
+            </tr>
+          </thead>
+          <tbody>
+            <% for (const row of rows) { %>
+              <tr>
+                <% row.forEach((cell, index) => { %><td class="<%= numeric.has(section.columns[index]) ? 'text-right' : '' %>"><%= cell %></td><% }) %>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    <% } else { %>
+      <p class="muted">Nothing to report in this table for the selected month.</p>
+    <% } %>
+  </section>
+<% } %>
+<p class="finance-basis">
+  Based on issued invoices (drafts and cancelled invoices are excluded). Reverse charge is reported as "N" and cess as 0. B2CL uses
+  ₹1,00,000 for invoices from 1 Aug 2024 (₹2,50,000 before). 0% lines are listed under nil rated; move them to exempt or non-GST if
+  that applies. Documents issued counts the invoices found in each number series; if a number is missing (for example a
+  deleted draft), add it as cancelled if your CA needs a continuous series. Review the figures with your CA before filing.
+</p>

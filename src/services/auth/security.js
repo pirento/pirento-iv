@@ -6,6 +6,7 @@
 import { randomUUID } from 'node:crypto';
 import { ObjectId } from 'mongodb';
 import { HttpError } from '../../middleware/errors.js';
+import { RETENTION_DAYS, expiresAfter } from '../../config/retention.js';
 
 // Activity types shown in the Security activity filter, with their display labels.
 export const SECURITY_ACTIONS = Object.freeze([
@@ -20,6 +21,11 @@ export const SECURITY_ACTIONS = Object.freeze([
   { value: 'password-reset-requested', label: 'Password reset requested' },
   { value: 'password-reset-delivery-failed', label: 'Password reset delivery failed' },
   { value: 'password-reset-completed', label: 'Password reset completed' },
+  { value: 'password-changed', label: 'Password changed' },
+  { value: 'password-set-by-admin', label: 'Password set by administrator' },
+  { value: 'two-step-enabled', label: 'Two-step login turned on' },
+  { value: 'two-step-disabled', label: 'Two-step login turned off' },
+  { value: 'two-step-removed-by-admin', label: 'Two-step login removed by administrator' },
   { value: 'owner-provisioned', label: 'Initial administrator provisioned' },
   { value: 'other', label: 'Other account activity' },
 ]);
@@ -28,6 +34,38 @@ const PAGE_SIZE = 50;
 const ACCOUNT_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,119}$/;
 const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
 const SOURCE_SCOPES = new Set(['login', 'signup', 'forgot', 'reset']);
+// Sessions end after this long without activity.
+export const SESSION_IDLE_MS = 60 * 60 * 1000;
+
+/** "Chrome on Windows"-style label from a User-Agent header; IP addresses are not recorded. */
+export function deviceLabel(userAgent = '') {
+  const agent = String(userAgent);
+  const browser = /Edg\//.test(agent)
+    ? 'Edge'
+    : /OPR\/|Opera/.test(agent)
+      ? 'Opera'
+      : /Firefox\//.test(agent)
+        ? 'Firefox'
+        : /Chrome\/|CriOS\//.test(agent)
+          ? 'Chrome'
+          : /Safari\//.test(agent)
+            ? 'Safari'
+            : 'Browser';
+  const system = /Android/.test(agent)
+    ? 'Android'
+    : /iPhone|iPad|iPod/.test(agent)
+      ? 'iPhone/iPad'
+      : /Windows/.test(agent)
+        ? 'Windows'
+        : /CrOS/.test(agent)
+          ? 'ChromeOS'
+          : /Mac OS X|Macintosh/.test(agent)
+            ? 'Mac'
+            : /Linux/.test(agent)
+              ? 'Linux'
+              : 'unknown system';
+  return `${browser} on ${system}`;
+}
 
 function scalar(query, key, fallback = '') {
   const value = query[key];
@@ -153,7 +191,7 @@ export function createAuthSecurity({ db, now = Date.now, audit, logger }) {
     return current;
   }
 
-  async function insertSession(tokenHash, userId, expiresAt, createdAt) {
+  async function insertSession(tokenHash, userId, expiresAt, createdAt, device = '') {
     return sessions.insertOne(
       {
         _id: randomUUID(),
@@ -161,7 +199,10 @@ export function createAuthSecurity({ db, now = Date.now, audit, logger }) {
         user_id: userId,
         expires_at: expiresAt,
         created_at: createdAt,
-        expiresOn: new Date(expiresAt),
+        last_seen_at: createdAt,
+        device,
+        // MongoDB's TTL cleanup runs on the database's real clock, not on an injected app clock.
+        expiresOn: new Date(Date.now() + expiresAt - createdAt),
       },
       options(),
     );
@@ -173,13 +214,20 @@ export function createAuthSecurity({ db, now = Date.now, audit, logger }) {
     const requested = securityPageNumber(query.page);
     const current = await requireCurrentUser(user);
     const at = now();
-    const filter = { user_id: current.id, expires_at: { $gt: at } };
+    const filter = {
+      user_id: current.id,
+      expires_at: { $gt: at },
+      $or: [
+        { last_seen_at: { $gt: at - SESSION_IDLE_MS } },
+        { last_seen_at: { $exists: false }, created_at: { $gt: at - SESSION_IDLE_MS } },
+      ],
+    };
     const total = await sessions.countDocuments(filter, options());
     const page = pagination(requested, total);
     const rows = await sessions
       .find(filter, {
         ...options(),
-        projection: { _id: 1, token_hash: 1, created_at: 1, expires_at: 1 },
+        projection: { _id: 1, token_hash: 1, created_at: 1, expires_at: 1, last_seen_at: 1, device: 1 },
       })
       .sort({ created_at: -1, _id: -1 })
       .skip((page.page - 1) * PAGE_SIZE)
@@ -190,6 +238,8 @@ export function createAuthSecurity({ db, now = Date.now, audit, logger }) {
         id: sessionId(row._id),
         createdAt: timestamp(row.created_at),
         expiresAt: timestamp(row.expires_at),
+        lastActiveAt: timestamp(row.last_seen_at ?? row.created_at),
+        device: row.device || 'Unknown device',
         current: row.token_hash === currentTokenHash,
       })),
       total,
@@ -343,6 +393,7 @@ export function createAuthSecurity({ db, now = Date.now, audit, logger }) {
             action,
             details: safeSecurityDetails(details),
             created_at: new Date(now()).toISOString(),
+            expiresOn: expiresAfter(new Date(now()).toISOString(), RETENTION_DAYS.securityLog),
           },
           { timeoutMS: 1000, writeConcern: { w: 'majority' } },
         ),

@@ -14,6 +14,10 @@ import { createWorkspaceQueries } from '../../models/workspace-queries.js';
 import { DOCUMENT_KINDS, readDocumentFilters, documentListUrl, documentCsv } from './document-list.js';
 import { createDirectoryQueries } from '../../models/directory-queries.js';
 import { readDirectoryFilters, directoryPageLinks } from './directory-list.js';
+import { buildGstr1, gstr1Csv, GSTR1_SECTIONS, monthRange, readGstr1Filters } from './gstr1.js';
+import { expenseCsv, expenseTotals, readExpenseMonth } from '../expenses/expenses.js';
+import { buildReport, financialYearRange, readReportYear } from './reports.js';
+import { CREDIT_NOTE_REASONS, EXPENSE_CATEGORIES } from '../validation/validation.js';
 import { safeWorkspaceReturn } from '../../../public/js/core/workspace-route.js';
 
 /** Page-specific loading keeps unrelated financial snapshots and operations off normal navigation. */
@@ -113,6 +117,14 @@ export function createWorkspacePageData({
           throw new HttpError(404, 'This document is unavailable in the selected business.');
         return document;
       });
+      // The invoice's open online payment link, for the WhatsApp message on the preview page.
+      if (kind === 'invoice' && route.action === 'preview')
+        read('paymentLinkUrl', async () => {
+          const { links } = await online.getDocumentPayments(route.id).catch(() => ({ links: [] }));
+          return (
+            links.find((link) => ['created', 'partially_paid'].includes(link.state) && link.url)?.url ?? ''
+          );
+        });
     } else if (kind && !route.action) {
       tasks.push(
         (async () => {
@@ -153,6 +165,22 @@ export function createWorkspacePageData({
       );
     }
     if (route?.view === 'recurring') read('recurring', () => recurringInvoices.page(organizationId, route));
+    if (route?.view === 'gst_returns')
+      read('gstr1', () => gstr1Report(organizationId, route, result.businessDate));
+    if (route?.view === 'expenses')
+      read('expensePage', () => expensePage(organizationId, route, result.businessDate));
+    if (route?.view === 'credit_notes')
+      read('creditNotePage', () => creditNotePage(organizationId, route, result.businessDate));
+    if (route?.view === 'reports')
+      read('report', async () => {
+        const year = readReportYear(route.query, result.businessDate);
+        const range = financialYearRange(year);
+        const [rows, expenses] = await Promise.all([
+          queries.reportData(organizationId, range),
+          db.models.expenses.listBetween(organizationId, range),
+        ]);
+        return buildReport({ ...rows, expenses, year, asOf: result.businessDate });
+      });
     if (legacy || route.view === 'integrations')
       read('integrationStatus', async () => {
         const payment = await online.getStatus(organizationId);
@@ -226,6 +254,110 @@ export function createWorkspacePageData({
     return result;
   }
 
+  // GSTR-1 tables for /workspace/<business>/gst_returns?month=YYYY-MM&gstin=..., with download links.
+  async function gstr1Report(organizationId, route, businessDate) {
+    const filters = readGstr1Filters(route.query, businessDate);
+    const range = monthRange(filters.month);
+    const report = buildGstr1(
+      await queries.gstr1Invoices(organizationId, range),
+      filters,
+      await db.models.creditNotes.listBetween(organizationId, range),
+    );
+    const pageUrl = `/workspace/${encodeURIComponent(organizationId)}/gst_returns`;
+    const downloads = Object.fromEntries(
+      Object.keys(GSTR1_SECTIONS).map((section) => [
+        section,
+        `${pageUrl}?${new URLSearchParams({ month: report.month, gstin: report.gstin, download: 'csv', section })}`,
+      ]),
+    );
+    return { ...report, sections: GSTR1_SECTIONS, rows: report.sections, downloads };
+  }
+
+  // Expenses page: the month's expenses, totals, vendor choices and the expense being edited.
+  async function expensePage(organizationId, route, businessDate) {
+    const month = readExpenseMonth(route.query, businessDate);
+    const expenses = await db.models.expenses.listBetween(organizationId, monthRange(month));
+    let editing = null;
+    if (route.action === 'edit' && route.id) {
+      editing = await db.models.expenses.findById(route.id);
+      if (editing?.organizationId !== organizationId) throw new HttpError(404, 'Expense not found.');
+    }
+    // shortcut: the vendor list is capped at 500 contacts; switch to a search box if businesses outgrow it.
+    const vendors = await db
+      .collection('customers')
+      .find(
+        { organizationId, roles: 'vendor', active: { $ne: false } },
+        { ...db.options(), projection: { _id: 0, id: 1, name: 1, gstin: 1, stateCode: 1 } },
+      )
+      .sort({ name: 1 })
+      .limit(500)
+      .toArray();
+    const pageUrl = `/workspace/${encodeURIComponent(organizationId)}/expenses`;
+    return {
+      month,
+      expenses,
+      totals: expenseTotals(expenses),
+      vendors,
+      editing,
+      categories: EXPENSE_CATEGORIES,
+      downloadUrl: `${pageUrl}?${new URLSearchParams({ month, download: 'csv' })}`,
+    };
+  }
+
+  // Credit notes page: one credit note to print, or the month's credit notes and, with ?documentId=,
+  // the invoice a new credit note is issued against.
+  async function creditNotePage(organizationId, route, businessDate) {
+    if (route.id) {
+      const note = await db.models.creditNotes.findById(route.id);
+      if (note?.organizationId !== organizationId) throw new HttpError(404, 'Credit note not found.');
+      return { note };
+    }
+    const { month } = readGstr1Filters(route.query, businessDate);
+    const notes = await db.models.creditNotes.listBetween(organizationId, monthRange(month));
+    let invoice = null;
+    if (route.documentId) {
+      const document = await db.models.documents.findById(route.documentId);
+      if (document?.organizationId !== organizationId || document.kind !== 'invoice')
+        throw new HttpError(404, 'Invoice not found.');
+      invoice = {
+        id: document.id,
+        number: document.number,
+        issueDate: document.issueDate,
+        customerName: document.customerSnapshot?.name ?? '',
+        status: document.status,
+        total: document.totals.total,
+        balanceDue: document.balanceDue ?? 0,
+        interstate: document.placeOfSupply !== document.organizationSnapshot?.stateCode,
+        rates: [...new Set(document.items.map((item) => Number(item.gstRate) || 0))].sort((a, b) => a - b),
+        canCredit: ['sent', 'partially_paid'].includes(document.status) && document.balanceDue > 0,
+      };
+    }
+    return { month, notes, invoice, reasons: CREDIT_NOTE_REASONS };
+  }
+
+  // CSV of one month's expenses: /workspace/<business>/expenses?month=YYYY-MM&download=csv.
+  async function exportExpenses(user, organizationId, route) {
+    const data = await base(user, organizationId);
+    const month = readExpenseMonth(route.query, data.businessDate);
+    const expenses = await db.models.expenses.listBetween(data.organization.id, monthRange(month));
+    return {
+      filename: `Expenses-${data.organization.name.replace(/[^a-z0-9]+/gi, '-')}-${month}.csv`,
+      lines: expenseCsv(expenses),
+    };
+  }
+
+  // CSV for one GSTR-1 section: /workspace/<business>/gst_returns?download=csv&section=b2b.
+  async function exportGstr1(user, organizationId, route) {
+    const data = await base(user, organizationId);
+    const filters = readGstr1Filters(route.query, data.businessDate);
+    const range = monthRange(filters.month);
+    const [invoices, creditNotes] = await Promise.all([
+      queries.gstr1Invoices(data.organization.id, range),
+      db.models.creditNotes.listBetween(data.organization.id, range),
+    ]);
+    return gstr1Csv(buildGstr1(invoices, filters, creditNotes), String(route.query.section ?? ''));
+  }
+
   // Streams the CSV for /workspace/<business>/<invoices|quotations|...>?download=csv.
   async function exportDocuments(user, organizationId, route) {
     const kind = DOCUMENT_KINDS[route.view];
@@ -239,5 +371,5 @@ export function createWorkspacePageData({
     };
   }
 
-  return { load, exportDocuments };
+  return { load, exportDocuments, exportGstr1, exportExpenses };
 }

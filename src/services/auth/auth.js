@@ -13,8 +13,15 @@ import { createHash, randomBytes, randomUUID, scrypt, timingSafeEqual } from 'no
 import express from 'express';
 import { z } from 'zod';
 import { createAccountRateLimiter } from './account-rate-limit.js';
-import { createAuthSecurity } from './security.js';
-// Session cookie name, session length (12 h) and password-reset link lifetime (30 min).
+import { SESSION_IDLE_MS, createAuthSecurity, deviceLabel } from './security.js';
+import {
+  createTwoStepVault,
+  newTwoStepSecret,
+  qrSvg,
+  twoStepSetupUrl,
+  verifyTwoStepCode,
+} from './two-step.js';
+// Session cookie name, session length (12 h, ending sooner after 60 min idle) and password-reset link lifetime (30 min).
 const COOKIE = 'venturecore_session';
 const SESSION_MS = 12 * 60 * 60 * 1000;
 const RESET_MS = 30 * 60 * 1000;
@@ -38,13 +45,23 @@ const login = z
   .object({
     email,
     password: z.string().min(1).max(256),
+    code: z.string().max(10).optional(),
   })
   .strict();
+// Error code the login page uses to show the authenticator-code field.
+const TWO_STEP_REQUIRED = 'TWO_STEP_REQUIRED';
+const TWO_STEP_ISSUER = 'Venturecore Workspace';
+const twoStepInput = z
+  .object({ code: z.string().regex(/^\d{6}$/, 'Enter the 6-digit code from your authenticator app.') })
+  .strict();
+// Staff permission levels (administrators always have full access); a missing value means 'full'.
+export const STAFF_PERMISSIONS = ['full', 'no-delete', 'view'];
 const access = z
   .object({
     role: z.enum(['admin', 'staff']),
     status: z.enum(['pending', 'active', 'disabled']),
     organizationIds: z.array(z.string().min(1).max(120)).max(1000),
+    permission: z.enum(STAFF_PERMISSIONS).optional(),
   })
   .strict();
 const tokenHash = (value) => createHash('sha256').update(value).digest('hex');
@@ -85,6 +102,8 @@ function safeUser(row) {
     role: row.role,
     status: row.status,
     organizationIds: row.organization_ids,
+    permission: row.permission ?? 'full',
+    twoStepEnabled: Boolean(row.totp_secret),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     lastLoginAt: row.last_login_at,
@@ -92,7 +111,8 @@ function safeUser(row) {
 }
 /**
  * Creates the auth service. Returns { router (mounted at /api/auth), requireSession,
- * requireAdmin, getSessionUser, initializeOwner, mutationGuard, listUsers, sessionPage, listAudit }.
+ * requireAdmin, requireTwoStepSetup, twoStepSetupRequired, getSessionUser, initializeOwner, mutationGuard,
+ * listUsers, sessionPage, listAudit }.
  */
 export function createAuth(db, options = {}) {
   const environment = options.environment ?? process.env;
@@ -102,6 +122,13 @@ export function createAuth(db, options = {}) {
   const publicOrigin = originInput ? new URL(originInput).origin : undefined;
   if (production && (!publicOrigin || !publicOrigin.startsWith('https://')))
     throw new Error('Production account access requires an HTTPS PUBLIC_APP_URL.');
+  const vault = createTwoStepVault(environment, production);
+  // Administrators must use two-step login in production unless ADMIN_TWO_STEP=optional.
+  const adminTwoStep = environment.ADMIN_TWO_STEP?.trim() || (production ? 'required' : 'optional');
+  if (!['required', 'optional'].includes(adminTwoStep))
+    throw new Error('ADMIN_TWO_STEP must be required or optional.');
+  const twoStepSetupRequired = (user) =>
+    adminTwoStep === 'required' && user?.role === 'admin' && !user.twoStepEnabled;
   const router = express.Router();
   const cookieOptions = {
     httpOnly: true,
@@ -129,7 +156,8 @@ export function createAuth(db, options = {}) {
   async function getSessionUser(req) {
     const token = sessionToken(req);
     if (!token) return null;
-    const row = await db.models.auth.sessionUser(tokenHash(token), now(), 'active');
+    const time = now();
+    const row = await db.models.auth.sessionUser(tokenHash(token), time, 'active', time - SESSION_IDLE_MS);
     return row ? safeUser(row) : null;
   }
   // Middleware: 401 unless a valid session cookie is present; puts the user in res.locals.user.
@@ -144,6 +172,14 @@ export function createAuth(db, options = {}) {
     }
     res.locals.user = user;
     next();
+  };
+  // Middleware for /api business routes: an administrator who must use two-step login sets it up first.
+  const requireTwoStepSetup = (_req, res, next) => {
+    if (!twoStepSetupRequired(res.locals.user)) return next();
+    res.status(403).json({
+      error: 'Administrators must turn on two-step login on My sessions before using the workspace.',
+      code: 'TWO_STEP_SETUP_REQUIRED',
+    });
   };
   // Middleware: 403 unless the signed-in user is an administrator.
   const requireAdmin = (_req, res, next) => {
@@ -277,6 +313,13 @@ export function createAuth(db, options = {}) {
     const matches = row
       ? await verifyPassword(input.data.password, row.password_hash)
       : (await derive(input.data.password, Buffer.alloc(16)), false);
+    if (matches && row.status === 'active' && row.totp_secret && !input.data.code) {
+      res.status(401).json({
+        error: 'Enter the 6-digit code from your authenticator app.',
+        code: TWO_STEP_REQUIRED,
+      });
+      return;
+    }
     const token = randomBytes(32).toString('hex');
     // A known password mismatch cannot create a session and must not acquire the
     // exclusive workspace transaction used for successful account changes.
@@ -293,14 +336,36 @@ export function createAuth(db, options = {}) {
             latest.password_hash !== row?.password_hash
           )
             return null;
+          if (latest.totp_secret) {
+            const secret = vault.open(latest.totp_secret);
+            const step = secret
+              ? verifyTwoStepCode(secret, input.data.code, now(), latest.totp_last_step ?? -1)
+              : null;
+            if (step === null || !(await db.models.auth.useTwoStepCode(step, latest.id)).changes)
+              return { codeRejected: true };
+          }
           const oldToken = sessionToken(req);
           if (oldToken) await db.models.auth.deleteSession(tokenHash(oldToken));
           await db.models.auth.deleteExpiredSessions(now());
-          await security.insertSession(tokenHash(token), row.id, now() + SESSION_MS, now());
+          await security.insertSession(
+            tokenHash(token),
+            row.id,
+            now() + SESSION_MS,
+            now(),
+            deviceLabel(req.get('user-agent')),
+          );
           await db.models.auth.setLastLogin(new Date(now()).toISOString(), row.id);
           await audit('login', row.id, row.id);
           return safeUser(await userById(row.id));
         });
+    if (authenticated?.codeRejected) {
+      await accountRateLimit.recordLoginFailure(req.accountAttempt, row.id);
+      res.status(401).json({
+        error: 'That code is not valid. Enter the newest code from your authenticator app.',
+        code: TWO_STEP_REQUIRED,
+      });
+      return;
+    }
     if (!authenticated) {
       await accountRateLimit.recordLoginFailure(req.accountAttempt, row?.id ?? null);
       res.status(401).json({
@@ -478,16 +543,20 @@ export function createAuth(db, options = {}) {
           });
           return false;
         }
+        const currentPermission = currentTarget.permission ?? 'full';
+        const permission = input.data.permission ?? currentPermission;
         await db.models.auth.updateAccess(
           input.data.role,
           input.data.status,
           organizationIds,
+          permission,
           new Date(now()).toISOString(),
           target.id,
         );
         if (
           currentTarget.status !== input.data.status ||
           currentTarget.role !== input.data.role ||
+          currentPermission !== permission ||
           JSON.stringify(currentTarget.organization_ids) !== JSON.stringify(organizationIds)
         ) {
           await db.models.auth.deleteUserSessions(target.id);
@@ -498,10 +567,12 @@ export function createAuth(db, options = {}) {
             role: currentTarget.role,
             status: currentTarget.status,
             organizationIds: currentTarget.organization_ids,
+            permission: currentPermission,
           },
           after: {
             ...input.data,
             organizationIds,
+            permission,
           },
         });
         return true;
@@ -551,6 +622,172 @@ export function createAuth(db, options = {}) {
       );
     },
   );
+
+  // --- Passwords: change your own (current password required) or, as an administrator, set another person's ---
+  router.post('/password', requireSession, rateLimit('login'), async (req, res) => {
+    const input = z
+      .object({ currentPassword: z.string().min(1).max(256), newPassword: password })
+      .strict()
+      .safeParse(req.body);
+    if (!input.success) {
+      const issue = input.error.issues.find((item) => item.path[0] === 'newPassword');
+      res.status(400).json({ error: issue?.message ?? 'Enter your current password and a new password.' });
+      return;
+    }
+    const user = res.locals.user;
+    const row = await userById(user.id);
+    if (!row || !(await verifyPassword(input.data.currentPassword, row.password_hash))) {
+      res.status(400).json({ error: 'Your current password is incorrect.' });
+      return;
+    }
+    if (await verifyPassword(input.data.newPassword, row.password_hash)) {
+      res.status(400).json({ error: 'Choose a new password that is different from your current one.' });
+      return;
+    }
+    const hash = await hashPassword(input.data.newPassword);
+    const changed = await db.transaction(async () => {
+      const latest = await userById(user.id);
+      if (latest?.status !== 'active' || latest.password_hash !== row.password_hash) return false;
+      await db.models.auth.updatePassword(hash, new Date(now()).toISOString(), user.id);
+      await db.models.auth.deleteUserResets(user.id);
+      await db.models.auth.deleteOtherSessions(user.id, currentTokenHash(req));
+      await audit('password-changed', user.id, user.id);
+      return true;
+    });
+    if (!changed) {
+      res.status(409).json({ error: 'Your password was changed elsewhere. Sign in again, then retry.' });
+      return;
+    }
+    res.json({ message: 'Password changed. Your other sessions were signed out.' });
+  });
+  router.post('/users/:id/password', requireSession, requireAdmin, async (req, res) => {
+    const input = z.object({ password }).strict().safeParse(req.body);
+    if (!input.success) {
+      res.status(400).json({ error: input.error.issues[0].message });
+      return;
+    }
+    const actor = res.locals.user;
+    const target = await userById(String(req.params.id));
+    if (!target) {
+      res.status(404).json({ error: 'Account not found.' });
+      return;
+    }
+    if (target.id === actor.id) {
+      res.status(409).json({ error: 'Change your own password from My sessions.' });
+      return;
+    }
+    const hash = await hashPassword(input.data.password);
+    const saved = await db.transaction(async () => {
+      const currentActor = await userById(actor.id);
+      if (currentActor?.status !== 'active' || currentActor.role !== 'admin') return false;
+      await db.models.auth.updatePassword(hash, new Date(now()).toISOString(), target.id);
+      await db.models.auth.deleteUserResets(target.id);
+      await db.models.auth.deleteUserSessions(target.id);
+      await audit('password-set-by-admin', target.id, actor.id);
+      return true;
+    });
+    if (!saved) {
+      res.status(403).json({ error: 'Administrator access is required.' });
+      return;
+    }
+    res.json({
+      message:
+        'New password saved and all of their sessions were signed out. Share it privately and ask them to change it after signing in.',
+    });
+  });
+
+  // --- Two-step login: authenticator-app codes, turned on and off by the account owner ---
+  const codeMismatch = 'That code did not match. Check the time on your phone and use the newest code.';
+  router.post('/two-step/setup', requireSession, async (_req, res) => {
+    const user = res.locals.user;
+    if (user.twoStepEnabled) {
+      res.status(409).json({ error: 'Two-step login is already on for your account.' });
+      return;
+    }
+    const secret = newTwoStepSecret();
+    await db.models.auth.setTwoStepPending(vault.seal(secret), new Date(now()).toISOString(), user.id);
+    const url = twoStepSetupUrl(secret, user.email, TWO_STEP_ISSUER);
+    res.json({ secret, url, qrSvg: qrSvg(url) });
+  });
+  router.post('/two-step/enable', requireSession, rateLimit('login'), async (req, res) => {
+    const input = twoStepInput.safeParse(req.body);
+    if (!input.success) {
+      res.status(400).json({ error: input.error.issues[0].message });
+      return;
+    }
+    const user = res.locals.user;
+    const enabled = await db.transaction(async () => {
+      const row = await userById(user.id);
+      const pending = vault.open(row?.totp_pending);
+      const step = pending ? verifyTwoStepCode(pending, input.data.code, now()) : null;
+      if (step === null) return false;
+      await db.models.auth.enableTwoStep(row.totp_pending, step, new Date(now()).toISOString(), user.id);
+      await audit('two-step-enabled', user.id, user.id);
+      return true;
+    });
+    if (!enabled) {
+      res.status(400).json({ error: codeMismatch });
+      return;
+    }
+    res.json({ message: 'Two-step login is on. You will be asked for a code each time you sign in.' });
+  });
+  router.post('/two-step/disable', requireSession, rateLimit('login'), async (req, res) => {
+    const input = twoStepInput.safeParse(req.body);
+    if (!input.success) {
+      res.status(400).json({ error: input.error.issues[0].message });
+      return;
+    }
+    const user = res.locals.user;
+    const disabled = await db.transaction(async () => {
+      const row = await userById(user.id);
+      const secret = vault.open(row?.totp_secret);
+      const step = secret
+        ? verifyTwoStepCode(secret, input.data.code, now(), row.totp_last_step ?? -1)
+        : null;
+      if (step === null) return false;
+      await db.models.auth.disableTwoStep(new Date(now()).toISOString(), user.id);
+      await audit('two-step-disabled', user.id, user.id);
+      return true;
+    });
+    if (!disabled) {
+      res.status(400).json({ error: codeMismatch });
+      return;
+    }
+    res.json({ message: 'Two-step login is off.' });
+  });
+  // Administrator recovery for a person who lost their phone.
+  router.post(
+    '/users/:id/two-step/remove',
+    requireSession,
+    requireAdmin,
+    noActionFields,
+    async (req, res) => {
+      const actor = res.locals.user;
+      const target = await userById(String(req.params.id));
+      if (!target) {
+        res.status(404).json({ error: 'Account not found.' });
+        return;
+      }
+      if (target.id === actor.id) {
+        res.status(409).json({ error: 'Turn off your own two-step login from My sessions.' });
+        return;
+      }
+      const removed = await db.transaction(async () => {
+        const currentActor = await userById(actor.id);
+        if (currentActor?.status !== 'active' || currentActor.role !== 'admin') return false;
+        await db.models.auth.disableTwoStep(new Date(now()).toISOString(), target.id);
+        await audit('two-step-removed-by-admin', target.id, actor.id);
+        return true;
+      });
+      if (!removed) {
+        res.status(403).json({ error: 'Administrator access is required.' });
+        return;
+      }
+      res.json({
+        message: 'Two-step login removed. They can sign in with their password and set it up again.',
+      });
+    },
+  );
   router.get('/audit', requireSession, requireAdmin, async (req, res) => {
     res.json(await security.listAudit(res.locals.user, req.query));
   });
@@ -561,6 +798,8 @@ export function createAuth(db, options = {}) {
     getSessionUser,
     initializeOwner,
     mutationGuard,
+    requireTwoStepSetup,
+    twoStepSetupRequired,
     listUsers: async () => (await db.models.auth.listUsers()).map(safeUser),
     sessionPage: async (req) =>
       security.listSessions(await getSessionUser(req), currentTokenHash(req), req.query),

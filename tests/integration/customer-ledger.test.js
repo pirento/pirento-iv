@@ -276,7 +276,7 @@ test(
   settings,
   async (t) => {
     const f = await fixture(t, { authenticated: true });
-    const adminCookie = f.cookie();
+    let adminCookie = f.cookie();
     const customer = await f.customer('Scoped ledger customer');
     const foreign = await f.customer('Scoped ledger customer', { organizationId: 'shri-sarraf' });
     const foreignInvoice = await f.invoice(foreign.id, { organizationId: 'shri-sarraf' });
@@ -286,6 +286,9 @@ test(
       items: [{ description: 'Paise boundary', quantity: 1, rate: 1.15, hsn: '', gstRate: 0 }],
     });
     f.setTime('2026-10-10T18:29:59.999Z');
+    // The clock jumped 6.5 hours, past the 60-minute idle limit: sign in again as a real user would.
+    await f.login(f.environment.INITIAL_ADMIN_EMAIL, f.environment.INITIAL_ADMIN_PASSWORD);
+    adminCookie = f.cookie();
     const paid = await f.pay(invoice, 1.15, '2026-10-10', { finalizeWhenPaid: true });
     f.setTime('2026-10-10T18:30:00.000Z');
     await f.api(`/payments/${paid.payments[0].id}/void`, 'POST', { reason: 'Boundary correction' });

@@ -13,6 +13,7 @@ import { parseTrustedProxy } from '../src/config/trusted-proxy.js';
 import { parseDatabaseBackupConfig } from '../src/services/operations/database-backup.js';
 import {
   assertHostedNodeVersion,
+  assertTwoStepSettings,
   hasValidBootstrapSettings,
   inspectHostedDatabase,
 } from '../src/config/production.js';
@@ -101,6 +102,18 @@ export async function checkDeployment({ environment = process.env, databaseState
 
   if (environment.IV_ALLOW_NEW_DATABASE && !['true', 'false'].includes(environment.IV_ALLOW_NEW_DATABASE))
     add('new-database-setting', 'blocker', 'IV_ALLOW_NEW_DATABASE accepts true or false.');
+  try {
+    assertTwoStepSettings(environment);
+    add(
+      'two-step-login',
+      'pass',
+      environment.ADMIN_TWO_STEP?.trim() === 'optional'
+        ? 'Two-step key is set. Administrators may choose whether to use two-step login.'
+        : 'Two-step key is set. Administrators must use two-step login.',
+    );
+  } catch (error) {
+    add('two-step-login', 'blocker', error.message);
+  }
   let bootstrapValid = false;
   let bootstrapInvalid = false;
   try {

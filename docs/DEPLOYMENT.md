@@ -42,6 +42,8 @@ Release 2.4.0 adds optional `TRUST_PROXY`, empty by default; see the proxy secti
 
 Provision the initial owner with `INITIAL_ADMIN_EMAIL`, `INITIAL_ADMIN_NAME` and `INITIAL_ADMIN_PASSWORD`. Use a password of at least 12 characters. Remove both email/password startup values after the initial login. Public signup alone does not grant administrative access.
 
+**Two-step login (required for production):** set `TWO_STEP_KEY` to 64 hexadecimal characters, for example the output of `openssl rand -hex 32`. It encrypts the authenticator keys stored in the database, and production startup refuses to run without it. Keep it private and never change it; a new key turns off everyone's codes until an administrator removes two-step login and they set it up again. In production, administrators must turn on two-step login (on **My sessions**) before they can use the workspace. Set `ADMIN_TWO_STEP=optional` only if administrators should choose for themselves. Staff can turn it on at any time.
+
 Do not place `.example.env`, the project root or backup storage in a public static directory. The supplied server exposes only specific browser asset folders. Publish the blank template with source; keep filled credentials private.
 
 ### Reverse proxies and account limits
@@ -181,7 +183,20 @@ Every response handled by request diagnostics carries a server-generated `X-Requ
 
 Use SIGTERM or SIGINT for an orderly restart. The process immediately becomes unready, stops polling/claiming email and scheduling backups, closes its listener and waits for accepted requests, the active delivery and backup cleanup before closing MongoDB. New business requests that still reach it receive 503 with `SERVICE_DRAINING` and `Retry-After: 5`. A completed normal shutdown exits 0. The 30-second deadline forces exit 1 for stuck work and records `shutdown_timeout`; treat that event as a reason to review the interrupted job. Repeating a stop signal does not start a second shutdown workflow.
 
+## Two-step login recovery
+
+An administrator can remove two-step login for another person from **Team access**. If the only administrator loses their phone, clear it in the database (MongoDB Atlas Data Explorer or `mongosh`), then sign in with the password and set it up again:
+
+```js
+db.auth_users.updateOne(
+  { email: 'owner@example.com' },
+  { $set: { totp_secret: null, totp_pending: null, totp_last_step: null } },
+);
+```
+
 ## Backup storage and cutover
+
+**Upgrading to the storage update (unreleased):** back up first and stop older application processes. The first start converts existing documents and unsent emails to stored-image references (new `images` collection) and trims emails that were already sent. This runs once, and a marker in `workspace_metadata` skips it afterwards. Backups and restores include the `images` collection automatically. Older versions cannot read converted records, so rolling back requires restoring the pre-upgrade backup.
 
 Set `DATABASE_BACKUP_DIR` to a private persistent directory outside public assets. Set `BACKUP_ENABLED=true`, `BACKUP_INTERVAL_MINUTES` and `BACKUP_RETENTION_COUNT` for scheduled snapshots. The default schedule is one snapshot per day with seven retained. Keep one scheduled backup writer per directory. Copy verified backups off the application host according to your operational needs.
 

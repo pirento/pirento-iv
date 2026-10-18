@@ -34,6 +34,9 @@ The database uses native BSON documents, nested objects and arrays. It does not 
 | `document_requests`                                                 | Organization-scoped creation request IDs, input hashes and the resulting document ID.                                 |
 | `sequences`                                                         | Number counters by organization, kind and Indian financial year.                                                      |
 | `payments`, `document_events`                                       | Receipt ledger and retained document activity.                                                                        |
+| `credit_notes`                                                      | Credit notes against invoices; each is applied to its invoice as a `credit_note` receipt in `payments`.               |
+| `expenses`                                                          | Organization-scoped purchase bills and other costs with their GST split.                                              |
+| `images`                                                            | Business images stored once and referenced from documents and emails as `stored-image:<sha256>`.                      |
 | `auth_users`, `auth_sessions`, `auth_password_resets`, `auth_audit` | Account state, hashed session/reset tokens and audit records.                                                         |
 | `auth_rate_limits`                                                  | Atomic per-scope/client request counters with server-clock windows and TTL cleanup.                                   |
 | `email_outbox`                                                      | Delivery attempts, payloads, recipient snapshots and retry/lease state.                                               |

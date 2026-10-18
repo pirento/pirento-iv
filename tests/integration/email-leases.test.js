@@ -473,7 +473,7 @@ test(
         await delay(0);
         const sent = await db.models.email.findById(row.id);
         assert.equal(sent.status, 'sent');
-        assert.deepEqual(sent.payload, prepared.payload);
+        assert.deepEqual(sent.payload, { organizationId: prepared.payload.organizationId });
         assert.equal(accepted.size, 1);
         assert.equal(requests.length, 2);
         assert.deepEqual(requests[0], requests[1]);
@@ -572,6 +572,44 @@ test(
       assert.equal((await b.processQueue()).failed, 1);
       assert.equal((await db.models.email.findById(conflict.id)).status, 'failed');
       assert.equal((await db.models.email.findById(conflict.id)).next_attempt_at, null);
+    });
+
+    await t.test('startup clean-up trims only emails that were already sent', async () => {
+      const at = new Date().toISOString();
+      const row = (id, kind, status, payload) => ({
+        id,
+        event_key: 'compact:' + id,
+        document_id: null,
+        kind,
+        recipient: 'customer@example.test',
+        subject: 'Compact',
+        status,
+        created_at: at,
+        updated_at: at,
+        payload,
+      });
+      const document = { organizationId, id: 'doc-compact' };
+      const reminder = { automatic: false, label: 'Invoice balance' };
+      await db.collection('email_outbox').insertMany([
+        row('compact-legacy', 'invoice', 'sent', {
+          document,
+          html: '<p>x</p>',
+          attachment: { content: 'JVBE' },
+        }),
+        row('compact-reminder', 'payment_reminder', 'sent', {
+          organizationId,
+          document,
+          reminder,
+          html: 'x',
+        }),
+        row('compact-queued', 'invoice', 'queued', { organizationId, document, html: '<p>x</p>' }),
+      ]);
+      await db.models.email.compactSent();
+      await db.models.email.compactSent();
+      const payload = async (id) => (await db.models.email.findById(id)).payload;
+      assert.deepEqual(await payload('compact-legacy'), { organizationId });
+      assert.deepEqual(await payload('compact-reminder'), { organizationId, reminder });
+      assert.deepEqual(await payload('compact-queued'), { organizationId, document, html: '<p>x</p>' });
     });
   },
 );

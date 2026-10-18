@@ -224,6 +224,20 @@ export function calculateTotals(items, discountPercent, interstate) {
 }
 // Rounds a rupee amount to 2 decimals (half-up, exact decimal) and returns a Number.
 export const roundMoney = (value) => decimal(value).round().toNumber();
+
+/** GST on one amount at one rate (expense bills, credit notes): IGST when the vendor is in another state, otherwise CGST + SGST halves. */
+export function gstAmounts({ taxable, gstRate, interstate }) {
+  const tax = decimal(taxable).times(gstRate).times(0.01).round();
+  const cgst = interstate ? decimal(0) : tax.times(0.5).round();
+  return {
+    taxable: roundMoney(taxable),
+    cgst: cgst.toNumber(),
+    sgst: interstate ? 0 : tax.minus(cgst).round().toNumber(),
+    igst: interstate ? tax.toNumber() : 0,
+    tax: tax.toNumber(),
+    total: decimal(taxable).plus(tax).round().toNumber(),
+  };
+}
 /**
  * Splits one line item into { base, making, wastage, stones, other, netWeight, periods, total }.
  * Normal lines: quantity x periods x rate. Jewellery lines: quantity x net weight x metal rate plus

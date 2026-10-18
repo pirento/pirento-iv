@@ -74,6 +74,19 @@ export async function inspectHostedDatabase(environment) {
 }
 
 /** Shared by normal and Hostinger production startup before writable initialization. */
+/** TWO_STEP_KEY is required in production; ADMIN_TWO_STEP may be empty, required or optional. */
+export function assertTwoStepSettings(environment) {
+  if (!/^[0-9a-f]{64}$/i.test(environment.TWO_STEP_KEY?.trim() ?? ''))
+    throw new EnvironmentConfigurationError(
+      'Set TWO_STEP_KEY to 64 hexadecimal characters (for example the output of: openssl rand -hex 32).',
+    );
+  if (
+    environment.ADMIN_TWO_STEP?.trim() &&
+    !['required', 'optional'].includes(environment.ADMIN_TWO_STEP.trim())
+  )
+    throw new EnvironmentConfigurationError('ADMIN_TWO_STEP accepts required or optional.');
+}
+
 export async function validateHostedProduction(
   environment,
   { inspectDatabase = inspectHostedDatabase, nodeVersion = process.versions.node } = {},
@@ -86,6 +99,7 @@ export async function validateHostedProduction(
   const bootstrap = hasValidBootstrapSettings(environment);
   if (environment.IV_ALLOW_NEW_DATABASE && !['true', 'false'].includes(environment.IV_ALLOW_NEW_DATABASE))
     throw new EnvironmentConfigurationError('IV_ALLOW_NEW_DATABASE accepts true or false.');
+  assertTwoStepSettings(environment);
   let state;
   try {
     state = await inspectDatabase(environment);

@@ -1,0 +1,119 @@
+<%# Reports page /workspace/<id>/reports?year=YYYY: one financial year's sales, money received, expenses and profit by month, top customers and unpaid invoice ageing. No page script. -%>
+<%
+const report = data.report;
+const amount = value => helpers.money(value || 0);
+const thisYear = Number(data.businessDate.slice(0, 4)) - (Number(data.businessDate.slice(5, 7)) < 4 ? 1 : 0);
+%>
+<header class="page-header">
+  <div>
+    <span class="eyebrow">ACCOUNTS</span>
+    <h1>Reports</h1>
+    <p>Sales, money received, expenses and profit of <%= data.organization.name %> for <%= report.label %> (April to March).</p>
+  </div>
+</header>
+<section class="card">
+  <form class="finance-filters" method="get" action="<%= helpers.url(data, 'reports') %>">
+    <label class="field">
+      Financial year
+      <select name="year">
+        <% for (let year = thisYear; year >= thisYear - 5; year -= 1) { %>
+          <option value="<%= year %>" <%= report.year === year ? 'selected' : '' %>>FY <%= year %>-<%= String(year + 1).slice(2) %></option>
+        <% } %>
+      </select>
+    </label>
+    <button class="button" type="submit">Show year</button>
+  </form>
+  <div class="metrics-grid finance-metrics">
+    <% for (const [label, value, hint] of [
+      ['Sales', amount(report.totals.sales), 'Invoices less credit notes, before GST'],
+      ['Money received', amount(report.totals.received), 'Receipts dated in the year'],
+      ['Expenses', amount(report.totals.expenses), 'Bills, before GST'],
+      ['Profit', amount(report.totals.profit), 'Sales minus expenses, before GST'],
+    ]) { %>
+      <section class="metric">
+        <div class="metric-label"><%= label %></div>
+        <div class="metric-value"><%= value %></div>
+        <div class="metric-hint"><%= hint %></div>
+      </section>
+    <% } %>
+  </div>
+</section>
+<section class="card">
+  <div class="finance-section-heading"><h2>Month by month</h2></div>
+  <div tabindex="0" role="region" aria-label="Month by month" class="table-wrap">
+    <table class="finance-table">
+      <thead>
+        <tr>
+          <th>Month</th>
+          <th class="text-right">Sales (before GST)</th>
+          <th class="text-right">Sales (with GST)</th>
+          <th class="text-right">Money received</th>
+          <th class="text-right">Expenses</th>
+          <th class="text-right">Profit</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% for (const month of report.months) { %>
+          <tr>
+            <td><%= month.label %></td>
+            <td class="text-right"><%= amount(month.sales) %></td>
+            <td class="text-right"><%= amount(month.salesWithGst) %></td>
+            <td class="text-right"><%= amount(month.received) %></td>
+            <td class="text-right"><%= amount(month.expenses) %></td>
+            <td class="text-right"><strong><%= amount(month.profit) %></strong></td>
+          </tr>
+        <% } %>
+      </tbody>
+      <tfoot>
+        <tr>
+          <th>Total</th>
+          <th class="text-right"><%= amount(report.totals.sales) %></th>
+          <th class="text-right"><%= amount(report.totals.salesWithGst) %></th>
+          <th class="text-right"><%= amount(report.totals.received) %></th>
+          <th class="text-right"><%= amount(report.totals.expenses) %></th>
+          <th class="text-right"><%= amount(report.totals.profit) %></th>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</section>
+<section class="card">
+  <div class="finance-section-heading">
+    <h2>Unpaid invoices by age</h2>
+    <span class="muted">Today, <%= amount(report.outstanding) %> in total. Each installment counts from its own due date.</span>
+  </div>
+  <div tabindex="0" role="region" aria-label="Unpaid invoices by age" class="table-wrap">
+    <table class="finance-table">
+      <thead>
+        <tr><th>Overdue by</th><th class="text-right">Dues</th><th class="text-right">Amount</th></tr>
+      </thead>
+      <tbody>
+        <% for (const row of report.aging) { %>
+          <tr><td><%= row.label %></td><td class="text-right"><%= row.count %></td><td class="text-right"><%= amount(row.amount) %></td></tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</section>
+<section class="card">
+  <div class="finance-section-heading"><h2>Top customers in <%= report.label %></h2></div>
+  <% if (report.topCustomers.length) { %>
+    <div tabindex="0" role="region" aria-label="Top customers" class="table-wrap">
+      <table class="finance-table">
+        <thead>
+          <tr><th>Customer</th><th class="text-right">Invoices</th><th class="text-right">Billed (with GST, less credit notes)</th></tr>
+        </thead>
+        <tbody>
+          <% for (const customer of report.topCustomers) { %>
+            <tr><td><%= customer.name %></td><td class="text-right"><%= customer.count %></td><td class="text-right"><%= amount(customer.total) %></td></tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  <% } else { %>
+    <div class="empty-state">
+      <h2>No issued invoices in this year</h2>
+      <p>Issued invoices appear here with their customer totals.</p>
+    </div>
+  <% } %>
+</section>

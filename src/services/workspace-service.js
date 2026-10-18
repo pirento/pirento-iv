@@ -15,6 +15,7 @@ import { indiaBusinessDate } from '../../shared/business-date.js';
 import { wholePaise } from '../../shared/money.js';
 import { HttpError } from '../middleware/errors.js';
 import { DOCUMENT_VERSION_CONFLICT } from './documents/document-writes.js';
+import { businessSnapshot, customerSnapshot } from './documents/snapshots.js';
 
 /** Builds the service. `context` provides { db, now, mailer, online }. */
 export function createWorkspaceService(context) {
@@ -264,11 +265,11 @@ export function createWorkspaceService(context) {
     }
   }
   // --- Document numbering and creation ---
-  // Next free document number, e.g. ATEI/2627/0001 (proformas add "P", delivery challans add "D").
+  // Next free document number, e.g. ATEI/2627/0001 (proformas add "P", delivery challans "D", credit notes "C").
   async function nextNumber(organization, kind, issueDate) {
     const year = fiscalYear(issueDate);
     const prefix = kind === 'quotation' ? organization.quotationPrefix : organization.invoicePrefix;
-    const marker = kind === 'proforma' ? 'P' : kind === 'delivery_note' ? 'D' : '';
+    const marker = { proforma: 'P', delivery_note: 'D', credit_note: 'C' }[kind] ?? '';
     for (;;) {
       const row = await db.models.sequences.next(organization.id, kind, year);
       if (row.value > (marker ? 99999 : 999999))
@@ -338,8 +339,8 @@ export function createWorkspaceService(context) {
       createdAt: timestamp,
       updatedAt: timestamp,
       version: 1,
-      customerSnapshot: customer,
-      organizationSnapshot: organization,
+      customerSnapshot: customerSnapshot(customer),
+      organizationSnapshot: businessSnapshot(organization),
       totals,
       sourceQuotationId: source?.kind === 'quotation' ? source.id : null,
       convertedInvoiceId: null,

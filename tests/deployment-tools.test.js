@@ -17,6 +17,7 @@ import { validateHostedProduction } from '../src/config/production.js';
 const environment = {
   NODE_ENV: 'production',
   PUBLIC_APP_URL: 'https://billing.example.test',
+  TWO_STEP_KEY: 'a'.repeat(64),
   HOST: '0.0.0.0',
   PORT: '3001',
   BACKUP_ENABLED: 'false',
@@ -228,4 +229,23 @@ test('production preflight blocks wrong empty databases and recovery holds and r
     ).ready,
     false,
   );
+});
+
+test('production requires a two-step key and a valid administrator two-step setting', async () => {
+  const { TWO_STEP_KEY, ...withoutKey } = environment;
+  assert.ok(TWO_STEP_KEY);
+  const inspectDatabase = async () => populated;
+  await assert.rejects(validateHostedProduction(withoutKey, { inspectDatabase }), /TWO_STEP_KEY/);
+  await assert.rejects(
+    validateHostedProduction({ ...environment, ADMIN_TWO_STEP: 'sometimes' }, { inspectDatabase }),
+    /ADMIN_TWO_STEP/,
+  );
+  await validateHostedProduction({ ...environment, ADMIN_TWO_STEP: 'optional' }, { inspectDatabase });
+  const report = await checkDeployment({
+    environment: withoutKey,
+    databaseState: populated,
+    nodeVersion: '24.19.0',
+  });
+  assert.equal(report.ready, false);
+  assert.equal(report.checks.find((check) => check.id === 'two-step-login')?.status, 'blocker');
 });

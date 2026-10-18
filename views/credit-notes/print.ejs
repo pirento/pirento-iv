@@ -1,0 +1,73 @@
+<%# One credit note to view and print: /workspace/<id>/credit_notes/preview/<creditNoteId>. Script: /js/workspace/credit-notes.js (Print button). -%>
+<%
+const note = data.creditNotePage.note;
+const seller = note.organizationSnapshot;
+const buyer = note.customerSnapshot;
+const amount = value => helpers.money(value || 0);
+const state = code => code ? `${code} – ${new Map(helpers.STATES).get(code) ?? ''}` : '';
+%>
+<header class="page-header">
+  <div>
+    <span class="eyebrow">CREDIT NOTE</span>
+    <h1><%= note.number %></h1>
+    <p>Against invoice <a href="<%= helpers.url(data, 'invoices', 'preview', note.invoiceId) %>"><%= note.invoiceNumber %></a> · <%= note.customerSnapshot.name %></p>
+  </div>
+  <div class="actions">
+    <a class="button" href="<%= helpers.pageUrl(data, 'credit_notes', { month: note.noteDate.slice(0, 7) }) %>">All credit notes</a>
+    <button class="button button-primary" type="button" data-print-credit-note>Print / Save PDF</button>
+  </div>
+</header>
+<article class="card ledger-report">
+  <% if (note.status === 'cancelled') { %>
+    <div class="alert alert-error">Cancelled on <%= helpers.displayDateTime(note.cancelledAt) %>. Reason: <%= note.cancelReason %></div>
+  <% } %>
+  <div class="finance-section-heading">
+    <div>
+      <h2><%= seller.legalName || seller.name %></h2>
+      <p><%= seller.address %></p>
+      <% if (seller.gstin) { %><p>GSTIN <strong><%= seller.gstin %></strong> · State <%= state(seller.stateCode) %></p><% } %>
+    </div>
+    <div>
+      <h2>CREDIT NOTE</h2>
+      <p>No. <strong><%= note.number %></strong></p>
+      <p>Date <%= helpers.displayDate(note.noteDate) %></p>
+    </div>
+  </div>
+  <div class="finance-section-heading">
+    <div>
+      <p class="muted">Issued to</p>
+      <h3><%= buyer.name %></h3>
+      <p><%= buyer.address %></p>
+      <% if (buyer.gstin) { %><p>GSTIN <strong><%= buyer.gstin %></strong></p><% } %>
+    </div>
+    <div>
+      <p>Original invoice <strong><%= note.invoiceNumber %></strong> dated <%= helpers.displayDate(note.invoiceDate) %></p>
+      <p>Place of supply <%= state(note.placeOfSupply) %></p>
+      <p>Reason: <%= note.reason %></p>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table class="finance-table">
+      <thead>
+        <tr>
+          <th>Description</th>
+          <th class="text-right">Taxable value</th>
+          <th class="text-right">GST rate</th>
+          <% if (note.interstate) { %><th class="text-right">IGST</th><% } else { %><th class="text-right">CGST</th><th class="text-right">SGST</th><% } %>
+          <th class="text-right">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><%= note.reason %> against invoice <%= note.invoiceNumber %><% if (note.notes) { %><small><%= note.notes %></small><% } %></td>
+          <td class="text-right"><%= amount(note.taxable) %></td>
+          <td class="text-right"><%= note.gstRate %>%</td>
+          <% if (note.interstate) { %><td class="text-right"><%= amount(note.igst) %></td><% } else { %><td class="text-right"><%= amount(note.cgst) %></td><td class="text-right"><%= amount(note.sgst) %></td><% } %>
+          <td class="text-right"><strong><%= amount(note.total) %></strong></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="finance-basis">Amount credited: <strong><%= amount(note.total) %></strong> (<%= helpers.amountInWords(note.total) %>). This amount is reduced from the balance of invoice <%= note.invoiceNumber %>.</p>
+</article>
+<script type="module" src="/js/workspace/credit-notes.js"></script>

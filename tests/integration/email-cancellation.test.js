@@ -309,7 +309,7 @@ test(
         const sent = await db.models.email.findById(queued.id);
         assert.equal(sent.status, 'sent');
         assert.equal(sent.first_attempt_at, attempted.first_attempt_at);
-        assert.deepEqual(sent.payload, attempted.payload);
+        assert.deepEqual(sent.payload, { organizationId: attempted.payload.organizationId });
         assert.deepEqual(deliveries.at(-1), request);
         assert.equal(resolutions, 1);
         assert.equal(attachments, 1);
