@@ -529,6 +529,19 @@
   gap: 25px;
   padding: 27px 0;
 }
+/* E-invoice IRN, acknowledgement and signed QR code, and the e-way bill number. */
+.doc-paper-einvoice {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 14px;
+  font-size: 9px;
+  overflow-wrap: anywhere;
+}
+.doc-einvoice-qr svg {
+  width: 96px;
+  height: 96px;
+}
 .doc-paper-eyebrow {
   display: block;
   text-transform: uppercase;

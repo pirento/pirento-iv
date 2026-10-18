@@ -28,7 +28,18 @@ test('monthly sales, receipts, expenses and profit add up in paise; customers ra
       invoice('b', 'Bala', '2027-03-31', 1000, 1180),
     ],
     payments: [{ paidOn: '2026-04-15', amount: 0.36 }],
-    creditNotes: [{ customerId: 'b', noteDate: '2027-03-31', taxable: 100, total: 118 }],
+    creditNotes: [
+      { customerId: 'b', noteDate: '2027-03-31', taxable: 100, total: 118 },
+      // Dated last year, refunded this year: only the refund counts.
+      {
+        customerId: 'a',
+        noteDate: '2026-03-20',
+        taxable: 10,
+        total: 11.8,
+        refundDue: 0.3,
+        refund: { paidOn: '2026-04-20' },
+      },
+    ],
     expenses: [{ billDate: '2027-03-01', taxable: 400 }],
     openInvoices: [],
   });
@@ -55,7 +66,7 @@ test('monthly sales, receipts, expenses and profit add up in paise; customers ra
     label: 'Apr 2026',
     sales: 0.3,
     salesWithGst: 0.36,
-    received: 0.36,
+    received: 0.06,
     expenses: 0,
     profit: 0.3,
   });
@@ -63,7 +74,7 @@ test('monthly sales, receipts, expenses and profit add up in paise; customers ra
   assert.deepEqual(report.totals, {
     sales: 900.3,
     salesWithGst: 1062.36,
-    received: 0.36,
+    received: 0.06,
     expenses: 400,
     profit: 500.3,
   });

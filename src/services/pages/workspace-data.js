@@ -17,7 +17,8 @@ import { readDirectoryFilters, directoryPageLinks } from './directory-list.js';
 import { buildGstr1, gstr1Csv, GSTR1_SECTIONS, monthRange, readGstr1Filters } from './gstr1.js';
 import { expenseCsv, expenseTotals, readExpenseMonth } from '../expenses/expenses.js';
 import { buildReport, financialYearRange, readReportYear } from './reports.js';
-import { CREDIT_NOTE_REASONS, EXPENSE_CATEGORIES } from '../validation/validation.js';
+import { einvoiceProblems } from '../documents/einvoice.js';
+import { CREDIT_NOTE_REASONS, DEBIT_NOTE_REASONS, EXPENSE_CATEGORIES } from '../validation/validation.js';
 import { safeWorkspaceReturn } from '../../../public/js/core/workspace-route.js';
 
 /** Page-specific loading keeps unrelated financial snapshots and operations off normal navigation. */
@@ -171,6 +172,26 @@ export function createWorkspacePageData({
       read('expensePage', () => expensePage(organizationId, route, result.businessDate));
     if (route?.view === 'credit_notes')
       read('creditNotePage', () => creditNotePage(organizationId, route, result.businessDate));
+    if (route?.view === 'stock') read('stockPage', () => queries.stockLevels(organizationId));
+    if (route?.view === 'e_invoice')
+      read('einvoicePage', async () => {
+        const doc = await db.models.documents.findById(route.id);
+        if (doc?.organizationId !== organizationId || doc.kind !== 'invoice')
+          throw new HttpError(404, 'Invoice not found.');
+        return {
+          document: {
+            id: doc.id,
+            number: doc.number,
+            status: doc.status,
+            customerName: doc.customerSnapshot?.name ?? '',
+            total: doc.totals.total,
+            einvoice: doc.einvoice ?? null,
+            ewayBill: doc.ewayBill ?? null,
+          },
+          einvoiceProblems: einvoiceProblems(doc),
+          ewayProblems: einvoiceProblems(doc, { ewayBill: true }),
+        };
+      });
     if (route?.view === 'reports')
       read('report', async () => {
         const year = readReportYear(route.query, result.businessDate);
@@ -319,6 +340,10 @@ export function createWorkspacePageData({
       const document = await db.models.documents.findById(route.documentId);
       if (document?.organizationId !== organizationId || document.kind !== 'invoice')
         throw new HttpError(404, 'Invoice not found.');
+      const credited = (await db.models.creditNotes.forInvoice(document.id))
+        .filter((note) => note.status === 'issued')
+        .reduce((sum, note) => sum + Math.round(note.total * 100), 0);
+      const creditable = (Math.round(document.totals.total * 100) - credited) / 100;
       invoice = {
         id: document.id,
         number: document.number,
@@ -329,10 +354,12 @@ export function createWorkspacePageData({
         balanceDue: document.balanceDue ?? 0,
         interstate: document.placeOfSupply !== document.organizationSnapshot?.stateCode,
         rates: [...new Set(document.items.map((item) => Number(item.gstRate) || 0))].sort((a, b) => a - b),
-        canCredit: ['sent', 'partially_paid'].includes(document.status) && document.balanceDue > 0,
+        creditable,
+        canCredit: ['sent', 'partially_paid', 'paid'].includes(document.status) && creditable > 0,
+        canDebit: !document.debitNoteFor && !['draft', 'cancelled'].includes(document.status),
       };
     }
-    return { month, notes, invoice, reasons: CREDIT_NOTE_REASONS };
+    return { month, notes, invoice, reasons: CREDIT_NOTE_REASONS, debitReasons: DEBIT_NOTE_REASONS };
   }
 
   // CSV of one month's expenses: /workspace/<business>/expenses?month=YYYY-MM&download=csv.

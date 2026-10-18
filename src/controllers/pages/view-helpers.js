@@ -13,6 +13,7 @@ import * as identity from '../../../shared/business-identity.js';
 import * as contacts from '../../../shared/contact-types.js';
 import { workspaceUrl } from '../../../public/js/core/workspace-route.js';
 import { documentStatus } from '../../../shared/document-status.js';
+import { qrSvg } from '../../services/auth/two-step.js';
 
 /** Today's date in India as YYYY-MM-DD. */
 export function today() {
@@ -142,7 +143,7 @@ function navigation(data) {
       label: 'Accounts',
       items: [
         { view: 'expenses', label: 'Expenses', icon: 'archive' },
-        { view: 'credit_notes', label: 'Credit notes', icon: 'document' },
+        { view: 'credit_notes', label: 'Credit & debit notes', icon: 'document' },
         { view: 'reports', label: 'Reports', icon: 'chart' },
         { view: 'gst_returns', label: 'GST returns', icon: 'document' },
       ],
@@ -152,6 +153,7 @@ function navigation(data) {
       items: [
         { view: 'customers', label: 'Contacts', icon: 'people' },
         { view: 'catalog', label: 'Products & services', icon: 'box' },
+        { view: 'stock', label: 'Stock', icon: 'box' },
         ...(data.organization?.enableProductSelection ||
         billing.billingProfileFor(data.organization || { name: '' }) === 'ecosystem'
           ? [{ view: 'business_products', label: 'Business products', icon: 'grid' }]
@@ -229,6 +231,7 @@ export const helpers = {
   workspaceUrl,
   documentViews,
   whatsappShareUrl,
+  qrSvg,
   statusLabel: (status) => (status === 'overdue' ? 'Overdue' : types.STATUS_LABELS[status] || status),
   escapeHtml: (value) =>
     String(value ?? '').replace(

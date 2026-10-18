@@ -466,6 +466,56 @@ export const expenseSchema = z
 export const voidPaymentSchema = z.object({
   reason: requiredText(2000),
 });
+// The IRN, acknowledgement and signed QR code the e-invoice portal returned for an invoice.
+export const einvoiceSchema = z
+  .object({
+    irn: z
+      .string()
+      .trim()
+      .regex(/^[0-9a-fA-F]{64}$/, 'The IRN has 64 letters and digits.'),
+    ackNo: z
+      .string()
+      .trim()
+      .regex(/^\d{10,20}$/, 'The acknowledgement number has 10 to 20 digits.'),
+    ackDate: requiredText(30),
+    signedQr: z.string().trim().min(20, 'Paste the signed QR code text.').max(5000),
+  })
+  .strict();
+// Transport details for the e-way bill file (distance 0 lets the portal work it out from PIN codes).
+export const ewayTransportSchema = z.object({
+  mode: z.enum(['road', 'rail', 'air', 'ship']).default('road'),
+  distanceKm: z.coerce.number().int().min(0).max(4000),
+  vehicleNo: text(15)
+    .default('')
+    .transform((value) => value.toUpperCase().replace(/[^A-Z0-9]/g, ''))
+    .refine((value) => value === '' || /^[A-Z0-9]{4,15}$/.test(value), 'Enter a valid vehicle number.'),
+  transporterId: text(15).default(''),
+  transporterName: text(100).default(''),
+});
+// The e-way bill number the portal generated for an invoice.
+export const ewayBillSchema = z
+  .object({
+    number: z
+      .string()
+      .trim()
+      .regex(/^\d{12}$/, 'The e-way bill number has 12 digits.'),
+    date: requiredText(30),
+    validUntil: text(30).default(''),
+  })
+  .strict();
+// Stock added (positive) or removed (negative) for one catalog product.
+export const stockAdjustmentSchema = z
+  .object({
+    organizationId: requiredText(100),
+    catalogItemId: requiredText(100),
+    date,
+    quantity: z
+      .number()
+      .finite()
+      .refine((value) => value !== 0 && Math.abs(value) <= 1000000, 'Enter a quantity other than 0.'),
+    note: text(200).default(''),
+  })
+  .strict();
 // Why a credit note is issued (the reasons GST returns used to ask for).
 export const CREDIT_NOTE_REASONS = [
   'Sales return',
@@ -483,6 +533,28 @@ export const creditNoteSchema = z
     gstRate: z.union([0, 0.25, 3, 5, 12, 18, 28].map((value) => z.literal(value))),
     notes: text(500).default(''),
     requestId: z.guid(),
+  })
+  .strict();
+// Why a debit note is issued: the buyer owes more than the invoice says.
+export const DEBIT_NOTE_REASONS = ['Price increase', 'Short billing', 'Correction in invoice', 'Other'];
+// A debit note against an issued invoice: one amount before GST at one of the invoice's GST rates.
+export const debitNoteSchema = z
+  .object({
+    noteDate: date,
+    dueDate: optionalDate.default(''),
+    reason: z.enum(DEBIT_NOTE_REASONS),
+    taxable: moneyAmount,
+    gstRate: z.union([0, 0.25, 3, 5, 12, 18, 28].map((value) => z.literal(value))),
+    notes: text(500).default(''),
+    requestId: z.guid(),
+  })
+  .strict();
+// Money paid back to the buyer for the part of a credit note above the invoice's balance due.
+export const creditNoteRefundSchema = z
+  .object({
+    paidOn: date,
+    method: z.enum(['bank_transfer', 'upi', 'cash', 'card', 'cheque', 'other']),
+    reference: text(200).default(''),
   })
   .strict();
 // A document as sent by the editor: header fields, line items, totals inputs, shipping and plan.

@@ -68,6 +68,10 @@ const state = code => code ? `${code} – ${new Map(helpers.STATES).get(code) ??
       </tbody>
     </table>
   </div>
-  <p class="finance-basis">Amount credited: <strong><%= amount(note.total) %></strong> (<%= helpers.amountInWords(note.total) %>). This amount is reduced from the balance of invoice <%= note.invoiceNumber %>.</p>
+  <p class="finance-basis">Amount credited: <strong><%= amount(note.total) %></strong> (<%= helpers.amountInWords(note.total) %>).
+    <% const applied = note.appliedAmount ?? note.total; %>
+    <% if (applied > 0) { %><%= amount(applied) %> is reduced from the balance of invoice <%= note.invoiceNumber %>.<% } %>
+    <% if (note.refundDue > 0) { %><%= amount(note.refundDue) %> is <%= note.refund ? `refunded on ${helpers.displayDate(note.refund.paidOn)} (${helpers.PAYMENT_METHODS[note.refund.method] ?? note.refund.method}${note.refund.reference ? `, ${note.refund.reference}` : ''})` : 'to be refunded to the buyer' %>.<% } %>
+  </p>
 </article>
 <script type="module" src="/js/workspace/credit-notes.js"></script>

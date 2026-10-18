@@ -23,6 +23,7 @@ export const DOCUMENT_SUMMARY_FIELDS = {
   status: 1,
   createdAt: 1,
   amountPaid: 1,
+  creditedAmount: 1,
   balanceDue: 1,
   finalizedAt: 1,
   convertedInvoiceId: 1,
@@ -162,11 +163,12 @@ export function createWorkspaceQueries(db) {
           continue;
         }
         summary.invoiceCount += 1;
-        summary.received += paidAmount(document);
+        const received = paidAmount(document) - (document.creditedAmount ?? 0);
+        summary.received += received;
         if (['sent', 'partially_paid'].includes(document.status)) summary.outstanding += balanceDue(document);
         if (documentStatus(document, asOf) === 'overdue') summary.overdueCount += 1;
         const month = monthly.find((item) => document.issueDate.startsWith(item.key));
-        if (month) month.total += paidAmount(document);
+        if (month) month.total += received;
         if (document.installmentPlan && !['draft', 'cancelled'].includes(document.status)) {
           for (const row of installmentBalances(document, asOf)) {
             if (row.balanceDue <= 0) continue;
@@ -222,6 +224,7 @@ export function createWorkspaceQueries(db) {
             'customerSnapshot.gstin': 1,
             'organizationSnapshot.gstin': 1,
             'organizationSnapshot.stateCode': 1,
+            debitNoteFor: 1,
           },
         },
       )
@@ -285,10 +288,22 @@ export function createWorkspaceQueries(db) {
       db
         .collection('credit_notes')
         .find(
-          { organizationId, status: 'issued', noteDate: { $gte: from, $lt: to } },
+          {
+            organizationId,
+            status: 'issued',
+            $or: [{ noteDate: { $gte: from, $lt: to } }, { 'refund.paidOn': { $gte: from, $lt: to } }],
+          },
           {
             ...options(),
-            projection: { _id: 0, customerId: 1, noteDate: 1, taxable: 1, total: 1 },
+            projection: {
+              _id: 0,
+              customerId: 1,
+              noteDate: 1,
+              taxable: 1,
+              total: 1,
+              refundDue: 1,
+              'refund.paidOn': 1,
+            },
           },
         )
         .toArray(),
@@ -305,5 +320,62 @@ export function createWorkspaceQueries(db) {
     return { invoices, openInvoices, payments, creditNotes };
   }
 
-  return { documentPage, documentExport, overview, gstr1Invoices, reportData };
+  /**
+   * Stock page: each active product with stock added (adjustments) and sold (quantities on issued
+   * invoices, cancelled ones left out), and the latest 50 adjustments.
+   * shortcut: sums every issued invoice on each view and lists at most 500 products; keep running
+   * balances if a business outgrows that.
+   */
+  async function stockLevels(organizationId) {
+    const totals = async (collection, pipeline) =>
+      new Map(
+        (await db.collection(collection).aggregate(pipeline, options()).toArray()).map((row) => [
+          row._id,
+          row.quantity,
+        ]),
+      );
+    const [products, added, sold, recent] = await Promise.all([
+      db
+        .collection('catalog')
+        .find(
+          { organizationId, type: 'product', active: true },
+          { ...options(), projection: { _id: 0, id: 1, name: 1, sku: 1, unit: 1 } },
+        )
+        .sort({ name: 1 })
+        .limit(500)
+        .toArray(),
+      totals('stock_adjustments', [
+        { $match: { organizationId } },
+        { $group: { _id: '$catalogItemId', quantity: { $sum: '$quantity' } } },
+      ]),
+      totals('documents', [
+        { $match: { organizationId, kind: 'invoice', status: { $nin: ['draft', 'cancelled'] } } },
+        { $unwind: '$items' },
+        { $match: { 'items.catalogItemId': { $type: 'string' } } },
+        { $group: { _id: '$items.catalogItemId', quantity: { $sum: '$items.quantity' } } },
+      ]),
+      db
+        .collection('stock_adjustments')
+        .find({ organizationId }, { ...options(), projection: { _id: 0 } })
+        .sort({ date: -1, createdAt: -1 })
+        .limit(50)
+        .toArray(),
+    ]);
+    const round = (value) => Math.round((value ?? 0) * 1000) / 1000;
+    const names = new Map(products.map((product) => [product.id, product.name]));
+    return {
+      products: products.map((product) => ({
+        ...product,
+        added: round(added.get(product.id)),
+        sold: round(sold.get(product.id)),
+        inStock: round((added.get(product.id) ?? 0) - (sold.get(product.id) ?? 0)),
+      })),
+      recent: recent.map((row) => ({
+        ...row,
+        productName: names.get(row.catalogItemId) ?? 'Archived product',
+      })),
+    };
+  }
+
+  return { documentPage, documentExport, overview, gstr1Invoices, reportData, stockLevels };
 }

@@ -101,12 +101,14 @@ export function createModels(context) {
       listBetween: (organizationId, { from, to }) =>
         all('expenses', { organizationId, billDate: { $gte: from, $lt: to } }, { billDate: -1, id: -1 }),
     },
+    stockAdjustments: business('stock_adjustments'),
     // Credit notes of one business between two note dates, newest first, or of one invoice.
     creditNotes: {
       ...business('credit_notes'),
       listBetween: (organizationId, { from, to }) =>
         all('credit_notes', { organizationId, noteDate: { $gte: from, $lt: to } }, { noteDate: -1, id: -1 }),
       forInvoice: (invoiceId) => all('credit_notes', { invoiceId }, { noteDate: 1, id: 1 }),
+      forRequest: (invoiceId, requestId) => one('credit_notes', { invoiceId, requestId }),
     },
     documents: {
       ...business('documents'),
@@ -115,6 +117,8 @@ export function createModels(context) {
       listAll: async () => (await images.unpackAll(await all('documents'))).map(documentRecord),
       insert: async (record) => insert('documents', await images.pack(record)),
       findByNumber: (number) => oneDocument({ number }),
+      findDebitNote: (invoiceId, requestId) =>
+        oneDocument({ 'debitNoteFor.id': invoiceId, 'debitNoteFor.requestId': requestId }),
       findByCustomer: (customerId) => oneDocument({ customerId }),
       save: async (record, expectedVersion) => {
         if (!Number.isSafeInteger(expectedVersion) || expectedVersion < 0)
@@ -152,6 +156,9 @@ export function createModels(context) {
                 $group: {
                   _id: null,
                   paid: { $sum: '$paymentPaise' },
+                  credited: {
+                    $sum: { $cond: [{ $ifNull: ['$creditNoteId', false] }, '$paymentPaise', 0] },
+                  },
                   invalidAmounts: { $sum: { $cond: [validReceiptPaise('$paymentPaise'), 0, 1] } },
                 },
               },
@@ -159,14 +166,15 @@ export function createModels(context) {
             options(),
           )
           .toArray();
-        const { paid = 0, invalidAmounts = 0 } = rows[0] ?? {};
+        const { paid = 0, credited = 0, invalidAmounts = 0 } = rows[0] ?? {};
         if (invalidAmounts || !Number.isSafeInteger(paid) || paid < 0)
           throw new HttpError(
             409,
             'Saved active receipt amounts are invalid or exceed the safe integer-paise range. Review or void the incorrect receipt before recording another payment.',
             'PAYMENT_DATA_INVALID',
           );
-        return { paid };
+        // credited: the part of paid that is credit notes, not money received.
+        return { paid, credited };
       },
     },
     events: {
@@ -236,6 +244,7 @@ export function createModels(context) {
           'payments',
           'expenses',
           'credit_notes',
+          'stock_adjustments',
         ]);
         if (!allowed.has(name)) throw new Error('Unsupported resource model.');
         const record = await one(name, { id });

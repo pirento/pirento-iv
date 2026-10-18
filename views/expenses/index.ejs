@@ -147,4 +147,11 @@ const monthUrl = month => helpers.pageUrl(data, 'expenses', { month });
     </div>
   <% } %>
 </section>
+<section class="card">
+  <div class="finance-section-heading"><h2>Match with GSTR-2B</h2></div>
+  <p class="finance-basis">On the GST portal, open Returns → GSTR-2B for <%= page.month %> and download the JSON file, then choose it here. Bills are matched by vendor GSTIN and bill number. The file is read on this computer and is not uploaded.</p>
+  <label class="field">GSTR-2B JSON file<input type="file" accept=".json,application/json" data-gstr2b-file /></label>
+  <div class="alert alert-error" data-gstr2b-error hidden role="alert"></div>
+  <div data-gstr2b-result aria-live="polite"></div>
+</section>
 <script type="module" src="/js/workspace/expenses.js"></script>

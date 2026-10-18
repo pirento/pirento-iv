@@ -15,11 +15,13 @@ export const WORKSPACE_VIEWS = [
   'gst_returns',
   'expenses',
   'credit_notes',
+  'e_invoice',
   'reports',
   'reminders',
   'recurring',
   'organizations',
   'catalog',
+  'stock',
   'formats',
   'business_products',
   'team',
@@ -74,6 +76,8 @@ export function readWorkspaceRoute(pathname, search = '') {
       if (action !== 'edit' || !id) return invalid;
     } else if (view === 'credit_notes') {
       if (action !== 'preview' || !id) return invalid;
+    } else if (view === 'e_invoice') {
+      if (action !== 'edit' || !id) return invalid;
     } else if (view === 'recurring') {
       if (!['new', 'edit'].includes(action) || (action === 'new' ? Boolean(id) : !id)) return invalid;
     } else if (managerViews.has(view) || view === 'organizations') {

@@ -1,9 +1,10 @@
 /**
  * GSTR-1 (monthly outward supplies) for one business GSTIN, built from issued invoices and credit
  * notes: B2B, B2CL, B2CS (net of credit notes on B2CS invoices), CDNR, CDNUR, HSN summary (B2B and
- * B2C), 0% lines and documents issued (cancelled invoices and credit notes count only there), plus
- * CSV files with the GST offline tool's column layout. Every invoice's lines are reconciled to its saved totals, so the tables
- * agree with the invoices. A CA should still review the return before filing.
+ * B2C, net of credit notes), 0% lines and documents issued (cancelled invoices and credit notes
+ * count only there), plus CSV files with the GST offline tool's column layout. Every invoice's
+ * lines are reconciled to its saved totals, so the tables agree with the invoices. A CA should
+ * still review the return before filing.
  */
 
 import { HttpError } from '../../middleware/errors.js';
@@ -17,7 +18,7 @@ const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Se
 // (₹1 lakh from 1 August 2024, ₹2.5 lakh before).
 const b2clLimit = (issueDate) => (issueDate >= '2024-08-01' ? 100000 : 250000);
 // GST unit codes (UQC) for the editor's units; services (SAC 99xx) use NA, anything else OTH.
-const UQC = {
+export const UQC = {
   Nos: 'NOS-NUMBERS',
   Unit: 'UNT-UNITS',
   Piece: 'PCS-PIECES',
@@ -197,6 +198,38 @@ export function invoiceLines(document) {
 }
 
 /**
+ * Splits a credit note's taxable value and tax over the invoice lines at its GST rate, in
+ * proportion to their taxable value (whole paise, the last line takes the remainder), so the HSN
+ * summary can be reduced by the right codes.
+ */
+export function creditNoteHsnLines(invoice, { gstRate, taxable, tax }) {
+  const lines = invoiceLines(invoice).filter((line) => line.rate === gstRate);
+  const paise = (value) => BigInt(Math.round(decimal(value).toNumber() * 100));
+  const base = lines.reduce((sum, line) => sum + paise(line.taxable), 0n);
+  const total = { taxable: paise(taxable), tax: paise(tax) };
+  const given = { taxable: 0n, tax: 0n };
+  return lines.map((line, index) => {
+    const part = (key) => {
+      const share =
+        index === lines.length - 1
+          ? total[key] - given[key]
+          : base
+            ? (total[key] * paise(line.taxable) * 2n + base) / (2n * base)
+            : 0n;
+      given[key] += share;
+      return Number(share) / 100;
+    };
+    return {
+      hsn: line.hsn,
+      description: line.description,
+      unit: line.unit,
+      taxable: part('taxable'),
+      tax: part('tax'),
+    };
+  });
+}
+
+/**
  * Invoice number series for Table 13: "ABC/2627/0007" belongs to series "ABC/2627/". Total and
  * cancelled are counts of the invoices found; numbers missing from a series are not guessed.
  */
@@ -225,10 +258,10 @@ function documentSeries(invoices, nature) {
 }
 
 /**
- * Builds the GSTR-1 tables for one month from issued and cancelled invoices and credit notes (already
- * filtered by business and month). Only records issued under `gstin` are included; the default is
- * the first GSTIN found. Cancelled records appear only in the documents-issued table.
- * shortcut: credit notes are not taken off the HSN summary; adjust it by hand when credit notes exist.
+ * Builds the GSTR-1 tables for one month from issued and cancelled invoices (debit notes among them)
+ * and credit notes, already filtered by business and month. Only records issued under `gstin` are
+ * included; the default is the first GSTIN found. Cancelled records appear only in the
+ * documents-issued table.
  */
 export function buildGstr1(invoices, { month, gstin = '' }, creditNotes = []) {
   const gstins = [
@@ -244,6 +277,8 @@ export function buildGstr1(invoices, { month, gstin = '' }, creditNotes = []) {
   const b2b = [];
   const b2cl = [];
   const b2cs = new Map();
+  const cdnr = [];
+  const cdnur = [];
   const hsn = { 'hsn-b2b': new Map(), 'hsn-b2c': new Map() };
   const nil = new Map();
   const totals = { invoices: chosen.length, value: decimal(0), taxable: decimal(0), tax: decimal(0) };
@@ -253,12 +288,56 @@ export function buildGstr1(invoices, { month, gstin = '' }, creditNotes = []) {
     update(map.get(key));
   };
   const addAmount = (map, key, amount) => map.set(key, (map.get(key) ?? decimal(0)).plus(amount));
+  // Adds one line to the HSN summary; a credit note line passes sign -1 and no quantity.
+  const addHsn = (buyerGstin, interstate, line, sign = 1) => {
+    const taxable = decimal(line.taxable).times(sign);
+    const tax = decimal(line.tax).times(sign);
+    const central = interstate ? decimal(0) : decimal(line.tax).times(0.5).round().times(sign);
+    add(
+      hsn[buyerGstin ? 'hsn-b2b' : 'hsn-b2c'],
+      `${line.hsn}|${line.unit}|${line.rate}`,
+      () => ({
+        hsn: line.hsn,
+        description: line.description,
+        unit: line.unit,
+        rate: line.rate,
+        quantity: 0,
+        value: decimal(0),
+        taxable: decimal(0),
+        igst: decimal(0),
+        cgst: decimal(0),
+        sgst: decimal(0),
+      }),
+      (row) => {
+        if (sign > 0) row.quantity += line.quantity;
+        row.value = row.value.plus(taxable).plus(tax);
+        row.taxable = row.taxable.plus(taxable);
+        if (interstate) row.igst = row.igst.plus(tax);
+        else {
+          row.cgst = row.cgst.plus(central);
+          row.sgst = row.sgst.plus(tax.minus(central));
+        }
+      },
+    );
+  };
 
   for (const doc of chosen) {
     const buyerGstin = String(doc.customerSnapshot?.gstin ?? '').trim();
     const interstate = doc.placeOfSupply !== doc.organizationSnapshot.stateCode;
     const value = doc.totals.total;
-    const kind = buyerGstin ? 'b2b' : interstate && value > b2clLimit(doc.issueDate) ? 'b2cl' : 'b2cs';
+    // A debit note goes to CDNR / CDNUR like a credit note (by its original invoice), or adds to B2CS.
+    const debit = doc.debitNoteFor;
+    const kind = debit
+      ? buyerGstin
+        ? 'cdnr'
+        : interstate && debit.total > b2clLimit(debit.issueDate)
+          ? 'cdnur'
+          : 'b2cs'
+      : buyerGstin
+        ? 'b2b'
+        : interstate && value > b2clLimit(doc.issueDate)
+          ? 'b2cl'
+          : 'b2cs';
     const lines = invoiceLines(doc);
     totals.value = totals.value.plus(value);
     const rates = new Map();
@@ -266,33 +345,7 @@ export function buildGstr1(invoices, { month, gstin = '' }, creditNotes = []) {
       totals.taxable = totals.taxable.plus(line.taxable);
       totals.tax = totals.tax.plus(line.tax);
       if (!line.hsn) missingHsn++;
-      const central = interstate ? decimal(0) : line.tax.times(0.5).round();
-      add(
-        hsn[buyerGstin ? 'hsn-b2b' : 'hsn-b2c'],
-        `${line.hsn}|${line.unit}|${line.rate}`,
-        () => ({
-          hsn: line.hsn,
-          description: line.description,
-          unit: line.unit,
-          rate: line.rate,
-          quantity: 0,
-          value: decimal(0),
-          taxable: decimal(0),
-          igst: decimal(0),
-          cgst: decimal(0),
-          sgst: decimal(0),
-        }),
-        (row) => {
-          row.quantity += line.quantity;
-          row.value = row.value.plus(line.taxable).plus(line.tax);
-          row.taxable = row.taxable.plus(line.taxable);
-          if (interstate) row.igst = row.igst.plus(line.tax);
-          else {
-            row.cgst = row.cgst.plus(central);
-            row.sgst = row.sgst.plus(line.tax.minus(central));
-          }
-        },
-      );
+      addHsn(buyerGstin, interstate, debit ? { ...line, quantity: 0 } : line);
       if (line.rate === 0)
         addAmount(
           nil,
@@ -302,7 +355,36 @@ export function buildGstr1(invoices, { month, gstin = '' }, creditNotes = []) {
       else addAmount(rates, line.rate, line.taxable);
     }
     for (const [rate, taxable] of rates) {
-      if (kind === 'b2b')
+      if (kind === 'cdnr')
+        cdnr.push([
+          buyerGstin,
+          doc.customerSnapshot.name,
+          doc.number,
+          portalDate(doc.issueDate),
+          'D',
+          placeOfSupply(doc.placeOfSupply),
+          'N',
+          'Regular B2B',
+          money(value),
+          '',
+          rate,
+          money(taxable),
+          '0.00',
+        ]);
+      else if (kind === 'cdnur')
+        cdnur.push([
+          'B2CL',
+          doc.number,
+          portalDate(doc.issueDate),
+          'D',
+          placeOfSupply(doc.placeOfSupply),
+          money(value),
+          '',
+          rate,
+          money(taxable),
+          '0.00',
+        ]);
+      else if (kind === 'b2b')
         b2b.push([
           buyerGstin,
           doc.customerSnapshot.name,
@@ -342,12 +424,12 @@ export function buildGstr1(invoices, { month, gstin = '' }, creditNotes = []) {
     }
   }
 
-  const cdnr = [];
-  const cdnur = [];
   const notes = creditNotes.filter((note) => note.organizationSnapshot?.gstin === selected);
   for (const note of notes.filter((row) => row.status !== 'cancelled')) {
     const buyerGstin = String(note.customerSnapshot?.gstin ?? '').trim();
     const date = portalDate(note.noteDate);
+    for (const line of note.hsnLines ?? [])
+      addHsn(buyerGstin, note.interstate, { ...line, rate: note.gstRate }, -1);
     if (buyerGstin)
       cdnr.push([
         buyerGstin,
@@ -429,7 +511,14 @@ export function buildGstr1(invoices, { month, gstin = '' }, creditNotes = []) {
       cdnr,
       cdnur,
       docs: [
-        ...documentSeries(forGstin, 'Invoices for outward supply'),
+        ...documentSeries(
+          forGstin.filter((doc) => !doc.debitNoteFor),
+          'Invoices for outward supply',
+        ),
+        ...documentSeries(
+          forGstin.filter((doc) => doc.debitNoteFor),
+          'Debit Note',
+        ),
         ...documentSeries(notes, 'Credit Note'),
       ],
     },

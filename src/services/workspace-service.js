@@ -73,11 +73,11 @@ export function createWorkspaceService(context) {
     };
   }
   /**
-   * Recalculates amountPaid/balanceDue/status from the receipts and saves the invoice.
+   * Recalculates amountPaid (of which creditedAmount is credit notes), balanceDue and status from the receipts and saves the invoice.
    * finalize=true marks a fully paid invoice as final (locked); reopening=true undoes that.
    */
   async function updatePaymentBalance(document, finalize = false, reopening = false) {
-    const paid = await activePaidPaise(document.id);
+    const { paid, credited } = await db.models.payments.activeTotal(document.id);
     const total = Math.round(document.totals.total * 100);
     const fullyPaid = paid === total;
     const previousPaymentState = ['paid', 'partially_paid'].includes(document.status);
@@ -94,6 +94,7 @@ export function createWorkspaceService(context) {
     const updated = {
       ...document,
       amountPaid: paid / 100,
+      creditedAmount: credited / 100,
       balanceDue: (total - paid) / 100,
       status,
       finalizedAt: reopening ? null : finalizing ? timestamp : (document.finalizedAt ?? null),
@@ -265,11 +266,12 @@ export function createWorkspaceService(context) {
     }
   }
   // --- Document numbering and creation ---
-  // Next free document number, e.g. ATEI/2627/0001 (proformas add "P", delivery challans "D", credit notes "C").
+  // Next free number, e.g. ATEI/2627/0001 (proformas add "P", delivery challans "D", credit notes "C",
+  // debit notes "DN").
   async function nextNumber(organization, kind, issueDate) {
     const year = fiscalYear(issueDate);
     const prefix = kind === 'quotation' ? organization.quotationPrefix : organization.invoicePrefix;
-    const marker = { proforma: 'P', delivery_note: 'D', credit_note: 'C' }[kind] ?? '';
+    const marker = { proforma: 'P', delivery_note: 'D', credit_note: 'C', debit_note: 'DN' }[kind] ?? '';
     for (;;) {
       const row = await db.models.sequences.next(organization.id, kind, year);
       if (row.value > (marker ? 99999 : 999999))

@@ -235,17 +235,20 @@ export function documentBusinessIdentity(doc) {
     supportEmail: organizationSupportEmail(org),
   };
 }
-// Heading printed on the document: TAX INVOICE (with GSTIN), INVOICE, PROFORMA INVOICE, DELIVERY CHALLAN or QUOTATION.
+// Heading printed on the document: DEBIT NOTE, TAX INVOICE (with GSTIN), INVOICE, PROFORMA INVOICE,
+// DELIVERY CHALLAN or QUOTATION.
 export const documentTitle = (doc) =>
-  doc.kind === 'invoice'
-    ? doc.organizationSnapshot.gstin
-      ? 'TAX INVOICE'
-      : 'INVOICE'
-    : doc.kind === 'proforma'
-      ? 'PROFORMA INVOICE'
-      : doc.kind === 'delivery_note'
-        ? 'DELIVERY CHALLAN'
-        : 'QUOTATION';
+  doc.debitNoteFor
+    ? 'DEBIT NOTE'
+    : doc.kind === 'invoice'
+      ? doc.organizationSnapshot.gstin
+        ? 'TAX INVOICE'
+        : 'INVOICE'
+      : doc.kind === 'proforma'
+        ? 'PROFORMA INVOICE'
+        : doc.kind === 'delivery_note'
+          ? 'DELIVERY CHALLAN'
+          : 'QUOTATION';
 // Due date shown on the document: the last installment's due date when there is a plan, else dueDate.
 export const documentDueDate = (doc) =>
   doc.installmentPlan?.installments.length
@@ -546,6 +549,30 @@ export function buildDocumentDefinition(doc, imageInput) {
     ],
     margin: [0, 0, 0, 10],
   });
+  // --- E-invoice (IRN, signed QR code) and e-way bill, when recorded ---
+  if (doc.einvoice || doc.ewayBill)
+    content.push({
+      columns: [
+        {
+          stack: [
+            ...(doc.einvoice
+              ? [
+                  text(`IRN: ${doc.einvoice.irn}`, { fontSize: small }),
+                  text(`Ack No: ${doc.einvoice.ackNo}   Ack date: ${doc.einvoice.ackDate}`, {
+                    fontSize: small,
+                  }),
+                ]
+              : []),
+            ...(doc.ewayBill
+              ? [text(`E-way bill: ${doc.ewayBill.number}   ${doc.ewayBill.date}`, { fontSize: small })]
+              : []),
+          ],
+        },
+        ...(doc.einvoice ? [{ qr: doc.einvoice.signedQr, fit: 90, width: 90 }] : []),
+      ],
+      columnGap: 10,
+      margin: [0, 0, 0, 10],
+    });
   // --- Parties: seller, buyer and dates ---
   const seller = [
     heading('From'),

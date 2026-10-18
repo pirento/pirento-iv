@@ -1,7 +1,16 @@
 /** Browser tests (`npm run test:browser`): real sign-in, navigation, contacts/catalog, invoices, drafts and payments in Chromium. */
 
 import { readFile } from 'node:fs/promises';
-import { test, expect, signIn, api, customerInput, invoiceInput, seedDirectory } from './fixtures.js';
+import {
+  test,
+  expect,
+  signIn,
+  api,
+  catalogInput,
+  customerInput,
+  invoiceInput,
+  seedDirectory,
+} from './fixtures.js';
 
 const workspace = (app, suffix) => `${app.base}/workspace/${app.organizationId}/${suffix}`;
 
@@ -349,7 +358,10 @@ test('an expense fills from a vendor contact, previews its GST, saves, edits and
   await expect(page.getByRole('heading', { name: 'Reports', level: 1 })).toBeVisible();
 });
 
-test('a credit note issued from an invoice lowers its balance and prints', async ({ page, app }) => {
+test('credit and debit notes are issued from an invoice; the credit lowers its balance and prints', async ({
+  page,
+  app,
+}) => {
   await signIn(page, app);
   const customer = await api(page, app, '/customers', 'POST', customerInput(app.organizationId));
   const invoice = await api(
@@ -360,7 +372,7 @@ test('a credit note issued from an invoice lowers its balance and prints', async
     invoiceInput(app.organizationId, customer.id, { status: 'sent' }),
   );
   await page.goto(workspace(app, `invoices/preview/${invoice.id}`));
-  await page.getByRole('link', { name: 'Credit note', exact: true }).click();
+  await page.getByRole('link', { name: 'Credit / debit note', exact: true }).click();
   const form = page.locator('[data-credit-note-form]');
   await form.locator('[name="reason"]').selectOption('Sales return');
   await form.locator('[name="taxable"]').fill('30');
@@ -370,4 +382,100 @@ test('a credit note issued from an invoice lowers its balance and prints', async
   await expect(page.locator('article')).toContainText('Rupees Thirty Only');
   const saved = await app.backend.db.collection('documents').findOne({ id: invoice.id });
   expect([saved.balanceDue, saved.status]).toEqual([70, 'partially_paid']);
+
+  await page.goto(workspace(app, `credit_notes?documentId=${invoice.id}`));
+  const debit = page.locator('[data-debit-note-form]');
+  await debit.locator('[name="taxable"]').fill('15');
+  await expect(debit.locator('[data-note-preview]')).toContainText('Debit note total ₹15.00');
+  await debit.getByRole('button', { name: 'Issue debit note' }).click();
+  await expect(page).toHaveURL(/\/invoices\/preview\/[^/]+$/);
+  await expect(page.getByRole('heading', { name: 'DEBIT NOTE', level: 1 })).toBeVisible();
+});
+
+test('a GSTR-2B JSON file is matched with the month expenses in the browser', async ({ page, app }) => {
+  await signIn(page, app);
+  await api(page, app, '/expenses', 'POST', {
+    organizationId: app.organizationId,
+    vendorName: 'Paper Mart',
+    vendorGstin: '27AAACR5055K1Z7',
+    billNumber: 'PM/007',
+    billDate: '2026-09-12',
+    category: 'Office supplies',
+    taxable: 1000,
+    gstRate: 18,
+    interstate: true,
+  });
+  await page.goto(workspace(app, 'expenses?month=2026-09'));
+  const portal = {
+    data: {
+      rtnprd: '092026',
+      docdata: {
+        b2b: [
+          {
+            ctin: '27AAACR5055K1Z7',
+            trdnm: 'Paper Mart',
+            inv: [
+              { inum: 'PM-7', dt: '12-09-2026', txval: 1000, igst: 180 },
+              { inum: 'PM-9', dt: '20-09-2026', txval: 200, igst: 36 },
+            ],
+          },
+        ],
+      },
+    },
+  };
+  await page.locator('[data-gstr2b-file]').setInputFiles({
+    name: 'GSTR2B.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(portal)),
+  });
+  const result = page.locator('[data-gstr2b-result]');
+  await expect(result).toContainText('1 matched · 0 with different amounts · 1 not in your expenses');
+  await expect(result.locator('tbody tr')).toHaveCount(2);
+  await page.locator('[data-gstr2b-file]').setInputFiles({
+    name: 'bad.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from('{oops'),
+  });
+  await expect(page.locator('[data-gstr2b-error]')).toHaveText('This file is not valid JSON.');
+});
+
+test('stock entries saved on the Stock page change stock in hand', async ({ page, app }) => {
+  await signIn(page, app);
+  const product = await api(page, app, '/catalog', 'POST', catalogInput(app.organizationId, 'Stock chair'));
+  await page.goto(workspace(app, 'stock'));
+  const form = page.locator('[data-stock-form]');
+  await form.locator('[name="catalogItemId"]').selectOption(product.id);
+  await form.locator('[name="quantity"]').fill('5');
+  await form.getByRole('button', { name: 'Save stock entry' }).click();
+  const row = page.getByRole('region', { name: 'Stock in hand' }).getByRole('row', { name: /Stock chair/ });
+  await expect(row).toContainText('5 Nos');
+  await form.locator('[name="catalogItemId"]').selectOption(product.id);
+  await form.locator('[name="direction"]').selectOption('-1');
+  await form.locator('[name="quantity"]').fill('2');
+  await form.getByRole('button', { name: 'Save stock entry' }).click();
+  await expect(row).toContainText('3 Nos');
+});
+
+test('the IRN and signed QR saved on the e-invoice page print on the invoice', async ({ page, app }) => {
+  await signIn(page, app);
+  const customer = await api(page, app, '/customers', 'POST', customerInput(app.organizationId));
+  const invoice = await api(
+    page,
+    app,
+    '/documents',
+    'POST',
+    invoiceInput(app.organizationId, customer.id, { status: 'sent' }),
+  );
+  await page.goto(workspace(app, `invoices/preview/${invoice.id}`));
+  await page.getByRole('link', { name: 'E-invoice / e-way bill' }).click();
+  const form = page.locator('[data-einvoice-form="einvoice"]');
+  await form.locator('[name="irn"]').fill('b'.repeat(64));
+  await form.locator('[name="ackNo"]').fill('112610012345678');
+  await form.locator('[name="ackDate"]').fill('17/10/2026 11:32:00');
+  await form.locator('[name="signedQr"]').fill('eyJhbGciOiJSUzI1NiJ9.browser-test-payload.signature');
+  await form.getByRole('button', { name: 'Save e-invoice details' }).click();
+  await expect(page.getByRole('button', { name: 'Remove the saved IRN' })).toBeVisible();
+  await page.goto(workspace(app, `invoices/preview/${invoice.id}`));
+  await expect(page.getByText(`IRN: ${'b'.repeat(64)}`)).toBeVisible();
+  await expect(page.getByRole('img', { name: 'E-invoice QR code' })).toBeVisible();
 });

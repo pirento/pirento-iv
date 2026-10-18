@@ -1,0 +1,82 @@
+<%# E-invoice & e-way bill page /workspace/<id>/e_invoice/edit/<invoiceId>: download the files for the government's offline tools and save the IRN, signed QR and e-way bill number they return. Script: /js/workspace/einvoice.js. -%>
+<%
+const page = data.einvoicePage;
+const doc = page.document;
+%>
+<header class="page-header">
+  <div>
+    <span class="eyebrow">ACCOUNTS</span>
+    <h1>E-invoice &amp; e-way bill</h1>
+    <p>Invoice <a href="<%= helpers.url(data, 'invoices', 'preview', doc.id) %>"><%= doc.number %></a> · <%= doc.customerName %> · <%= helpers.money(doc.total) %></p>
+  </div>
+</header>
+<section class="card">
+  <div class="finance-section-heading"><h2>E-invoice (IRN)</h2></div>
+  <p class="finance-basis">Needed for B2B invoices when the business's yearly turnover is above the e-invoicing limit. Download the JSON, upload it on the e-invoice portal (bulk upload / offline tool) or give it to your GST Suvidha Provider, then paste the IRN and signed QR code here. They print on the invoice.</p>
+  <% if (page.einvoiceProblems.length) { %>
+    <div class="alert alert-info">Before the e-invoice file can be made:<ul><% for (const problem of page.einvoiceProblems) { %><li><%= problem %></li><% } %></ul></div>
+  <% } else { %>
+    <p><a class="button" href="/api/documents/<%= encodeURIComponent(doc.id) %>/einvoice-file" download>Download e-invoice JSON</a></p>
+  <% } %>
+  <% if (doc.einvoice) { %>
+    <div class="doc-paper-einvoice">
+      <div>
+        <p><strong>IRN:</strong> <%= doc.einvoice.irn %></p>
+        <p><strong>Ack No:</strong> <%= doc.einvoice.ackNo %> · <strong>Ack date:</strong> <%= doc.einvoice.ackDate %></p>
+      </div>
+      <div class="doc-einvoice-qr" role="img" aria-label="E-invoice QR code"><%- helpers.qrSvg(doc.einvoice.signedQr) %></div>
+    </div>
+    <button class="text-button" type="button" data-einvoice-clear="einvoice">Remove the saved IRN</button>
+  <% } else if (!['draft', 'cancelled'].includes(doc.status)) { %>
+    <form class="stack" data-einvoice-form="einvoice">
+      <div class="alert alert-error" data-form-error hidden role="alert"></div>
+      <div class="form-grid">
+        <label class="field full-width">IRN<input name="irn" maxlength="64" required /></label>
+        <label class="field">Ack No<input name="ackNo" maxlength="20" inputmode="numeric" required /></label>
+        <label class="field">Ack date<input name="ackDate" maxlength="30" placeholder="17/10/2026 11:32:00" required /></label>
+        <label class="field full-width">Signed QR code (text)<textarea name="signedQr" rows="3" maxlength="5000" required></textarea></label>
+      </div>
+      <div class="form-actions"><button class="button button-primary" type="submit">Save e-invoice details</button></div>
+    </form>
+  <% } %>
+</section>
+<section class="card">
+  <div class="finance-section-heading"><h2>E-way bill</h2></div>
+  <p class="finance-basis">Needed when goods worth more than ₹50,000 are moved. Enter the transport details, download the JSON and upload it on the e-way bill portal (bulk generation), then save the e-way bill number here.</p>
+  <% if (page.ewayProblems.length) { %>
+    <div class="alert alert-info">Before the e-way bill file can be made:<ul><% for (const problem of page.ewayProblems) { %><li><%= problem %></li><% } %></ul></div>
+  <% } else { %>
+    <form class="stack" method="get" action="/api/documents/<%= encodeURIComponent(doc.id) %>/eway-bill-file" data-eway-file="<%= doc.number %>">
+      <div class="alert alert-error" data-form-error hidden role="alert"></div>
+      <div class="form-grid">
+        <label class="field">
+          Mode
+          <select name="mode">
+            <% for (const [value, label] of [['road', 'Road'], ['rail', 'Rail'], ['air', 'Air'], ['ship', 'Ship']]) { %><option value="<%= value %>"><%= label %></option><% } %>
+          </select>
+        </label>
+        <label class="field">Distance (km)<input type="number" name="distanceKm" min="0" max="4000" step="1" value="0" required /></label>
+        <label class="field">Vehicle number <span class="optional">(optional)</span><input name="vehicleNo" maxlength="15" /></label>
+        <label class="field">Transporter ID <span class="optional">(optional)</span><input name="transporterId" maxlength="15" /></label>
+        <label class="field">Transporter name <span class="optional">(optional)</span><input name="transporterName" maxlength="100" /></label>
+      </div>
+      <p class="finance-basis">Distance 0 lets the portal work it out from the PIN codes.</p>
+      <div class="form-actions"><button class="button" type="submit">Download e-way bill JSON</button></div>
+    </form>
+  <% } %>
+  <% if (doc.ewayBill) { %>
+    <p><strong>E-way bill:</strong> <%= doc.ewayBill.number %> · <%= doc.ewayBill.date %><%= doc.ewayBill.validUntil ? ` · valid until ${doc.ewayBill.validUntil}` : '' %></p>
+    <button class="text-button" type="button" data-einvoice-clear="eway-bill">Remove the saved e-way bill</button>
+  <% } else if (!['draft', 'cancelled'].includes(doc.status)) { %>
+    <form class="stack" data-einvoice-form="eway-bill">
+      <div class="alert alert-error" data-form-error hidden role="alert"></div>
+      <div class="form-grid">
+        <label class="field">E-way bill number<input name="number" maxlength="12" inputmode="numeric" required /></label>
+        <label class="field">Generated on<input name="date" maxlength="30" placeholder="17/10/2026 11:40" required /></label>
+        <label class="field">Valid until <span class="optional">(optional)</span><input name="validUntil" maxlength="30" /></label>
+      </div>
+      <div class="form-actions"><button class="button button-primary" type="submit">Save e-way bill</button></div>
+    </form>
+  <% } %>
+</section>
+<script type="module" src="/js/workspace/einvoice.js"></script>
