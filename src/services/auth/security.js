@@ -201,7 +201,8 @@ export function createAuthSecurity({ db, now = Date.now, audit, logger }) {
         created_at: createdAt,
         last_seen_at: createdAt,
         device,
-        expiresOn: new Date(expiresAt),
+        // MongoDB's TTL cleanup runs on the database's real clock, not on an injected app clock.
+        expiresOn: new Date(Date.now() + expiresAt - createdAt),
       },
       options(),
     );

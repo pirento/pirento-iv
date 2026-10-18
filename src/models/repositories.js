@@ -307,14 +307,6 @@ export function createModels(context) {
       }),
     deleteSession: (token_hash) => remove('auth_sessions', { token_hash }),
     deleteExpiredSessions: (time) => remove('auth_sessions', { expires_at: { $lte: time } }),
-    insertSession: (token_hash, user_id, expires_at, created_at) =>
-      insert('auth_sessions', {
-        token_hash,
-        user_id,
-        expires_at,
-        created_at,
-        expiresOn: new Date(expires_at),
-      }),
     setLastLogin: (last_login_at, id) => update('auth_users', { id }, { last_login_at }),
     deleteExpiredResets: (time) => remove('auth_password_resets', { expires_at: { $lte: time } }),
     insertReset: (token_hash, user_id, expires_at, created_at) =>
@@ -323,7 +315,8 @@ export function createModels(context) {
         user_id,
         expires_at,
         created_at,
-        expiresOn: new Date(expires_at),
+        // TTL cleanup uses the database's real clock; expires_at (app clock) decides validity.
+        expiresOn: new Date(Date.now() + expires_at - created_at),
       }),
     deleteReset: (token_hash) => remove('auth_password_resets', { token_hash }),
     findValidReset: (token_hash, time) =>
