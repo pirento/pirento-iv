@@ -319,6 +319,10 @@ export function createWorkspacePageData({
       const document = await db.models.documents.findById(route.documentId);
       if (document?.organizationId !== organizationId || document.kind !== 'invoice')
         throw new HttpError(404, 'Invoice not found.');
+      const credited = (await db.models.creditNotes.forInvoice(document.id))
+        .filter((note) => note.status === 'issued')
+        .reduce((sum, note) => sum + Math.round(note.total * 100), 0);
+      const creditable = (Math.round(document.totals.total * 100) - credited) / 100;
       invoice = {
         id: document.id,
         number: document.number,
@@ -329,7 +333,8 @@ export function createWorkspacePageData({
         balanceDue: document.balanceDue ?? 0,
         interstate: document.placeOfSupply !== document.organizationSnapshot?.stateCode,
         rates: [...new Set(document.items.map((item) => Number(item.gstRate) || 0))].sort((a, b) => a - b),
-        canCredit: ['sent', 'partially_paid'].includes(document.status) && document.balanceDue > 0,
+        creditable,
+        canCredit: ['sent', 'partially_paid', 'paid'].includes(document.status) && creditable > 0,
       };
     }
     return { month, notes, invoice, reasons: CREDIT_NOTE_REASONS };

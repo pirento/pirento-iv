@@ -206,7 +206,7 @@ async function initializeCollections(context) {
   await index('document_events', { documentId: 1 });
   await index('expenses', { organizationId: 1, billDate: -1, id: -1 });
   await index('credit_notes', { organizationId: 1, noteDate: -1, id: -1 });
-  await index('credit_notes', { invoiceId: 1 });
+  await index('credit_notes', { invoiceId: 1, requestId: 1 });
   await index('credit_notes', { number: 1 }, { unique: true });
   await index('sequences', { organizationId: 1, kind: 1, fiscalYear: 1 }, { unique: true });
   await index(

@@ -1,6 +1,7 @@
 /**
  * Credit notes pages (views/credit-notes/index.ejs and print.ejs): shows the GST split while
- * typing, issues a credit note against the invoice, cancels one with a reason and prints one.
+ * typing, issues a credit note against the invoice, records a refund, cancels one with a reason
+ * and prints one.
  */
 
 import { api, formValues, sendJson, setBusy, showError } from '../core/api.js';
@@ -31,9 +32,14 @@ function showPreview() {
   const values = readForm();
   if (!(values.taxable > 0)) return (preview.textContent = '');
   const amounts = gstAmounts({ ...values, interstate: form.dataset.interstate === 'true' });
-  const left = Number(form.dataset.balance) - amounts.total;
+  const balance = Number(form.dataset.balance);
+  const refund = Math.max(0, Math.round((amounts.total - balance) * 100) / 100);
   preview.textContent = `GST ${money(amounts.tax)} · Credit note total ${money(amounts.total)} · ${
-    left < 0 ? 'More than the balance due' : `Balance after credit ${money(left)}`
+    amounts.total > Number(form.dataset.creditable)
+      ? 'More than can still be credited'
+      : refund
+        ? `Balance after credit ${money(0)} · Refund due ${money(refund)}`
+        : `Balance after credit ${money(balance - amounts.total)}`
   }`;
 }
 
@@ -74,6 +80,26 @@ for (const button of document.querySelectorAll('[data-credit-note-cancel]')) {
       goTo('Credit note cancelled.', workspacePath('credit_notes', '', '', { month: page.month }));
     } catch (error) {
       showError(null, error.message);
+      setBusy(button, false);
+    }
+  });
+}
+
+for (const refundForm of document.querySelectorAll('[data-credit-note-refund]')) {
+  refundForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const button = refundForm.querySelector('[type="submit"]');
+    if (button.disabled) return;
+    showError(refundForm, '');
+    setBusy(button, true, 'Saving…');
+    try {
+      await api(
+        `/credit-notes/${encodeURIComponent(refundForm.dataset.creditNoteRefund)}/refund`,
+        sendJson('POST', formValues(refundForm)),
+      );
+      goTo('Refund recorded.', workspacePath('credit_notes', '', '', { month: page.month }));
+    } catch (error) {
+      showError(refundForm, error.message);
       setBusy(button, false);
     }
   });

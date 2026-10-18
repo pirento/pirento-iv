@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   buildGstr1,
+  creditNoteHsnLines,
   gstr1Csv,
   invoiceLines,
   monthRange,
@@ -138,6 +139,7 @@ test('credit notes go to CDNR, CDNUR or net B2CS by their invoice, and to Table 
     interstate: false,
     customerSnapshot: { name: 'Buyer', gstin: '' },
     organizationSnapshot: seller,
+    hsnLines: [{ hsn: '9987', description: 'Service', unit: 'Hour', taxable: 100, tax: 18 }],
     ...extra,
   });
   const report = buildGstr1([b2cs], { month: '2026-10' }, [
@@ -175,4 +177,27 @@ test('credit notes go to CDNR, CDNUR or net B2CS by their invoice, and to Table 
   );
   assert.deepEqual(report.sections.docs.at(-1), ['Credit Note', 'CN/2627/C0001', 'CN/2627/C0004', 4, 1]);
   assert.match(gstr1Csv(report, 'cdnr').lines[0], /"Note Number","Note Date","Note Type"/);
+  assert.deepEqual(
+    report.sections['hsn-b2c'],
+    [['9987', 'Service', 'NA', 1, '944.00', 18, '800.00', '-18.00', '81.00', '81.00', '0.00']],
+    'unregistered credit notes come off the B2C HSN row (IGST for the inter-state one)',
+  );
+  assert.deepEqual(report.sections['hsn-b2b'], [
+    ['9987', 'Service', 'NA', 0, '-118.00', 18, '-100.00', '0.00', '-9.00', '-9.00', '0.00'],
+  ]);
+});
+
+test('a credit note is split over the invoice lines at its rate in proportion, to the paisa', () => {
+  const mixed = invoice({ items: [line(100, 18, { hsn: 'A' }), line(200, 18, { hsn: 'B' }), line(50, 5)] });
+  assert.deepEqual(
+    creditNoteHsnLines(mixed, { gstRate: 18, taxable: 100, tax: 18 }).map((row) => [
+      row.hsn,
+      row.taxable,
+      row.tax,
+    ]),
+    [
+      ['A', 33.33, 6],
+      ['B', 66.67, 12],
+    ],
+  );
 });

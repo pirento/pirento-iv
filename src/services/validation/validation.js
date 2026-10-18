@@ -485,6 +485,14 @@ export const creditNoteSchema = z
     requestId: z.guid(),
   })
   .strict();
+// Money paid back to the buyer for the part of a credit note above the invoice's balance due.
+export const creditNoteRefundSchema = z
+  .object({
+    paidOn: date,
+    method: z.enum(['bank_transfer', 'upi', 'cash', 'card', 'cheque', 'other']),
+    reference: text(200).default(''),
+  })
+  .strict();
 // A document as sent by the editor: header fields, line items, totals inputs, shipping and plan.
 export const documentSchema = z
   .object({

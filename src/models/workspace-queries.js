@@ -23,6 +23,7 @@ export const DOCUMENT_SUMMARY_FIELDS = {
   status: 1,
   createdAt: 1,
   amountPaid: 1,
+  creditedAmount: 1,
   balanceDue: 1,
   finalizedAt: 1,
   convertedInvoiceId: 1,
@@ -162,11 +163,12 @@ export function createWorkspaceQueries(db) {
           continue;
         }
         summary.invoiceCount += 1;
-        summary.received += paidAmount(document);
+        const received = paidAmount(document) - (document.creditedAmount ?? 0);
+        summary.received += received;
         if (['sent', 'partially_paid'].includes(document.status)) summary.outstanding += balanceDue(document);
         if (documentStatus(document, asOf) === 'overdue') summary.overdueCount += 1;
         const month = monthly.find((item) => document.issueDate.startsWith(item.key));
-        if (month) month.total += paidAmount(document);
+        if (month) month.total += received;
         if (document.installmentPlan && !['draft', 'cancelled'].includes(document.status)) {
           for (const row of installmentBalances(document, asOf)) {
             if (row.balanceDue <= 0) continue;
@@ -285,10 +287,22 @@ export function createWorkspaceQueries(db) {
       db
         .collection('credit_notes')
         .find(
-          { organizationId, status: 'issued', noteDate: { $gte: from, $lt: to } },
+          {
+            organizationId,
+            status: 'issued',
+            $or: [{ noteDate: { $gte: from, $lt: to } }, { 'refund.paidOn': { $gte: from, $lt: to } }],
+          },
           {
             ...options(),
-            projection: { _id: 0, customerId: 1, noteDate: 1, taxable: 1, total: 1 },
+            projection: {
+              _id: 0,
+              customerId: 1,
+              noteDate: 1,
+              taxable: 1,
+              total: 1,
+              refundDue: 1,
+              'refund.paidOn': 1,
+            },
           },
         )
         .toArray(),

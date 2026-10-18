@@ -17,11 +17,11 @@ const amount = value => helpers.money(value || 0);
       <h2>Credit note against <%= invoice.number %></h2>
       <a class="text-button" href="<%= helpers.url(data, 'invoices', 'preview', invoice.id) %>">Back to invoice</a>
     </div>
-    <p class="finance-basis"><%= invoice.customerName %> · Invoice dated <%= helpers.displayDate(invoice.issueDate) %> · Total <%= amount(invoice.total) %> · Balance due <strong><%= amount(invoice.balanceDue) %></strong></p>
+    <p class="finance-basis"><%= invoice.customerName %> · Invoice dated <%= helpers.displayDate(invoice.issueDate) %> · Total <%= amount(invoice.total) %> · Balance due <strong><%= amount(invoice.balanceDue) %></strong> · Up to <%= amount(invoice.creditable) %> can still be credited. Any part above the balance due is refunded to the buyer.</p>
     <% if (!invoice.canCredit) { %>
-      <div class="alert alert-info">A credit note can be issued only while an issued invoice still has a balance due. Refunds of paid invoices are not recorded here.</div>
+      <div class="alert alert-info">A credit note can be issued only against an issued invoice that has not been fully credited already.</div>
     <% } else { %>
-      <form class="stack" data-credit-note-form data-invoice-id="<%= invoice.id %>" data-interstate="<%= invoice.interstate %>" data-balance="<%= invoice.balanceDue %>">
+      <form class="stack" data-credit-note-form data-invoice-id="<%= invoice.id %>" data-interstate="<%= invoice.interstate %>" data-balance="<%= invoice.balanceDue %>" data-creditable="<%= invoice.creditable %>">
         <div class="alert alert-error" data-form-error hidden role="alert"></div>
         <div class="form-grid">
           <label class="field">Credit note date<input type="date" name="noteDate" value="<%= data.businessDate %>" min="<%= invoice.issueDate %>" max="<%= data.businessDate %>" required /></label>
@@ -76,6 +76,9 @@ const amount = value => helpers.money(value || 0);
               <td>
                 <strong><%= note.number %></strong>
                 <small><%= helpers.displayDate(note.noteDate) %><%= note.status === 'cancelled' ? ' · Cancelled' : '' %></small>
+                <% if (note.status === 'issued' && note.refundDue > 0) { %>
+                  <small><%= note.refund ? `Refunded ${amount(note.refundDue)} on ${helpers.displayDate(note.refund.paidOn)}` : `Refund due ${amount(note.refundDue)}` %></small>
+                <% } %>
               </td>
               <td>
                 <a href="<%= helpers.url(data, 'invoices', 'preview', note.invoiceId) %>"><%= note.invoiceNumber %></a>
@@ -87,8 +90,25 @@ const amount = value => helpers.money(value || 0);
               <td class="text-right"><strong><%= amount(note.total) %></strong></td>
               <td>
                 <a class="text-button" href="<%= helpers.url(data, 'credit_notes', 'preview', note.id) %>">View / print</a>
-                <% if (note.status !== 'cancelled') { %>
+                <% if (note.status !== 'cancelled' && !note.refund) { %>
                   <button class="text-button" type="button" data-credit-note-cancel="<%= note.id %>" data-credit-note-number="<%= note.number %>">Cancel</button>
+                <% } %>
+                <% if (note.status === 'issued' && note.refundDue > 0 && !note.refund) { %>
+                  <details>
+                    <summary class="text-button">Record refund</summary>
+                    <form class="stack" data-credit-note-refund="<%= note.id %>">
+                      <div class="alert alert-error" data-form-error hidden role="alert"></div>
+                      <label class="field">Refunded on<input type="date" name="paidOn" value="<%= data.businessDate %>" min="<%= note.noteDate %>" max="<%= data.businessDate %>" required /></label>
+                      <label class="field">
+                        Method
+                        <select name="method">
+                          <% for (const [value, label] of Object.entries(helpers.PAYMENT_METHODS)) { %><option value="<%= value %>"><%= label %></option><% } %>
+                        </select>
+                      </label>
+                      <label class="field">Reference <span class="optional">(optional)</span><input name="reference" maxlength="200" /></label>
+                      <button class="button" type="submit">Save refund of <%= amount(note.refundDue) %></button>
+                    </form>
+                  </details>
                 <% } %>
               </td>
             </tr>

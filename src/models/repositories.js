@@ -107,6 +107,7 @@ export function createModels(context) {
       listBetween: (organizationId, { from, to }) =>
         all('credit_notes', { organizationId, noteDate: { $gte: from, $lt: to } }, { noteDate: -1, id: -1 }),
       forInvoice: (invoiceId) => all('credit_notes', { invoiceId }, { noteDate: 1, id: 1 }),
+      forRequest: (invoiceId, requestId) => one('credit_notes', { invoiceId, requestId }),
     },
     documents: {
       ...business('documents'),
@@ -152,6 +153,9 @@ export function createModels(context) {
                 $group: {
                   _id: null,
                   paid: { $sum: '$paymentPaise' },
+                  credited: {
+                    $sum: { $cond: [{ $ifNull: ['$creditNoteId', false] }, '$paymentPaise', 0] },
+                  },
                   invalidAmounts: { $sum: { $cond: [validReceiptPaise('$paymentPaise'), 0, 1] } },
                 },
               },
@@ -159,14 +163,15 @@ export function createModels(context) {
             options(),
           )
           .toArray();
-        const { paid = 0, invalidAmounts = 0 } = rows[0] ?? {};
+        const { paid = 0, credited = 0, invalidAmounts = 0 } = rows[0] ?? {};
         if (invalidAmounts || !Number.isSafeInteger(paid) || paid < 0)
           throw new HttpError(
             409,
             'Saved active receipt amounts are invalid or exceed the safe integer-paise range. Review or void the incorrect receipt before recording another payment.',
             'PAYMENT_DATA_INVALID',
           );
-        return { paid };
+        // credited: the part of paid that is credit notes, not money received.
+        return { paid, credited };
       },
     },
     events: {

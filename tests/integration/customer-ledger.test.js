@@ -765,7 +765,11 @@ test(
         });
         assert.equal(corrected.document.amountPaid, 0.1, label);
         assert.equal(corrected.document.balanceDue, 99.9, label);
-        assert.deepEqual(await f.backend.db.models.payments.activeTotal(invoice.id), { paid: 10 }, label);
+        assert.deepEqual(
+          await f.backend.db.models.payments.activeTotal(invoice.id),
+          { paid: 10, credited: 0 },
+          label,
+        );
       }
     }
     const largeAmount = 45035996273704.97;
@@ -774,6 +778,7 @@ test(
       .updateOne({ id: invalid.id }, { $set: { amount: largeAmount, voidedAt: null, voidReason: '' } });
     assert.deepEqual(await f.backend.db.models.payments.activeTotal(invoice.id), {
       paid: Math.round(largeAmount * 100) + 10,
+      credited: 0,
     });
   },
 );

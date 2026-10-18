@@ -81,7 +81,7 @@ test('a credit note reduces the invoice balance, is retry-safe and cancels clean
 
   const retry = (changes, status) =>
     call(path, 'POST', { ...credit, requestId: crypto.randomUUID(), ...changes }, status);
-  assert.match((await retry({ taxable: 901 }, 409)).error, /more than the balance due/);
+  assert.match((await retry({ taxable: 901 }, 409)).error, /more than its total/);
   assert.match((await retry({ gstRate: 5 }, 400)).error, /GST rate used on this invoice/);
   assert.match((await retry({ noteDate: '2026-10-01' }, 400)).error, /between the invoice date and today/);
   const receipt = details.payments.find((row) => row.creditNoteId === note.id);
@@ -133,3 +133,145 @@ test('a credit note reduces the invoice balance, is retry-safe and cancels clean
   );
   assert.match(await docs.text(), /"Credit Note","(.+)","\1","1","1"/);
 });
+
+test(
+  'a credit note on a paid invoice becomes a refund; credits stay out of money received',
+  options,
+  async (t) => {
+    const { base, backend } = await createFixture(t, {
+      auth: false,
+      now: () => new Date('2026-10-17T06:00:00Z'),
+    });
+    attachPageRoutes(backend);
+    const organizationId = 'pipeline2-legal';
+    const organization = await backend.db.models.organizations.findById(organizationId);
+    await backend.db.models.organizations.save({
+      ...organization,
+      gstin: '09AAACA1234A1Z5',
+      stateCode: '09',
+    });
+    const call = async (path, method, body, status = 200) => {
+      const response = await fetch(`${base}/api${path}`, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      });
+      const data = await response.json();
+      assert.equal(response.status, status, `${method} ${path}: ${JSON.stringify(data)}`);
+      return data;
+    };
+    const buyer = await call(
+      '/customers',
+      'POST',
+      {
+        organizationId,
+        name: 'Walk-in',
+        email: '',
+        phone: '',
+        gstin: '',
+        address: 'Lucknow',
+        stateCode: '09',
+        contactPerson: '',
+      },
+      201,
+    );
+    const invoice = () =>
+      call(
+        '/documents',
+        'POST',
+        {
+          organizationId,
+          customerId: buyer.id,
+          kind: 'invoice',
+          status: 'sent',
+          issueDate: '2026-10-05',
+          dueDate: '2026-10-05',
+          title: 'Invoice',
+          items: [{ description: 'Service', hsn: '998719', quantity: 1, rate: 1000, gstRate: 18 }],
+          discountPercent: 0,
+          placeOfSupply: '09',
+          notes: '',
+          terms: '',
+        },
+        201,
+      );
+    const credit = (invoiceId, taxable, status = 201) =>
+      call(
+        `/documents/${invoiceId}/credit-notes`,
+        'POST',
+        {
+          noteDate: '2026-10-10',
+          reason: 'Sales return',
+          taxable,
+          gstRate: 18,
+          notes: '',
+          requestId: crypto.randomUUID(),
+        },
+        status,
+      );
+    const unpaid = await invoice();
+    await credit(unpaid.id, 100);
+    const paid = await invoice();
+    await call(
+      `/documents/${paid.id}/payments`,
+      'POST',
+      {
+        amount: 1180,
+        paidOn: '2026-10-06',
+        method: 'upi',
+        reference: '',
+        notes: '',
+        requestId: 'paid-in-full',
+      },
+      201,
+    );
+    const note = await credit(paid.id, 100);
+    assert.deepEqual([note.appliedAmount, note.refundDue, note.refund], [0, 118, null]);
+    assert.deepEqual(note.hsnLines, [
+      { hsn: '998719', description: 'Service', unit: '', taxable: 100, tax: 18 },
+    ]);
+    const details = await call(`/documents/${paid.id}/payments`, 'GET');
+    assert.deepEqual([details.document.balanceDue, details.document.status], [0, 'paid']);
+    assert.equal(details.payments.length, 1, 'no credit-note receipt when nothing is left to pay');
+    assert.match((await credit(paid.id, 901, 409)).error, /more than its total/);
+
+    const refund = { paidOn: '2026-10-12', method: 'upi', reference: 'UTR-1' };
+    assert.equal(
+      (
+        await call(`/credit-notes/${note.id}/refund`, 'POST', { ...refund, paidOn: '2026-10-09' }, 400)
+      ).error.includes('refund date'),
+      true,
+    );
+    const refunded = await call(`/credit-notes/${note.id}/refund`, 'POST', refund);
+    assert.equal(refunded.refund.reference, 'UTR-1');
+    assert.deepEqual((await call(`/credit-notes/${note.id}/refund`, 'POST', refund)).refund, refunded.refund);
+    assert.match(
+      (await call(`/credit-notes/${note.id}/cancel`, 'POST', { reason: 'x' }, 409)).error,
+      /refund is recorded/,
+    );
+
+    const overview = (await (await fetch(`${base}/workspace/${organizationId}/overview`)).text()).replace(
+      /\s+/g,
+      ' ',
+    );
+    assert.match(
+      overview,
+      /Payments received .*?<div class="metric-value">₹1,180\.00<\/div>/,
+      'the credit on the unpaid invoice is not money received',
+    );
+    const reports = (
+      await (await fetch(`${base}/workspace/${organizationId}/reports?year=2026`)).text()
+    ).replace(/\s+/g, ' ');
+    assert.match(
+      reports,
+      /<td>Oct 2026<\/td> <td class="text-right">₹1,800\.00<\/td> <td class="text-right">₹2,124\.00<\/td> <td class="text-right">₹1,062\.00<\/td>/,
+    );
+    const hsn = await fetch(
+      `${base}/workspace/${organizationId}/gst_returns?month=2026-10&download=csv&section=hsn-b2c`,
+    );
+    assert.match(
+      await hsn.text(),
+      /"998719","Service","NA","2","2124\.00","18","1800\.00","0\.00","162\.00","162\.00"/,
+    );
+  },
+);

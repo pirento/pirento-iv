@@ -29,7 +29,8 @@ const bucketOf = (dueDate, asOf) => {
 
 /**
  * invoices: issued (not draft or cancelled) invoices of the year; payments: non-voided receipts of the year
- * (credit notes left out); creditNotes: issued credit notes of the year, taken off sales in their month;
+ * (credit notes left out); creditNotes: issued credit notes dated or refunded in the year, taken off
+ * sales in their month, with refunds taken off money received in the month paid;
  * expenses: expenses of the year; openInvoices: every invoice still owed (sent or partially paid).
  */
 export function buildReport({ year, asOf, invoices, payments, creditNotes = [], expenses, openInvoices }) {
@@ -59,7 +60,10 @@ export function buildReport({ year, asOf, invoices, payments, creditNotes = [], 
     row.total += paise(invoice.totals.total);
     customers.set(key, row);
   }
+  const inYear = (date) => months.some((month) => date?.startsWith(month.key));
   for (const note of creditNotes) {
+    if (note.refund) add(note.refund.paidOn, 'received', -note.refundDue);
+    if (!inYear(note.noteDate)) continue;
     add(note.noteDate, 'sales', -note.taxable);
     add(note.noteDate, 'salesWithGst', -note.total);
     const row = customers.get(note.customerId);
