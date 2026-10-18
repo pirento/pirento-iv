@@ -93,6 +93,12 @@ export function registerApiRoutes(app, context) {
   app.delete('/api/expenses/:id', controllers.expenses.remove);
   app.post('/api/documents/:id/credit-notes', controllers.creditNotes.create);
   app.post('/api/documents/:id/debit-notes', controllers.debitNotes.create);
+  app.get('/api/documents/:id/einvoice-file', controllers.einvoice.einvoiceFile);
+  app.put('/api/documents/:id/einvoice', controllers.einvoice.saveEinvoice);
+  app.delete('/api/documents/:id/einvoice', controllers.einvoice.clearEinvoice);
+  app.get('/api/documents/:id/eway-bill-file', controllers.einvoice.ewayBillFile);
+  app.put('/api/documents/:id/eway-bill', controllers.einvoice.saveEwayBill);
+  app.delete('/api/documents/:id/eway-bill', controllers.einvoice.clearEwayBill);
   app.post('/api/credit-notes/:id/cancel', controllers.creditNotes.cancel);
   app.post('/api/credit-notes/:id/refund', controllers.creditNotes.refund);
   app.post('/api/stock-adjustments', controllers.stockAdjustments.create);

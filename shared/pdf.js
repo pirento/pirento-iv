@@ -549,6 +549,30 @@ export function buildDocumentDefinition(doc, imageInput) {
     ],
     margin: [0, 0, 0, 10],
   });
+  // --- E-invoice (IRN, signed QR code) and e-way bill, when recorded ---
+  if (doc.einvoice || doc.ewayBill)
+    content.push({
+      columns: [
+        {
+          stack: [
+            ...(doc.einvoice
+              ? [
+                  text(`IRN: ${doc.einvoice.irn}`, { fontSize: small }),
+                  text(`Ack No: ${doc.einvoice.ackNo}   Ack date: ${doc.einvoice.ackDate}`, {
+                    fontSize: small,
+                  }),
+                ]
+              : []),
+            ...(doc.ewayBill
+              ? [text(`E-way bill: ${doc.ewayBill.number}   ${doc.ewayBill.date}`, { fontSize: small })]
+              : []),
+          ],
+        },
+        ...(doc.einvoice ? [{ qr: doc.einvoice.signedQr, fit: 90, width: 90 }] : []),
+      ],
+      columnGap: 10,
+      margin: [0, 0, 0, 10],
+    });
   // --- Parties: seller, buyer and dates ---
   const seller = [
     heading('From'),

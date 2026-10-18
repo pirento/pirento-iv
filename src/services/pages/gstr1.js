@@ -18,7 +18,7 @@ const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Se
 // (₹1 lakh from 1 August 2024, ₹2.5 lakh before).
 const b2clLimit = (issueDate) => (issueDate >= '2024-08-01' ? 100000 : 250000);
 // GST unit codes (UQC) for the editor's units; services (SAC 99xx) use NA, anything else OTH.
-const UQC = {
+export const UQC = {
   Nos: 'NOS-NUMBERS',
   Unit: 'UNT-UNITS',
   Piece: 'PCS-PIECES',

@@ -13,6 +13,7 @@ import * as identity from '../../../shared/business-identity.js';
 import * as contacts from '../../../shared/contact-types.js';
 import { workspaceUrl } from '../../../public/js/core/workspace-route.js';
 import { documentStatus } from '../../../shared/document-status.js';
+import { qrSvg } from '../../services/auth/two-step.js';
 
 /** Today's date in India as YYYY-MM-DD. */
 export function today() {
@@ -230,6 +231,7 @@ export const helpers = {
   workspaceUrl,
   documentViews,
   whatsappShareUrl,
+  qrSvg,
   statusLabel: (status) => (status === 'overdue' ? 'Overdue' : types.STATUS_LABELS[status] || status),
   escapeHtml: (value) =>
     String(value ?? '').replace(

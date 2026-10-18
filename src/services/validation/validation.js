@@ -466,6 +466,43 @@ export const expenseSchema = z
 export const voidPaymentSchema = z.object({
   reason: requiredText(2000),
 });
+// The IRN, acknowledgement and signed QR code the e-invoice portal returned for an invoice.
+export const einvoiceSchema = z
+  .object({
+    irn: z
+      .string()
+      .trim()
+      .regex(/^[0-9a-fA-F]{64}$/, 'The IRN has 64 letters and digits.'),
+    ackNo: z
+      .string()
+      .trim()
+      .regex(/^\d{10,20}$/, 'The acknowledgement number has 10 to 20 digits.'),
+    ackDate: requiredText(30),
+    signedQr: z.string().trim().min(20, 'Paste the signed QR code text.').max(5000),
+  })
+  .strict();
+// Transport details for the e-way bill file (distance 0 lets the portal work it out from PIN codes).
+export const ewayTransportSchema = z.object({
+  mode: z.enum(['road', 'rail', 'air', 'ship']).default('road'),
+  distanceKm: z.coerce.number().int().min(0).max(4000),
+  vehicleNo: text(15)
+    .default('')
+    .transform((value) => value.toUpperCase().replace(/[^A-Z0-9]/g, ''))
+    .refine((value) => value === '' || /^[A-Z0-9]{4,15}$/.test(value), 'Enter a valid vehicle number.'),
+  transporterId: text(15).default(''),
+  transporterName: text(100).default(''),
+});
+// The e-way bill number the portal generated for an invoice.
+export const ewayBillSchema = z
+  .object({
+    number: z
+      .string()
+      .trim()
+      .regex(/^\d{12}$/, 'The e-way bill number has 12 digits.'),
+    date: requiredText(30),
+    validUntil: text(30).default(''),
+  })
+  .strict();
 // Stock added (positive) or removed (negative) for one catalog product.
 export const stockAdjustmentSchema = z
   .object({

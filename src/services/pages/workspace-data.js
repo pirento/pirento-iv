@@ -17,6 +17,7 @@ import { readDirectoryFilters, directoryPageLinks } from './directory-list.js';
 import { buildGstr1, gstr1Csv, GSTR1_SECTIONS, monthRange, readGstr1Filters } from './gstr1.js';
 import { expenseCsv, expenseTotals, readExpenseMonth } from '../expenses/expenses.js';
 import { buildReport, financialYearRange, readReportYear } from './reports.js';
+import { einvoiceProblems } from '../documents/einvoice.js';
 import { CREDIT_NOTE_REASONS, DEBIT_NOTE_REASONS, EXPENSE_CATEGORIES } from '../validation/validation.js';
 import { safeWorkspaceReturn } from '../../../public/js/core/workspace-route.js';
 
@@ -172,6 +173,25 @@ export function createWorkspacePageData({
     if (route?.view === 'credit_notes')
       read('creditNotePage', () => creditNotePage(organizationId, route, result.businessDate));
     if (route?.view === 'stock') read('stockPage', () => queries.stockLevels(organizationId));
+    if (route?.view === 'e_invoice')
+      read('einvoicePage', async () => {
+        const doc = await db.models.documents.findById(route.id);
+        if (doc?.organizationId !== organizationId || doc.kind !== 'invoice')
+          throw new HttpError(404, 'Invoice not found.');
+        return {
+          document: {
+            id: doc.id,
+            number: doc.number,
+            status: doc.status,
+            customerName: doc.customerSnapshot?.name ?? '',
+            total: doc.totals.total,
+            einvoice: doc.einvoice ?? null,
+            ewayBill: doc.ewayBill ?? null,
+          },
+          einvoiceProblems: einvoiceProblems(doc),
+          ewayProblems: einvoiceProblems(doc, { ewayBill: true }),
+        };
+      });
     if (route?.view === 'reports')
       read('report', async () => {
         const year = readReportYear(route.query, result.businessDate);

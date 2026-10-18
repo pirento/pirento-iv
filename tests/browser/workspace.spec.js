@@ -455,3 +455,27 @@ test('stock entries saved on the Stock page change stock in hand', async ({ page
   await form.getByRole('button', { name: 'Save stock entry' }).click();
   await expect(row).toContainText('3 Nos');
 });
+
+test('the IRN and signed QR saved on the e-invoice page print on the invoice', async ({ page, app }) => {
+  await signIn(page, app);
+  const customer = await api(page, app, '/customers', 'POST', customerInput(app.organizationId));
+  const invoice = await api(
+    page,
+    app,
+    '/documents',
+    'POST',
+    invoiceInput(app.organizationId, customer.id, { status: 'sent' }),
+  );
+  await page.goto(workspace(app, `invoices/preview/${invoice.id}`));
+  await page.getByRole('link', { name: 'E-invoice / e-way bill' }).click();
+  const form = page.locator('[data-einvoice-form="einvoice"]');
+  await form.locator('[name="irn"]').fill('b'.repeat(64));
+  await form.locator('[name="ackNo"]').fill('112610012345678');
+  await form.locator('[name="ackDate"]').fill('17/10/2026 11:32:00');
+  await form.locator('[name="signedQr"]').fill('eyJhbGciOiJSUzI1NiJ9.browser-test-payload.signature');
+  await form.getByRole('button', { name: 'Save e-invoice details' }).click();
+  await expect(page.getByRole('button', { name: 'Remove the saved IRN' })).toBeVisible();
+  await page.goto(workspace(app, `invoices/preview/${invoice.id}`));
+  await expect(page.getByText(`IRN: ${'b'.repeat(64)}`)).toBeVisible();
+  await expect(page.getByRole('img', { name: 'E-invoice QR code' })).toBeVisible();
+});
