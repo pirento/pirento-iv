@@ -36,6 +36,7 @@ The database uses native BSON documents, nested objects and arrays. It does not 
 | `payments`, `document_events`                                       | Receipt ledger and retained document activity.                                                                        |
 | `credit_notes`                                                      | Credit notes against invoices; each is applied to its invoice as a `credit_note` receipt in `payments`.               |
 | `expenses`                                                          | Organization-scoped purchase bills and other costs with their GST split.                                              |
+| `stock_adjustments`                                                 | Stock added or removed by hand per product; sold quantities come from issued invoices.                                |
 | `images`                                                            | Business images stored once and referenced from documents and emails as `stored-image:<sha256>`.                      |
 | `auth_users`, `auth_sessions`, `auth_password_resets`, `auth_audit` | Account state, hashed session/reset tokens and audit records.                                                         |
 | `auth_rate_limits`                                                  | Atomic per-scope/client request counters with server-clock windows and TTL cleanup.                                   |
