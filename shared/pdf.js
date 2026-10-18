@@ -235,17 +235,20 @@ export function documentBusinessIdentity(doc) {
     supportEmail: organizationSupportEmail(org),
   };
 }
-// Heading printed on the document: TAX INVOICE (with GSTIN), INVOICE, PROFORMA INVOICE, DELIVERY CHALLAN or QUOTATION.
+// Heading printed on the document: DEBIT NOTE, TAX INVOICE (with GSTIN), INVOICE, PROFORMA INVOICE,
+// DELIVERY CHALLAN or QUOTATION.
 export const documentTitle = (doc) =>
-  doc.kind === 'invoice'
-    ? doc.organizationSnapshot.gstin
-      ? 'TAX INVOICE'
-      : 'INVOICE'
-    : doc.kind === 'proforma'
-      ? 'PROFORMA INVOICE'
-      : doc.kind === 'delivery_note'
-        ? 'DELIVERY CHALLAN'
-        : 'QUOTATION';
+  doc.debitNoteFor
+    ? 'DEBIT NOTE'
+    : doc.kind === 'invoice'
+      ? doc.organizationSnapshot.gstin
+        ? 'TAX INVOICE'
+        : 'INVOICE'
+      : doc.kind === 'proforma'
+        ? 'PROFORMA INVOICE'
+        : doc.kind === 'delivery_note'
+          ? 'DELIVERY CHALLAN'
+          : 'QUOTATION';
 // Due date shown on the document: the last installment's due date when there is a plan, else dueDate.
 export const documentDueDate = (doc) =>
   doc.installmentPlan?.installments.length

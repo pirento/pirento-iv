@@ -1,4 +1,4 @@
-<%# Credit notes page /workspace/<id>/credit_notes?month=YYYY-MM (add &documentId=<invoice> to issue one against that invoice). Script: /js/workspace/credit-notes.js. -%>
+<%# Credit & debit notes page /workspace/<id>/credit_notes?month=YYYY-MM (add &documentId=<invoice> to issue a credit or debit note against that invoice). Script: /js/workspace/credit-notes.js. -%>
 <%
 const page = data.creditNotePage;
 const invoice = page.invoice;
@@ -7,8 +7,8 @@ const amount = value => helpers.money(value || 0);
 <header class="page-header">
   <div>
     <span class="eyebrow">ACCOUNTS</span>
-    <h1>Credit notes</h1>
-    <p>Credit notes lower what a buyer owes on an issued invoice: goods returned, a discount after the sale or a correction. Open an invoice and choose Credit note to issue one.</p>
+    <h1>Credit &amp; debit notes</h1>
+    <p>A credit note lowers what a buyer owes on an issued invoice (goods returned, a discount after the sale, a correction); a debit note charges more (a price increase, short billing). Open an invoice and choose Credit / debit note.</p>
   </div>
 </header>
 <% if (invoice) { %>
@@ -47,6 +47,37 @@ const amount = value => helpers.money(value || 0);
       </form>
     <% } %>
   </section>
+  <% if (invoice.canDebit) { %>
+    <section class="card" id="debit-note-editor">
+      <div class="finance-section-heading"><h2>Debit note against <%= invoice.number %></h2></div>
+      <p class="finance-basis">A debit note is a new bill for the extra amount, with its own number and payments. It appears with your invoices.</p>
+      <form class="stack" data-debit-note-form data-invoice-id="<%= invoice.id %>" data-interstate="<%= invoice.interstate %>">
+        <div class="alert alert-error" data-form-error hidden role="alert"></div>
+        <div class="form-grid">
+          <label class="field">Debit note date<input type="date" name="noteDate" value="<%= data.businessDate %>" min="<%= invoice.issueDate %>" max="<%= data.businessDate %>" required /></label>
+          <label class="field">Due date <span class="optional">(optional)</span><input type="date" name="dueDate" /></label>
+          <label class="field">
+            Reason
+            <select name="reason">
+              <% for (const reason of page.debitReasons) { %><option><%= reason %></option><% } %>
+            </select>
+          </label>
+          <label class="field">Extra amount before GST (₹)<input type="number" name="taxable" min="0.01" step="0.01" required /></label>
+          <label class="field">
+            GST rate
+            <select name="gstRate">
+              <% for (const rate of invoice.rates) { %><option value="<%= rate %>"><%= rate %>%</option><% } %>
+            </select>
+          </label>
+          <label class="field full-width">Notes <span class="optional">(optional)</span><input name="notes" maxlength="500" /></label>
+        </div>
+        <p class="finance-basis" data-note-preview aria-live="polite"></p>
+        <div class="form-actions">
+          <button class="button button-primary" type="submit">Issue debit note</button>
+        </div>
+      </form>
+    </section>
+  <% } %>
 <% } %>
 <section class="card">
   <form class="finance-filters" method="get" action="<%= helpers.url(data, 'credit_notes') %>">

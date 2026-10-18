@@ -485,6 +485,20 @@ export const creditNoteSchema = z
     requestId: z.guid(),
   })
   .strict();
+// Why a debit note is issued: the buyer owes more than the invoice says.
+export const DEBIT_NOTE_REASONS = ['Price increase', 'Short billing', 'Correction in invoice', 'Other'];
+// A debit note against an issued invoice: one amount before GST at one of the invoice's GST rates.
+export const debitNoteSchema = z
+  .object({
+    noteDate: date,
+    dueDate: optionalDate.default(''),
+    reason: z.enum(DEBIT_NOTE_REASONS),
+    taxable: moneyAmount,
+    gstRate: z.union([0, 0.25, 3, 5, 12, 18, 28].map((value) => z.literal(value))),
+    notes: text(500).default(''),
+    requestId: z.guid(),
+  })
+  .strict();
 // Money paid back to the buyer for the part of a credit note above the invoice's balance due.
 export const creditNoteRefundSchema = z
   .object({

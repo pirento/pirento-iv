@@ -22,6 +22,7 @@ import { createController as reminders } from './reminders.controller.js';
 import { createController as recurring } from './recurring-invoices.controller.js';
 import { createController as expenses } from './expenses.controller.js';
 import { createController as creditNotes } from './credit-notes.controller.js';
+import { createController as debitNotes } from './debit-notes.controller.js';
 
 /** One controller object per API resource; route paths live in src/routes/api.js. */
 export function createApiControllers(context) {
@@ -37,6 +38,7 @@ export function createApiControllers(context) {
     businessProducts: businessProducts(context),
     expenses: expenses(context),
     creditNotes: creditNotes(context),
+    debitNotes: debitNotes(context),
     catalog: catalog(context),
     formats: formats(context),
     customers: customers(context),

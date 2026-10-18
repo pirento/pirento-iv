@@ -201,3 +201,52 @@ test('a credit note is split over the invoice lines at its rate in proportion, t
     ],
   );
 });
+
+test('debit notes go to CDNR / CDNUR with type D or add to B2CS, and have their own Table 13 series', () => {
+  const debit = (buyerGstin, place, extra = {}) => ({
+    ...invoice({ buyerGstin, place, items: [line(100, 18)] }),
+    number: `DN/2627/DN000${++sequence}`,
+    debitNoteFor: { id: 'x', number: 'INV-X', issueDate: '2026-10-01', total: 236000 },
+    ...extra,
+  });
+  const report = buildGstr1(
+    [
+      invoice({ items: [line(1000, 18)] }),
+      debit('09BBBBB0000B1Z5', '09'),
+      debit('', '27'),
+      debit('', '09'),
+      debit('', '09', { status: 'cancelled' }),
+    ],
+    { month: '2026-10' },
+  );
+  assert.deepEqual(report.sections.b2b, [], 'debit notes are not B2B invoices');
+  assert.equal(report.sections.cdnr.length, 1);
+  assert.deepEqual(report.sections.cdnr[0].slice(4, 12), [
+    'D',
+    '09-Uttar Pradesh',
+    'N',
+    'Regular B2B',
+    '118.00',
+    '',
+    18,
+    '100.00',
+  ]);
+  assert.deepEqual(report.sections.cdnur[0].slice(0, 1).concat(report.sections.cdnur[0].slice(3, 9)), [
+    'B2CL',
+    'D',
+    '27-Maharashtra',
+    '118.00',
+    '',
+    18,
+    '100.00',
+  ]);
+  assert.deepEqual(report.sections.b2cs, [['OE', '09-Uttar Pradesh', '', 18, '1100.00', '0.00', '']]);
+  assert.equal(report.sections['hsn-b2c'][0][3], 1, 'value-only debit notes add no quantity');
+  assert.deepEqual(
+    report.sections.docs.map((row) => [row[0], row[3], row[4]]),
+    [
+      ['Invoices for outward supply', 1, 0],
+      ['Debit Note', 4, 1],
+    ],
+  );
+});

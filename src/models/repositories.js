@@ -116,6 +116,8 @@ export function createModels(context) {
       listAll: async () => (await images.unpackAll(await all('documents'))).map(documentRecord),
       insert: async (record) => insert('documents', await images.pack(record)),
       findByNumber: (number) => oneDocument({ number }),
+      findDebitNote: (invoiceId, requestId) =>
+        oneDocument({ 'debitNoteFor.id': invoiceId, 'debitNoteFor.requestId': requestId }),
       findByCustomer: (customerId) => oneDocument({ customerId }),
       save: async (record, expectedVersion) => {
         if (!Number.isSafeInteger(expectedVersion) || expectedVersion < 0)

@@ -224,6 +224,7 @@ export function createWorkspaceQueries(db) {
             'customerSnapshot.gstin': 1,
             'organizationSnapshot.gstin': 1,
             'organizationSnapshot.stateCode': 1,
+            debitNoteFor: 1,
           },
         },
       )

@@ -23,7 +23,7 @@ const titles = {
   ledger: 'Customer ledger',
   gst_returns: 'GST returns (GSTR-1)',
   expenses: 'Expenses',
-  credit_notes: 'Credit notes',
+  credit_notes: 'Credit & debit notes',
   reports: 'Reports',
   reminders: 'Payment reminders',
   recurring: 'Recurring invoices',

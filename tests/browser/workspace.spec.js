@@ -349,7 +349,10 @@ test('an expense fills from a vendor contact, previews its GST, saves, edits and
   await expect(page.getByRole('heading', { name: 'Reports', level: 1 })).toBeVisible();
 });
 
-test('a credit note issued from an invoice lowers its balance and prints', async ({ page, app }) => {
+test('credit and debit notes are issued from an invoice; the credit lowers its balance and prints', async ({
+  page,
+  app,
+}) => {
   await signIn(page, app);
   const customer = await api(page, app, '/customers', 'POST', customerInput(app.organizationId));
   const invoice = await api(
@@ -360,7 +363,7 @@ test('a credit note issued from an invoice lowers its balance and prints', async
     invoiceInput(app.organizationId, customer.id, { status: 'sent' }),
   );
   await page.goto(workspace(app, `invoices/preview/${invoice.id}`));
-  await page.getByRole('link', { name: 'Credit note', exact: true }).click();
+  await page.getByRole('link', { name: 'Credit / debit note', exact: true }).click();
   const form = page.locator('[data-credit-note-form]');
   await form.locator('[name="reason"]').selectOption('Sales return');
   await form.locator('[name="taxable"]').fill('30');
@@ -370,4 +373,12 @@ test('a credit note issued from an invoice lowers its balance and prints', async
   await expect(page.locator('article')).toContainText('Rupees Thirty Only');
   const saved = await app.backend.db.collection('documents').findOne({ id: invoice.id });
   expect([saved.balanceDue, saved.status]).toEqual([70, 'partially_paid']);
+
+  await page.goto(workspace(app, `credit_notes?documentId=${invoice.id}`));
+  const debit = page.locator('[data-debit-note-form]');
+  await debit.locator('[name="taxable"]').fill('15');
+  await expect(debit.locator('[data-note-preview]')).toContainText('Debit note total ₹15.00');
+  await debit.getByRole('button', { name: 'Issue debit note' }).click();
+  await expect(page).toHaveURL(/\/invoices\/preview\/[^/]+$/);
+  await expect(page.getByRole('heading', { name: 'DEBIT NOTE', level: 1 })).toBeVisible();
 });

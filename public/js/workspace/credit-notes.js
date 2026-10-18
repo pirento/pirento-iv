@@ -1,7 +1,7 @@
 /**
- * Credit notes pages (views/credit-notes/index.ejs and print.ejs): shows the GST split while
- * typing, issues a credit note against the invoice, records a refund, cancels one with a reason
- * and prints one.
+ * Credit & debit notes pages (views/credit-notes/index.ejs and print.ejs): shows the GST split
+ * while typing, issues a credit or debit note against the invoice, records a refund, cancels a
+ * credit note with a reason and prints one.
  */
 
 import { api, formValues, sendJson, setBusy, showError } from '../core/api.js';
@@ -80,6 +80,43 @@ for (const button of document.querySelectorAll('[data-credit-note-cancel]')) {
       goTo('Credit note cancelled.', workspacePath('credit_notes', '', '', { month: page.month }));
     } catch (error) {
       showError(null, error.message);
+      setBusy(button, false);
+    }
+  });
+}
+
+const debitForm = document.querySelector('[data-debit-note-form]');
+if (debitForm) {
+  const debitRequestId = crypto.randomUUID();
+  const readDebit = () => {
+    const values = formValues(debitForm);
+    return {
+      ...values,
+      taxable: Number(values.taxable),
+      gstRate: Number(values.gstRate),
+      requestId: debitRequestId,
+    };
+  };
+  debitForm.addEventListener('input', () => {
+    const values = readDebit();
+    const amounts = gstAmounts({ ...values, interstate: debitForm.dataset.interstate === 'true' });
+    debitForm.querySelector('[data-note-preview]').textContent =
+      values.taxable > 0 ? `GST ${money(amounts.tax)} · Debit note total ${money(amounts.total)}` : '';
+  });
+  debitForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const button = debitForm.querySelector('[type="submit"]');
+    if (button.disabled) return;
+    showError(debitForm, '');
+    setBusy(button, true, 'Issuing…');
+    try {
+      const note = await api(
+        `/documents/${encodeURIComponent(debitForm.dataset.invoiceId)}/debit-notes`,
+        sendJson('POST', readDebit()),
+      );
+      goTo(`Debit note ${note.number} issued.`, workspacePath('invoices', 'preview', note.id));
+    } catch (error) {
+      showError(debitForm, error.message);
       setBusy(button, false);
     }
   });

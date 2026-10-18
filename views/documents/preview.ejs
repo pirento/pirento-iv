@@ -58,7 +58,7 @@ const styles = `--doc-accent:${colors.accent};--doc-on-accent:${colors.onAccent}
         href="<%= base %>/payments/<%= encodeURIComponent(doc.id) %>"
         class="doc-button doc-button-secondary"
         >Payments</a
-      ><% if(doc.customerId){ %><a class="doc-button doc-button-secondary" href="<%= helpers.url(data,'ledger','preview',doc.customerId) %>">Customer statement</a><% } %><% if(data.user?.role==='admin'&&doc.status!=='cancelled'){ %><a class="doc-button doc-button-secondary" href="<%= helpers.url(data,'recurring','new',undefined,{documentId:doc.id}) %>">Recurring schedule</a><% } %><% if(['sent','partially_paid','paid'].includes(doc.status)){ %><a class="doc-button doc-button-secondary" href="<%= helpers.url(data,'credit_notes',undefined,undefined,{documentId:doc.id}) %>">Credit note</a><% } %><% if(doc.status!=='cancelled'){ %><button
+      ><% if(doc.customerId){ %><a class="doc-button doc-button-secondary" href="<%= helpers.url(data,'ledger','preview',doc.customerId) %>">Customer statement</a><% } %><% if(data.user?.role==='admin'&&doc.status!=='cancelled'){ %><a class="doc-button doc-button-secondary" href="<%= helpers.url(data,'recurring','new',undefined,{documentId:doc.id}) %>">Recurring schedule</a><% } %><% if(['sent','partially_paid','paid'].includes(doc.status)){ %><a class="doc-button doc-button-secondary" href="<%= helpers.url(data,'credit_notes',undefined,undefined,{documentId:doc.id}) %>">Credit / debit note</a><% } %><% if(doc.status!=='cancelled'){ %><button
         class="doc-button doc-button-secondary"
         type="button"
         data-preview-action="delivery"

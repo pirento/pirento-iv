@@ -266,11 +266,12 @@ export function createWorkspaceService(context) {
     }
   }
   // --- Document numbering and creation ---
-  // Next free document number, e.g. ATEI/2627/0001 (proformas add "P", delivery challans "D", credit notes "C").
+  // Next free number, e.g. ATEI/2627/0001 (proformas add "P", delivery challans "D", credit notes "C",
+  // debit notes "DN").
   async function nextNumber(organization, kind, issueDate) {
     const year = fiscalYear(issueDate);
     const prefix = kind === 'quotation' ? organization.quotationPrefix : organization.invoicePrefix;
-    const marker = { proforma: 'P', delivery_note: 'D', credit_note: 'C' }[kind] ?? '';
+    const marker = { proforma: 'P', delivery_note: 'D', credit_note: 'C', debit_note: 'DN' }[kind] ?? '';
     for (;;) {
       const row = await db.models.sequences.next(organization.id, kind, year);
       if (row.value > (marker ? 99999 : 999999))

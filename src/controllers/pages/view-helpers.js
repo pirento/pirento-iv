@@ -142,7 +142,7 @@ function navigation(data) {
       label: 'Accounts',
       items: [
         { view: 'expenses', label: 'Expenses', icon: 'archive' },
-        { view: 'credit_notes', label: 'Credit notes', icon: 'document' },
+        { view: 'credit_notes', label: 'Credit & debit notes', icon: 'document' },
         { view: 'reports', label: 'Reports', icon: 'chart' },
         { view: 'gst_returns', label: 'GST returns', icon: 'document' },
       ],

@@ -17,7 +17,7 @@ import { readDirectoryFilters, directoryPageLinks } from './directory-list.js';
 import { buildGstr1, gstr1Csv, GSTR1_SECTIONS, monthRange, readGstr1Filters } from './gstr1.js';
 import { expenseCsv, expenseTotals, readExpenseMonth } from '../expenses/expenses.js';
 import { buildReport, financialYearRange, readReportYear } from './reports.js';
-import { CREDIT_NOTE_REASONS, EXPENSE_CATEGORIES } from '../validation/validation.js';
+import { CREDIT_NOTE_REASONS, DEBIT_NOTE_REASONS, EXPENSE_CATEGORIES } from '../validation/validation.js';
 import { safeWorkspaceReturn } from '../../../public/js/core/workspace-route.js';
 
 /** Page-specific loading keeps unrelated financial snapshots and operations off normal navigation. */
@@ -335,9 +335,10 @@ export function createWorkspacePageData({
         rates: [...new Set(document.items.map((item) => Number(item.gstRate) || 0))].sort((a, b) => a - b),
         creditable,
         canCredit: ['sent', 'partially_paid', 'paid'].includes(document.status) && creditable > 0,
+        canDebit: !document.debitNoteFor && !['draft', 'cancelled'].includes(document.status),
       };
     }
-    return { month, notes, invoice, reasons: CREDIT_NOTE_REASONS };
+    return { month, notes, invoice, reasons: CREDIT_NOTE_REASONS, debitReasons: DEBIT_NOTE_REASONS };
   }
 
   // CSV of one month's expenses: /workspace/<business>/expenses?month=YYYY-MM&download=csv.

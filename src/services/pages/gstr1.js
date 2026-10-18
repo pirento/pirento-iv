@@ -258,9 +258,10 @@ function documentSeries(invoices, nature) {
 }
 
 /**
- * Builds the GSTR-1 tables for one month from issued and cancelled invoices and credit notes (already
- * filtered by business and month). Only records issued under `gstin` are included; the default is
- * the first GSTIN found. Cancelled records appear only in the documents-issued table.
+ * Builds the GSTR-1 tables for one month from issued and cancelled invoices (debit notes among them)
+ * and credit notes, already filtered by business and month. Only records issued under `gstin` are
+ * included; the default is the first GSTIN found. Cancelled records appear only in the
+ * documents-issued table.
  */
 export function buildGstr1(invoices, { month, gstin = '' }, creditNotes = []) {
   const gstins = [
@@ -276,6 +277,8 @@ export function buildGstr1(invoices, { month, gstin = '' }, creditNotes = []) {
   const b2b = [];
   const b2cl = [];
   const b2cs = new Map();
+  const cdnr = [];
+  const cdnur = [];
   const hsn = { 'hsn-b2b': new Map(), 'hsn-b2c': new Map() };
   const nil = new Map();
   const totals = { invoices: chosen.length, value: decimal(0), taxable: decimal(0), tax: decimal(0) };
@@ -322,7 +325,19 @@ export function buildGstr1(invoices, { month, gstin = '' }, creditNotes = []) {
     const buyerGstin = String(doc.customerSnapshot?.gstin ?? '').trim();
     const interstate = doc.placeOfSupply !== doc.organizationSnapshot.stateCode;
     const value = doc.totals.total;
-    const kind = buyerGstin ? 'b2b' : interstate && value > b2clLimit(doc.issueDate) ? 'b2cl' : 'b2cs';
+    // A debit note goes to CDNR / CDNUR like a credit note (by its original invoice), or adds to B2CS.
+    const debit = doc.debitNoteFor;
+    const kind = debit
+      ? buyerGstin
+        ? 'cdnr'
+        : interstate && debit.total > b2clLimit(debit.issueDate)
+          ? 'cdnur'
+          : 'b2cs'
+      : buyerGstin
+        ? 'b2b'
+        : interstate && value > b2clLimit(doc.issueDate)
+          ? 'b2cl'
+          : 'b2cs';
     const lines = invoiceLines(doc);
     totals.value = totals.value.plus(value);
     const rates = new Map();
@@ -330,7 +345,7 @@ export function buildGstr1(invoices, { month, gstin = '' }, creditNotes = []) {
       totals.taxable = totals.taxable.plus(line.taxable);
       totals.tax = totals.tax.plus(line.tax);
       if (!line.hsn) missingHsn++;
-      addHsn(buyerGstin, interstate, line);
+      addHsn(buyerGstin, interstate, debit ? { ...line, quantity: 0 } : line);
       if (line.rate === 0)
         addAmount(
           nil,
@@ -340,7 +355,36 @@ export function buildGstr1(invoices, { month, gstin = '' }, creditNotes = []) {
       else addAmount(rates, line.rate, line.taxable);
     }
     for (const [rate, taxable] of rates) {
-      if (kind === 'b2b')
+      if (kind === 'cdnr')
+        cdnr.push([
+          buyerGstin,
+          doc.customerSnapshot.name,
+          doc.number,
+          portalDate(doc.issueDate),
+          'D',
+          placeOfSupply(doc.placeOfSupply),
+          'N',
+          'Regular B2B',
+          money(value),
+          '',
+          rate,
+          money(taxable),
+          '0.00',
+        ]);
+      else if (kind === 'cdnur')
+        cdnur.push([
+          'B2CL',
+          doc.number,
+          portalDate(doc.issueDate),
+          'D',
+          placeOfSupply(doc.placeOfSupply),
+          money(value),
+          '',
+          rate,
+          money(taxable),
+          '0.00',
+        ]);
+      else if (kind === 'b2b')
         b2b.push([
           buyerGstin,
           doc.customerSnapshot.name,
@@ -380,8 +424,6 @@ export function buildGstr1(invoices, { month, gstin = '' }, creditNotes = []) {
     }
   }
 
-  const cdnr = [];
-  const cdnur = [];
   const notes = creditNotes.filter((note) => note.organizationSnapshot?.gstin === selected);
   for (const note of notes.filter((row) => row.status !== 'cancelled')) {
     const buyerGstin = String(note.customerSnapshot?.gstin ?? '').trim();
@@ -469,7 +511,14 @@ export function buildGstr1(invoices, { month, gstin = '' }, creditNotes = []) {
       cdnr,
       cdnur,
       docs: [
-        ...documentSeries(forGstin, 'Invoices for outward supply'),
+        ...documentSeries(
+          forGstin.filter((doc) => !doc.debitNoteFor),
+          'Invoices for outward supply',
+        ),
+        ...documentSeries(
+          forGstin.filter((doc) => doc.debitNoteFor),
+          'Debit Note',
+        ),
         ...documentSeries(notes, 'Credit Note'),
       ],
     },
