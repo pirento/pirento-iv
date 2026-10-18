@@ -382,3 +382,50 @@ test('credit and debit notes are issued from an invoice; the credit lowers its b
   await expect(page).toHaveURL(/\/invoices\/preview\/[^/]+$/);
   await expect(page.getByRole('heading', { name: 'DEBIT NOTE', level: 1 })).toBeVisible();
 });
+
+test('a GSTR-2B JSON file is matched with the month expenses in the browser', async ({ page, app }) => {
+  await signIn(page, app);
+  await api(page, app, '/expenses', 'POST', {
+    organizationId: app.organizationId,
+    vendorName: 'Paper Mart',
+    vendorGstin: '27AAACR5055K1Z7',
+    billNumber: 'PM/007',
+    billDate: '2026-09-12',
+    category: 'Office supplies',
+    taxable: 1000,
+    gstRate: 18,
+    interstate: true,
+  });
+  await page.goto(workspace(app, 'expenses?month=2026-09'));
+  const portal = {
+    data: {
+      rtnprd: '092026',
+      docdata: {
+        b2b: [
+          {
+            ctin: '27AAACR5055K1Z7',
+            trdnm: 'Paper Mart',
+            inv: [
+              { inum: 'PM-7', dt: '12-09-2026', txval: 1000, igst: 180 },
+              { inum: 'PM-9', dt: '20-09-2026', txval: 200, igst: 36 },
+            ],
+          },
+        ],
+      },
+    },
+  };
+  await page.locator('[data-gstr2b-file]').setInputFiles({
+    name: 'GSTR2B.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(portal)),
+  });
+  const result = page.locator('[data-gstr2b-result]');
+  await expect(result).toContainText('1 matched · 0 with different amounts · 1 not in your expenses');
+  await expect(result.locator('tbody tr')).toHaveCount(2);
+  await page.locator('[data-gstr2b-file]').setInputFiles({
+    name: 'bad.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from('{oops'),
+  });
+  await expect(page.locator('[data-gstr2b-error]')).toHaveText('This file is not valid JSON.');
+});
