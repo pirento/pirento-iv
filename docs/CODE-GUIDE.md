@@ -72,6 +72,8 @@ Read these files in order. Each one starts with a comment that explains what it 
 | Change styles                        | `public/css/app.css` (global, has section comments) or the page file listed in `pageStylesheets` in `workspace-controller.js`.                                                                                                                                            |
 | Change staff permissions             | `src/middleware/access.js` (what each level may do) and `STAFF_PERMISSIONS` in `src/services/auth/auth.js`.                                                                                                                                                               |
 | Change the GST return (GSTR-1)       | `src/services/pages/gstr1.js` (tables and CSV), `gstr1Invoices()` in `src/models/workspace-queries.js`, `views/gst/gstr1.ejs`.                                                                                                                                            |
+| Change expenses or credit notes      | `src/controllers/api/expenses.controller.js`, `src/controllers/api/credit-notes.controller.js`, `gstAmounts()` in `shared/types.js`, views in `views/expenses/` and `views/credit-notes/`.                                                                                |
+| Change the Reports page              | `src/services/pages/reports.js` (figures), `reportData()` in `src/models/workspace-queries.js`, `views/reports/index.ejs`.                                                                                                                                                |
 
 ## Rules to keep
 
