@@ -55,6 +55,7 @@ export const COLLECTIONS = [
   'images',
   'expenses',
   'credit_notes',
+  'stock_adjustments',
 ];
 
 /**
@@ -178,6 +179,7 @@ async function initializeCollections(context) {
     'cashfree_payment_links',
     'expenses',
     'credit_notes',
+    'stock_adjustments',
   ];
   for (const name of ids) await index(name, { id: 1 }, { unique: true });
   for (const name of ['customers', 'documents', 'catalog', 'formats', 'business_products'])
@@ -207,6 +209,7 @@ async function initializeCollections(context) {
   await index('expenses', { organizationId: 1, billDate: -1, id: -1 });
   await index('credit_notes', { organizationId: 1, noteDate: -1, id: -1 });
   await index('credit_notes', { invoiceId: 1, requestId: 1 });
+  await index('stock_adjustments', { organizationId: 1, date: -1, createdAt: -1 });
   await index('documents', { 'debitNoteFor.id': 1 }, { sparse: true });
   await index('credit_notes', { number: 1 }, { unique: true });
   await index('sequences', { organizationId: 1, kind: 1, fiscalYear: 1 }, { unique: true });

@@ -20,6 +20,7 @@ export const WORKSPACE_VIEWS = [
   'recurring',
   'organizations',
   'catalog',
+  'stock',
   'formats',
   'business_products',
   'team',

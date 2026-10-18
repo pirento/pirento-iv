@@ -466,6 +466,19 @@ export const expenseSchema = z
 export const voidPaymentSchema = z.object({
   reason: requiredText(2000),
 });
+// Stock added (positive) or removed (negative) for one catalog product.
+export const stockAdjustmentSchema = z
+  .object({
+    organizationId: requiredText(100),
+    catalogItemId: requiredText(100),
+    date,
+    quantity: z
+      .number()
+      .finite()
+      .refine((value) => value !== 0 && Math.abs(value) <= 1000000, 'Enter a quantity other than 0.'),
+    note: text(200).default(''),
+  })
+  .strict();
 // Why a credit note is issued (the reasons GST returns used to ask for).
 export const CREDIT_NOTE_REASONS = [
   'Sales return',

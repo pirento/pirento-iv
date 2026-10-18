@@ -1,0 +1,90 @@
+<%# Stock page /workspace/<id>/stock: stock in hand per product (stock added minus quantity on issued invoices) and stock entries. Script: /js/workspace/stock.js. -%>
+<%
+const page = data.stockPage;
+const quantity = value => Number(value).toLocaleString('en-IN', { maximumFractionDigits: 3 });
+%>
+<header class="page-header">
+  <div>
+    <span class="eyebrow">MANAGE</span>
+    <h1>Stock</h1>
+    <p>Stock in hand for each active product of <%= data.organization.name %>: stock you added, minus the quantity on issued invoices. Cancelled invoices give the stock back.</p>
+  </div>
+</header>
+<section class="card">
+  <div class="finance-section-heading"><h2>Add or remove stock</h2></div>
+  <% if (page.products.length) { %>
+    <form class="stack" data-stock-form>
+      <div class="alert alert-error" data-form-error hidden role="alert"></div>
+      <div class="form-grid">
+        <label class="field">
+          Product
+          <select name="catalogItemId" required>
+            <% for (const product of page.products) { %><option value="<%= product.id %>"><%= product.name %><%= product.sku ? ` (${product.sku})` : '' %></option><% } %>
+          </select>
+        </label>
+        <label class="field">
+          Entry
+          <select name="direction">
+            <option value="1">Add (purchase, opening stock, return)</option>
+            <option value="-1">Remove (damage, loss, own use)</option>
+          </select>
+        </label>
+        <label class="field">Quantity<input type="number" name="quantity" min="0.001" step="0.001" required /></label>
+        <label class="field">Date<input type="date" name="date" value="<%= data.businessDate %>" max="<%= data.businessDate %>" required /></label>
+        <label class="field full-width">Note <span class="optional">(optional)</span><input name="note" maxlength="200" /></label>
+      </div>
+      <div class="form-actions"><button class="button button-primary" type="submit">Save stock entry</button></div>
+    </form>
+  <% } else { %>
+    <div class="empty-state">
+      <h2>No products yet</h2>
+      <p>Add products (not services) in <a href="<%= helpers.url(data, 'catalog') %>">Products &amp; services</a> to track their stock.</p>
+    </div>
+  <% } %>
+</section>
+<% if (page.products.length) { %>
+  <section class="card">
+    <div class="finance-section-heading"><h2>Stock in hand</h2></div>
+    <div tabindex="0" role="region" aria-label="Stock in hand" class="table-wrap">
+      <table class="finance-table">
+        <thead>
+          <tr><th>Product</th><th class="text-right">Added</th><th class="text-right">Sold</th><th class="text-right">In stock</th></tr>
+        </thead>
+        <tbody>
+          <% for (const product of page.products) { %>
+            <tr>
+              <td><strong><%= product.name %></strong><% if (product.sku) { %><small><%= product.sku %></small><% } %></td>
+              <td class="text-right"><%= quantity(product.added) %></td>
+              <td class="text-right"><%= quantity(product.sold) %></td>
+              <td class="text-right"><strong><%= quantity(product.inStock) %> <%= product.unit %></strong><% if (product.inStock < 0) { %><small>Below zero: add the missing stock</small><% } %></td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+<% } %>
+<% if (page.recent.length) { %>
+  <section class="card">
+    <div class="finance-section-heading"><h2>Latest stock entries</h2></div>
+    <div tabindex="0" role="region" aria-label="Latest stock entries" class="table-wrap">
+      <table class="finance-table">
+        <thead>
+          <tr><th>Date</th><th>Product</th><th class="text-right">Quantity</th><th>Note</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+          <% for (const entry of page.recent) { %>
+            <tr>
+              <td><%= helpers.displayDate(entry.date) %></td>
+              <td><%= entry.productName %></td>
+              <td class="text-right"><%= entry.quantity > 0 ? '+' : '' %><%= quantity(entry.quantity) %></td>
+              <td><%= entry.note %></td>
+              <td><button class="text-button" type="button" data-stock-delete="<%= entry.id %>">Delete</button></td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+<% } %>
+<script type="module" src="/js/workspace/stock.js"></script>

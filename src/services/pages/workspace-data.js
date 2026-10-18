@@ -171,6 +171,7 @@ export function createWorkspacePageData({
       read('expensePage', () => expensePage(organizationId, route, result.businessDate));
     if (route?.view === 'credit_notes')
       read('creditNotePage', () => creditNotePage(organizationId, route, result.businessDate));
+    if (route?.view === 'stock') read('stockPage', () => queries.stockLevels(organizationId));
     if (route?.view === 'reports')
       read('report', async () => {
         const year = readReportYear(route.query, result.businessDate);

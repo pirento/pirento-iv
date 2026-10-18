@@ -152,6 +152,7 @@ function navigation(data) {
       items: [
         { view: 'customers', label: 'Contacts', icon: 'people' },
         { view: 'catalog', label: 'Products & services', icon: 'box' },
+        { view: 'stock', label: 'Stock', icon: 'box' },
         ...(data.organization?.enableProductSelection ||
         billing.billingProfileFor(data.organization || { name: '' }) === 'ecosystem'
           ? [{ view: 'business_products', label: 'Business products', icon: 'grid' }]

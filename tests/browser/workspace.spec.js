@@ -1,7 +1,16 @@
 /** Browser tests (`npm run test:browser`): real sign-in, navigation, contacts/catalog, invoices, drafts and payments in Chromium. */
 
 import { readFile } from 'node:fs/promises';
-import { test, expect, signIn, api, customerInput, invoiceInput, seedDirectory } from './fixtures.js';
+import {
+  test,
+  expect,
+  signIn,
+  api,
+  catalogInput,
+  customerInput,
+  invoiceInput,
+  seedDirectory,
+} from './fixtures.js';
 
 const workspace = (app, suffix) => `${app.base}/workspace/${app.organizationId}/${suffix}`;
 
@@ -428,4 +437,21 @@ test('a GSTR-2B JSON file is matched with the month expenses in the browser', as
     buffer: Buffer.from('{oops'),
   });
   await expect(page.locator('[data-gstr2b-error]')).toHaveText('This file is not valid JSON.');
+});
+
+test('stock entries saved on the Stock page change stock in hand', async ({ page, app }) => {
+  await signIn(page, app);
+  const product = await api(page, app, '/catalog', 'POST', catalogInput(app.organizationId, 'Stock chair'));
+  await page.goto(workspace(app, 'stock'));
+  const form = page.locator('[data-stock-form]');
+  await form.locator('[name="catalogItemId"]').selectOption(product.id);
+  await form.locator('[name="quantity"]').fill('5');
+  await form.getByRole('button', { name: 'Save stock entry' }).click();
+  const row = page.getByRole('region', { name: 'Stock in hand' }).getByRole('row', { name: /Stock chair/ });
+  await expect(row).toContainText('5 Nos');
+  await form.locator('[name="catalogItemId"]').selectOption(product.id);
+  await form.locator('[name="direction"]').selectOption('-1');
+  await form.locator('[name="quantity"]').fill('2');
+  await form.getByRole('button', { name: 'Save stock entry' }).click();
+  await expect(row).toContainText('3 Nos');
 });

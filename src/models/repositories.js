@@ -101,6 +101,7 @@ export function createModels(context) {
       listBetween: (organizationId, { from, to }) =>
         all('expenses', { organizationId, billDate: { $gte: from, $lt: to } }, { billDate: -1, id: -1 }),
     },
+    stockAdjustments: business('stock_adjustments'),
     // Credit notes of one business between two note dates, newest first, or of one invoice.
     creditNotes: {
       ...business('credit_notes'),
@@ -243,6 +244,7 @@ export function createModels(context) {
           'payments',
           'expenses',
           'credit_notes',
+          'stock_adjustments',
         ]);
         if (!allowed.has(name)) throw new Error('Unsupported resource model.');
         const record = await one(name, { id });

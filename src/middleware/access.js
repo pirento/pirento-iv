@@ -83,6 +83,7 @@ export function createAccessGuard(db) {
       payments: 'payments',
       expenses: 'expenses',
       'credit-notes': 'credit_notes',
+      'stock-adjustments': 'stock_adjustments',
     };
     const table = Object.hasOwn(tables, resource) ? tables[resource] : undefined;
     const directoryRead =
