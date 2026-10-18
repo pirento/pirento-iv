@@ -28,6 +28,7 @@ test('monthly sales, receipts, expenses and profit add up in paise; customers ra
       invoice('b', 'Bala', '2027-03-31', 1000, 1180),
     ],
     payments: [{ paidOn: '2026-04-15', amount: 0.36 }],
+    creditNotes: [{ customerId: 'b', noteDate: '2027-03-31', taxable: 100, total: 118 }],
     expenses: [{ billDate: '2027-03-01', taxable: 400 }],
     openInvoices: [],
   });
@@ -58,18 +59,18 @@ test('monthly sales, receipts, expenses and profit add up in paise; customers ra
     expenses: 0,
     profit: 0.3,
   });
-  assert.equal(report.months[11].profit, 600);
+  assert.equal(report.months[11].profit, 500, 'the credit note comes off March sales');
   assert.deepEqual(report.totals, {
-    sales: 1000.3,
-    salesWithGst: 1180.36,
+    sales: 900.3,
+    salesWithGst: 1062.36,
     received: 0.36,
     expenses: 400,
-    profit: 600.3,
+    profit: 500.3,
   });
   assert.deepEqual(
     report.topCustomers.map((row) => [row.name, row.count, row.total]),
     [
-      ['Bala', 1, 1180],
+      ['Bala', 1, 1062],
       ['Asha', 2, 0.36],
     ],
   );

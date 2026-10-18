@@ -1,13 +1,13 @@
 <%# GST returns page /workspace/<id>/gst_returns?month=YYYY-MM&gstin=...: GSTR-1 tables with a CSV per table (data from src/services/pages/gstr1.js). No page script. -%>
 <%
 const report = data.gstr1;
-const numeric = new Set(['Total Number', 'Cancelled', 'Invoice Value', 'Rate', 'Taxable Value', 'Cess Amount', 'Total Quantity', 'Total Value', 'Integrated Tax Amount', 'Central Tax Amount', 'State/UT Tax Amount', 'Nil Rated Supplies', 'Exempted(other than nil rated/non GST supply)', 'Non-GST supplies']);
+const numeric = new Set(['Total Number', 'Cancelled', 'Invoice Value', 'Note Value', 'Rate', 'Taxable Value', 'Cess Amount', 'Total Quantity', 'Total Value', 'Integrated Tax Amount', 'Central Tax Amount', 'State/UT Tax Amount', 'Nil Rated Supplies', 'Exempted(other than nil rated/non GST supply)', 'Non-GST supplies']);
 %>
 <header class="page-header">
   <div>
-    <span class="eyebrow">RECEIVABLES</span>
+    <span class="eyebrow">ACCOUNTS</span>
     <h1>GST returns (GSTR-1)</h1>
-    <p>Outward supplies of <%= data.organization.name %> for one month, from issued invoices. Download each table as CSV for the GST offline tool or your CA.</p>
+    <p>Outward supplies of <%= data.organization.name %> for one month, from issued invoices and credit notes. Download each table as CSV for the GST offline tool or your CA.</p>
   </div>
 </header>
 <section class="card">

@@ -101,6 +101,13 @@ export function createModels(context) {
       listBetween: (organizationId, { from, to }) =>
         all('expenses', { organizationId, billDate: { $gte: from, $lt: to } }, { billDate: -1, id: -1 }),
     },
+    // Credit notes of one business between two note dates, newest first, or of one invoice.
+    creditNotes: {
+      ...business('credit_notes'),
+      listBetween: (organizationId, { from, to }) =>
+        all('credit_notes', { organizationId, noteDate: { $gte: from, $lt: to } }, { noteDate: -1, id: -1 }),
+      forInvoice: (invoiceId) => all('credit_notes', { invoiceId }, { noteDate: 1, id: 1 }),
+    },
     documents: {
       ...business('documents'),
       findById: (id) => oneDocument({ id }),
@@ -133,6 +140,7 @@ export function createModels(context) {
       list: (documentId) => all('payments', { documentId }, { _id: -1 }),
       first: (documentId) => one('payments', { documentId }),
       findByRequest: (documentId, requestId) => one('payments', { documentId, requestId }),
+      forCreditNote: (creditNoteId) => one('payments', { creditNoteId }),
       insert: (record) => insert('payments', record),
       activeTotal: async (documentId) => {
         const rows = await collection('payments')
@@ -227,6 +235,7 @@ export function createModels(context) {
           'business_products',
           'payments',
           'expenses',
+          'credit_notes',
         ]);
         if (!allowed.has(name)) throw new Error('Unsupported resource model.');
         const record = await one(name, { id });

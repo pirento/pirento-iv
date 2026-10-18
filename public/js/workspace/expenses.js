@@ -5,7 +5,7 @@
 
 import { api, formValues, sendJson, setBusy, showError } from '../core/api.js';
 import { getPageData, rememberToast, workspacePath } from '../core/page.js';
-import { expenseAmounts, money } from '/shared/types.js';
+import { gstAmounts, money } from '/shared/types.js';
 
 const data = getPageData();
 const organizationId = data.organization.id;
@@ -37,7 +37,7 @@ function readForm() {
 function showPreview() {
   const values = readForm();
   if (!(values.taxable > 0)) return (preview.textContent = '');
-  const amounts = expenseAmounts(values);
+  const amounts = gstAmounts(values);
   const split = values.interstate
     ? `IGST ${money(amounts.igst)}`
     : `CGST ${money(amounts.cgst)} + SGST ${money(amounts.sgst)}`;

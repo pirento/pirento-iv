@@ -4,7 +4,8 @@ import { randomUUID } from 'node:crypto';
 import { transaction } from '../../config/database.js';
 import { transactionForRecord } from '../../services/transaction-ownership.js';
 import { expenseSchema } from '../../services/validation/validation.js';
-import { expenseAmounts, expenseTotals, readExpenseMonth } from '../../services/expenses/expenses.js';
+import { expenseTotals, readExpenseMonth } from '../../services/expenses/expenses.js';
+import { gstAmounts } from '../../../shared/types.js';
 import { monthRange } from '../../services/pages/gstr1.js';
 import { HttpError } from '../../middleware/errors.js';
 import { indiaBusinessDate } from '../../../shared/business-date.js';
@@ -24,7 +25,7 @@ export function createController(context) {
     return {
       ...input,
       ...(vendor ? { vendorName: vendor.name, vendorGstin: vendor.gstin ?? '' } : {}),
-      ...expenseAmounts(input),
+      ...gstAmounts(input),
     };
   }
   return {

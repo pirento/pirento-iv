@@ -25,7 +25,7 @@ const thisYear = Number(data.businessDate.slice(0, 4)) - (Number(data.businessDa
   </form>
   <div class="metrics-grid finance-metrics">
     <% for (const [label, value, hint] of [
-      ['Sales', amount(report.totals.sales), 'Issued invoices, before GST'],
+      ['Sales', amount(report.totals.sales), 'Invoices less credit notes, before GST'],
       ['Money received', amount(report.totals.received), 'Receipts dated in the year'],
       ['Expenses', amount(report.totals.expenses), 'Bills, before GST'],
       ['Profit', amount(report.totals.profit), 'Sales minus expenses, before GST'],
@@ -101,7 +101,7 @@ const thisYear = Number(data.businessDate.slice(0, 4)) - (Number(data.businessDa
     <div tabindex="0" role="region" aria-label="Top customers" class="table-wrap">
       <table class="finance-table">
         <thead>
-          <tr><th>Customer</th><th class="text-right">Invoices</th><th class="text-right">Billed (with GST)</th></tr>
+          <tr><th>Customer</th><th class="text-right">Invoices</th><th class="text-right">Billed (with GST, less credit notes)</th></tr>
         </thead>
         <tbody>
           <% for (const customer of report.topCustomers) { %>

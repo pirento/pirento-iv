@@ -17,7 +17,7 @@ import { readDirectoryFilters, directoryPageLinks } from './directory-list.js';
 import { buildGstr1, gstr1Csv, GSTR1_SECTIONS, monthRange, readGstr1Filters } from './gstr1.js';
 import { expenseCsv, expenseTotals, readExpenseMonth } from '../expenses/expenses.js';
 import { buildReport, financialYearRange, readReportYear } from './reports.js';
-import { EXPENSE_CATEGORIES } from '../validation/validation.js';
+import { CREDIT_NOTE_REASONS, EXPENSE_CATEGORIES } from '../validation/validation.js';
 import { safeWorkspaceReturn } from '../../../public/js/core/workspace-route.js';
 
 /** Page-specific loading keeps unrelated financial snapshots and operations off normal navigation. */
@@ -169,6 +169,8 @@ export function createWorkspacePageData({
       read('gstr1', () => gstr1Report(organizationId, route, result.businessDate));
     if (route?.view === 'expenses')
       read('expensePage', () => expensePage(organizationId, route, result.businessDate));
+    if (route?.view === 'credit_notes')
+      read('creditNotePage', () => creditNotePage(organizationId, route, result.businessDate));
     if (route?.view === 'reports')
       read('report', async () => {
         const year = readReportYear(route.query, result.businessDate);
@@ -255,9 +257,11 @@ export function createWorkspacePageData({
   // GSTR-1 tables for /workspace/<business>/gst_returns?month=YYYY-MM&gstin=..., with download links.
   async function gstr1Report(organizationId, route, businessDate) {
     const filters = readGstr1Filters(route.query, businessDate);
+    const range = monthRange(filters.month);
     const report = buildGstr1(
-      await queries.gstr1Invoices(organizationId, monthRange(filters.month)),
+      await queries.gstr1Invoices(organizationId, range),
       filters,
+      await db.models.creditNotes.listBetween(organizationId, range),
     );
     const pageUrl = `/workspace/${encodeURIComponent(organizationId)}/gst_returns`;
     const downloads = Object.fromEntries(
@@ -300,6 +304,37 @@ export function createWorkspacePageData({
     };
   }
 
+  // Credit notes page: one credit note to print, or the month's credit notes and, with ?documentId=,
+  // the invoice a new credit note is issued against.
+  async function creditNotePage(organizationId, route, businessDate) {
+    if (route.id) {
+      const note = await db.models.creditNotes.findById(route.id);
+      if (note?.organizationId !== organizationId) throw new HttpError(404, 'Credit note not found.');
+      return { note };
+    }
+    const { month } = readGstr1Filters(route.query, businessDate);
+    const notes = await db.models.creditNotes.listBetween(organizationId, monthRange(month));
+    let invoice = null;
+    if (route.documentId) {
+      const document = await db.models.documents.findById(route.documentId);
+      if (document?.organizationId !== organizationId || document.kind !== 'invoice')
+        throw new HttpError(404, 'Invoice not found.');
+      invoice = {
+        id: document.id,
+        number: document.number,
+        issueDate: document.issueDate,
+        customerName: document.customerSnapshot?.name ?? '',
+        status: document.status,
+        total: document.totals.total,
+        balanceDue: document.balanceDue ?? 0,
+        interstate: document.placeOfSupply !== document.organizationSnapshot?.stateCode,
+        rates: [...new Set(document.items.map((item) => Number(item.gstRate) || 0))].sort((a, b) => a - b),
+        canCredit: ['sent', 'partially_paid'].includes(document.status) && document.balanceDue > 0,
+      };
+    }
+    return { month, notes, invoice, reasons: CREDIT_NOTE_REASONS };
+  }
+
   // CSV of one month's expenses: /workspace/<business>/expenses?month=YYYY-MM&download=csv.
   async function exportExpenses(user, organizationId, route) {
     const data = await base(user, organizationId);
@@ -315,8 +350,12 @@ export function createWorkspacePageData({
   async function exportGstr1(user, organizationId, route) {
     const data = await base(user, organizationId);
     const filters = readGstr1Filters(route.query, data.businessDate);
-    const invoices = await queries.gstr1Invoices(data.organization.id, monthRange(filters.month));
-    return gstr1Csv(buildGstr1(invoices, filters), String(route.query.section ?? ''));
+    const range = monthRange(filters.month);
+    const [invoices, creditNotes] = await Promise.all([
+      queries.gstr1Invoices(data.organization.id, range),
+      db.models.creditNotes.listBetween(data.organization.id, range),
+    ]);
+    return gstr1Csv(buildGstr1(invoices, filters, creditNotes), String(route.query.section ?? ''));
   }
 
   // Streams the CSV for /workspace/<business>/<invoices|quotations|...>?download=csv.

@@ -1,8 +1,8 @@
 /**
- * GSTR-1 (monthly outward supplies) for one business GSTIN, built from issued invoices:
- * B2B, B2CL, B2CS, HSN summary (B2B and B2C), 0% lines and documents issued (cancelled invoices
- * count only there), plus CSV files with the GST offline
- * tool's column layout. Every invoice's lines are reconciled to its saved totals, so the tables
+ * GSTR-1 (monthly outward supplies) for one business GSTIN, built from issued invoices and credit
+ * notes: B2B, B2CL, B2CS (net of credit notes on B2CS invoices), CDNR, CDNUR, HSN summary (B2B and
+ * B2C), 0% lines and documents issued (cancelled invoices and credit notes count only there), plus
+ * CSV files with the GST offline tool's column layout. Every invoice's lines are reconciled to its saved totals, so the tables
  * agree with the invoices. A CA should still review the return before filing.
  */
 
@@ -88,6 +88,39 @@ export const GSTR1_SECTIONS = {
       'E-Commerce GSTIN',
     ],
   },
+  cdnr: {
+    title: 'CDNR – credit notes to registered buyers (9B)',
+    columns: [
+      'GSTIN/UIN of Recipient',
+      'Receiver Name',
+      'Note Number',
+      'Note Date',
+      'Note Type',
+      'Place Of Supply',
+      'Reverse Charge',
+      'Note Supply Type',
+      'Note Value',
+      'Applicable % of Tax Rate',
+      'Rate',
+      'Taxable Value',
+      'Cess Amount',
+    ],
+  },
+  cdnur: {
+    title: 'CDNUR – credit notes on B2CL invoices (9B)',
+    columns: [
+      'UR Type',
+      'Note Number',
+      'Note Date',
+      'Note Type',
+      'Place Of Supply',
+      'Note Value',
+      'Applicable % of Tax Rate',
+      'Rate',
+      'Taxable Value',
+      'Cess Amount',
+    ],
+  },
   'hsn-b2b': { title: 'HSN summary – B2B (12)', columns: HSN_COLUMNS },
   'hsn-b2c': { title: 'HSN summary – B2C (12)', columns: HSN_COLUMNS },
   nil: {
@@ -167,7 +200,7 @@ export function invoiceLines(document) {
  * Invoice number series for Table 13: "ABC/2627/0007" belongs to series "ABC/2627/". Total and
  * cancelled are counts of the invoices found; numbers missing from a series are not guessed.
  */
-function documentSeries(invoices) {
+function documentSeries(invoices, nature) {
   const series = new Map();
   for (const doc of invoices) {
     const prefix = doc.number.replace(/\d+$/, '');
@@ -188,16 +221,19 @@ function documentSeries(invoices) {
   }
   return [...series.values()]
     .sort((a, b) => a.from.number.localeCompare(b.from.number))
-    .map((row) => ['Invoices for outward supply', row.from.number, row.to.number, row.total, row.cancelled]);
+    .map((row) => [nature, row.from.number, row.to.number, row.total, row.cancelled]);
 }
 
 /**
- * Builds the GSTR-1 tables for one month from issued and cancelled invoices (already filtered by
- * business and month). Only invoices issued under `gstin` are included; the default is the first
- * GSTIN found. Cancelled invoices appear only in the documents-issued table.
+ * Builds the GSTR-1 tables for one month from issued and cancelled invoices and credit notes (already
+ * filtered by business and month). Only records issued under `gstin` are included; the default is
+ * the first GSTIN found. Cancelled records appear only in the documents-issued table.
+ * shortcut: credit notes are not taken off the HSN summary; adjust it by hand when credit notes exist.
  */
-export function buildGstr1(invoices, { month, gstin = '' }) {
-  const gstins = [...new Set(invoices.map((doc) => doc.organizationSnapshot?.gstin).filter(Boolean))].sort();
+export function buildGstr1(invoices, { month, gstin = '' }, creditNotes = []) {
+  const gstins = [
+    ...new Set([...invoices, ...creditNotes].map((doc) => doc.organizationSnapshot?.gstin).filter(Boolean)),
+  ].sort();
   const selected = gstins.includes(gstin) ? gstin : (gstins[0] ?? '');
   const issued = invoices.filter((doc) => doc.status !== 'cancelled');
   const withoutGstin = issued.filter((doc) => !doc.organizationSnapshot?.gstin).length;
@@ -306,6 +342,53 @@ export function buildGstr1(invoices, { month, gstin = '' }) {
     }
   }
 
+  const cdnr = [];
+  const cdnur = [];
+  const notes = creditNotes.filter((note) => note.organizationSnapshot?.gstin === selected);
+  for (const note of notes.filter((row) => row.status !== 'cancelled')) {
+    const buyerGstin = String(note.customerSnapshot?.gstin ?? '').trim();
+    const date = portalDate(note.noteDate);
+    if (buyerGstin)
+      cdnr.push([
+        buyerGstin,
+        note.customerSnapshot.name,
+        note.number,
+        date,
+        'C',
+        placeOfSupply(note.placeOfSupply),
+        'N',
+        'Regular B2B',
+        money(note.total),
+        '',
+        note.gstRate,
+        money(note.taxable),
+        '0.00',
+      ]);
+    else if (note.interstate && note.invoiceTotal > b2clLimit(note.invoiceDate))
+      cdnur.push([
+        'B2CL',
+        note.number,
+        date,
+        'C',
+        placeOfSupply(note.placeOfSupply),
+        money(note.total),
+        '',
+        note.gstRate,
+        money(note.taxable),
+        '0.00',
+      ]);
+    // B2CS is reported net: a credit note on a B2CS invoice lowers that place and rate's value.
+    else
+      add(
+        b2cs,
+        `${note.placeOfSupply}|${note.gstRate}`,
+        () => ({ place: note.placeOfSupply, rate: note.gstRate, taxable: decimal(0) }),
+        (row) => {
+          row.taxable = row.taxable.minus(note.taxable);
+        },
+      );
+  }
+
   const hsnRows = (map) =>
     [...map.values()]
       .sort((a, b) => a.hsn.localeCompare(b.hsn) || a.rate - b.rate)
@@ -343,7 +426,12 @@ export function buildGstr1(invoices, { month, gstin = '' }) {
       'hsn-b2b': hsnRows(hsn['hsn-b2b']),
       'hsn-b2c': hsnRows(hsn['hsn-b2c']),
       nil: [...nil].map(([label, amount]) => [label, money(amount), '0.00', '0.00']),
-      docs: documentSeries(forGstin),
+      cdnr,
+      cdnur,
+      docs: [
+        ...documentSeries(forGstin, 'Invoices for outward supply'),
+        ...documentSeries(notes, 'Credit Note'),
+      ],
     },
   };
 }

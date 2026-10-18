@@ -91,6 +91,8 @@ export function registerApiRoutes(app, context) {
   app.post('/api/expenses', controllers.expenses.create);
   app.put('/api/expenses/:id', controllers.expenses.update);
   app.delete('/api/expenses/:id', controllers.expenses.remove);
+  app.post('/api/documents/:id/credit-notes', controllers.creditNotes.create);
+  app.post('/api/credit-notes/:id/cancel', controllers.creditNotes.cancel);
   app.get('/api/catalog/lookup', controllers.catalog.lookup);
   app.get('/api/catalog/export', controllers.catalog.export);
   app.get('/api/catalog', controllers.catalog.list);

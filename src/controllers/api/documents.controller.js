@@ -469,8 +469,11 @@ export function createController(context) {
     // POST /api/documents/:id/payments
     recordPayment: async (req, res) => {
       const input = paymentSchema.parse(req.body);
-      if (/^(razorpay|cashfree):/.test(input.requestId))
-        throw new HttpError(400, 'This receipt identifier is reserved for verified gateway payments.');
+      if (/^(razorpay|cashfree|credit-note):/.test(input.requestId))
+        throw new HttpError(
+          400,
+          'This receipt identifier is reserved for gateway payments and credit notes.',
+        );
       const result = await transactionForRecord(
         db,
         () => getDocument(req.params.id),

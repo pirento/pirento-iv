@@ -122,3 +122,57 @@ test('filters default to the current month and accept only valid values', () => 
   });
   assert.deepEqual(monthRange('2026-12'), { from: '2026-12-01', to: '2027-01-01' });
 });
+
+test('credit notes go to CDNR, CDNUR or net B2CS by their invoice, and to Table 13', () => {
+  const b2cs = invoice({ items: [line(1000, 18)] });
+  const note = (number, extra) => ({
+    number,
+    status: 'issued',
+    noteDate: '2026-10-20',
+    gstRate: 18,
+    taxable: 100,
+    total: 118,
+    invoiceDate: '2026-10-05',
+    invoiceTotal: 1180,
+    placeOfSupply: '09',
+    interstate: false,
+    customerSnapshot: { name: 'Buyer', gstin: '' },
+    organizationSnapshot: seller,
+    ...extra,
+  });
+  const report = buildGstr1([b2cs], { month: '2026-10' }, [
+    note('CN/2627/C0001', { customerSnapshot: { name: 'Registered', gstin: '09BBBBB0000B1Z5' } }),
+    note('CN/2627/C0002', { placeOfSupply: '27', interstate: true, invoiceTotal: 236000 }),
+    note('CN/2627/C0003'),
+    note('CN/2627/C0004', { status: 'cancelled' }),
+    note('XX/2627/C0001', { organizationSnapshot: { ...seller, gstin: '27CCCCC0000C1Z5' } }),
+  ]);
+  assert.deepEqual(report.gstins, [seller.gstin, '27CCCCC0000C1Z5']);
+  assert.deepEqual(report.sections.cdnr, [
+    [
+      '09BBBBB0000B1Z5',
+      'Registered',
+      'CN/2627/C0001',
+      '20-Oct-2026',
+      'C',
+      '09-Uttar Pradesh',
+      'N',
+      'Regular B2B',
+      '118.00',
+      '',
+      18,
+      '100.00',
+      '0.00',
+    ],
+  ]);
+  assert.deepEqual(report.sections.cdnur, [
+    ['B2CL', 'CN/2627/C0002', '20-Oct-2026', 'C', '27-Maharashtra', '118.00', '', 18, '100.00', '0.00'],
+  ]);
+  assert.deepEqual(
+    report.sections.b2cs,
+    [['OE', '09-Uttar Pradesh', '', 18, '900.00', '0.00', '']],
+    'a credit note on a B2CS invoice lowers that place and rate',
+  );
+  assert.deepEqual(report.sections.docs.at(-1), ['Credit Note', 'CN/2627/C0001', 'CN/2627/C0004', 4, 1]);
+  assert.match(gstr1Csv(report, 'cdnr').lines[0], /"Note Number","Note Date","Note Type"/);
+});

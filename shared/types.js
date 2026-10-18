@@ -225,8 +225,8 @@ export function calculateTotals(items, discountPercent, interstate) {
 // Rounds a rupee amount to 2 decimals (half-up, exact decimal) and returns a Number.
 export const roundMoney = (value) => decimal(value).round().toNumber();
 
-/** GST on one expense bill: IGST when the vendor is in another state, otherwise CGST + SGST halves. */
-export function expenseAmounts({ taxable, gstRate, interstate }) {
+/** GST on one amount at one rate (expense bills, credit notes): IGST when the vendor is in another state, otherwise CGST + SGST halves. */
+export function gstAmounts({ taxable, gstRate, interstate }) {
   const tax = decimal(taxable).times(gstRate).times(0.01).round();
   const cgst = interstate ? decimal(0) : tax.times(0.5).round();
   return {

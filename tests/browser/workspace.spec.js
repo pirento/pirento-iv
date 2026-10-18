@@ -337,7 +337,7 @@ test('an expense fills from a vendor contact, previews its GST, saves, edits and
   expect([saved.cgst, saved.sgst, saved.total]).toEqual([0.01, 0.01, 0.12]);
   expect(preview).toContain('Total ₹0.12');
 
-  await page.getByRole('link', { name: 'Edit' }).click();
+  await page.getByRole('link', { name: 'Edit', exact: true }).click();
   await form.locator('[name="taxable"]').fill('100');
   await form.getByRole('button', { name: 'Save changes' }).click();
   await expect(page).toHaveURL(/\/expenses\?month=2026-09$/);
@@ -347,4 +347,27 @@ test('an expense fills from a vendor contact, previews its GST, saves, edits and
   await expect(page.getByText('No expenses this month')).toBeVisible();
   await page.getByRole('link', { name: 'Reports' }).click();
   await expect(page.getByRole('heading', { name: 'Reports', level: 1 })).toBeVisible();
+});
+
+test('a credit note issued from an invoice lowers its balance and prints', async ({ page, app }) => {
+  await signIn(page, app);
+  const customer = await api(page, app, '/customers', 'POST', customerInput(app.organizationId));
+  const invoice = await api(
+    page,
+    app,
+    '/documents',
+    'POST',
+    invoiceInput(app.organizationId, customer.id, { status: 'sent' }),
+  );
+  await page.goto(workspace(app, `invoices/preview/${invoice.id}`));
+  await page.getByRole('link', { name: 'Credit note', exact: true }).click();
+  const form = page.locator('[data-credit-note-form]');
+  await form.locator('[name="reason"]').selectOption('Sales return');
+  await form.locator('[name="taxable"]').fill('30');
+  await expect(form.locator('[data-credit-note-preview]')).toContainText('Balance after credit ₹70.00');
+  await form.getByRole('button', { name: 'Issue credit note' }).click();
+  await expect(page).toHaveURL(/\/credit_notes\/preview\/[^/]+$/);
+  await expect(page.locator('article')).toContainText('Rupees Thirty Only');
+  const saved = await app.backend.db.collection('documents').findOne({ id: invoice.id });
+  expect([saved.balanceDue, saved.status]).toEqual([70, 'partially_paid']);
 });

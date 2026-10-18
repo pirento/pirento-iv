@@ -28,10 +28,11 @@ const bucketOf = (dueDate, asOf) => {
 };
 
 /**
- * invoices: issued (not draft or cancelled) invoices of the year; payments: non-voided receipts of the year;
+ * invoices: issued (not draft or cancelled) invoices of the year; payments: non-voided receipts of the year
+ * (credit notes left out); creditNotes: issued credit notes of the year, taken off sales in their month;
  * expenses: expenses of the year; openInvoices: every invoice still owed (sent or partially paid).
  */
-export function buildReport({ year, asOf, invoices, payments, expenses, openInvoices }) {
+export function buildReport({ year, asOf, invoices, payments, creditNotes = [], expenses, openInvoices }) {
   const months = MONTH_NAMES.map((name, index) => ({
     key: `${index < 9 ? year : year + 1}-${String(((index + 3) % 12) + 1).padStart(2, '0')}`,
     label: `${name} ${index < 9 ? year : year + 1}`,
@@ -57,6 +58,12 @@ export function buildReport({ year, asOf, invoices, payments, expenses, openInvo
     row.count += 1;
     row.total += paise(invoice.totals.total);
     customers.set(key, row);
+  }
+  for (const note of creditNotes) {
+    add(note.noteDate, 'sales', -note.taxable);
+    add(note.noteDate, 'salesWithGst', -note.total);
+    const row = customers.get(note.customerId);
+    if (row) row.total -= paise(note.total);
   }
   for (const payment of payments) add(payment.paidOn, 'received', payment.amount);
   for (const expense of expenses) add(expense.billDate, 'expenses', expense.taxable);

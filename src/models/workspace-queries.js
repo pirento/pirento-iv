@@ -228,7 +228,7 @@ export function createWorkspaceQueries(db) {
       .toArray();
   }
 
-  /** Rows for the Reports page (services/pages/reports.js): the year's invoices and receipts, and invoices still owed. */
+  /** Rows for the Reports page (services/pages/reports.js): the year's invoices, receipts and credit notes, and invoices still owed. */
   async function reportData(organizationId, { from, to }) {
     const fields = {
       _id: 0,
@@ -239,7 +239,7 @@ export function createWorkspaceQueries(db) {
       'customerSnapshot.name': 1,
       issueDate: 1,
     };
-    const [invoices, openInvoices, receipts] = await Promise.all([
+    const [invoices, openInvoices, receipts, creditNotes] = await Promise.all([
       db
         .collection('documents')
         .find(
@@ -276,9 +276,20 @@ export function createWorkspaceQueries(db) {
           {
             $or: [{ organizationId }, { organizationId: null }],
             voidedAt: null,
+            creditNoteId: null,
             paidOn: { $gte: from, $lt: to },
           },
           { ...options(), projection: { _id: 0, organizationId: 1, documentId: 1, amount: 1, paidOn: 1 } },
+        )
+        .toArray(),
+      db
+        .collection('credit_notes')
+        .find(
+          { organizationId, status: 'issued', noteDate: { $gte: from, $lt: to } },
+          {
+            ...options(),
+            projection: { _id: 0, customerId: 1, noteDate: 1, taxable: 1, total: 1 },
+          },
         )
         .toArray(),
     ]);
@@ -291,7 +302,7 @@ export function createWorkspaceQueries(db) {
         : [],
     );
     const payments = receipts.filter((row) => row.organizationId || owned.has(row.documentId));
-    return { invoices, openInvoices, payments };
+    return { invoices, openInvoices, payments, creditNotes };
   }
 
   return { documentPage, documentExport, overview, gstr1Invoices, reportData };

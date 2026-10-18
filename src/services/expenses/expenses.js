@@ -1,13 +1,11 @@
 /**
  * Expenses and purchase bills for one business: monthly lists, totals and CSV export. The GST split
- * (input tax credit) is expenseAmounts() in shared/types.js, so the browser preview matches.
+ * (input tax credit) is gstAmounts() in shared/types.js, so the browser preview matches.
  * Amounts are rupees with exact decimal rounding, like documents.
  */
 
 import { decimal } from '../../../shared/decimal.js';
 import { csvRow } from '../ledger/ledger-values.js';
-
-export { expenseAmounts } from '../../../shared/types.js';
 
 const round = (value) => decimal(value).round().toNumber();
 

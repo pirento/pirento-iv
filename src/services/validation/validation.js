@@ -466,6 +466,25 @@ export const expenseSchema = z
 export const voidPaymentSchema = z.object({
   reason: requiredText(2000),
 });
+// Why a credit note is issued (the reasons GST returns used to ask for).
+export const CREDIT_NOTE_REASONS = [
+  'Sales return',
+  'Discount after sale',
+  'Deficiency in service',
+  'Correction in invoice',
+  'Other',
+];
+// A credit note against an issued invoice: one amount before GST at one of the invoice's GST rates.
+export const creditNoteSchema = z
+  .object({
+    noteDate: date,
+    reason: z.enum(CREDIT_NOTE_REASONS),
+    taxable: moneyAmount,
+    gstRate: z.union([0, 0.25, 3, 5, 12, 18, 28].map((value) => z.literal(value))),
+    notes: text(500).default(''),
+    requestId: z.guid(),
+  })
+  .strict();
 // A document as sent by the editor: header fields, line items, totals inputs, shipping and plan.
 export const documentSchema = z
   .object({

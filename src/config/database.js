@@ -54,6 +54,7 @@ export const COLLECTIONS = [
   'ops_recovery_state',
   'images',
   'expenses',
+  'credit_notes',
 ];
 
 /**
@@ -176,6 +177,7 @@ async function initializeCollections(context) {
     'online_payment_links',
     'cashfree_payment_links',
     'expenses',
+    'credit_notes',
   ];
   for (const name of ids) await index(name, { id: 1 }, { unique: true });
   for (const name of ['customers', 'documents', 'catalog', 'formats', 'business_products'])
@@ -203,6 +205,9 @@ async function initializeCollections(context) {
   }
   await index('document_events', { documentId: 1 });
   await index('expenses', { organizationId: 1, billDate: -1, id: -1 });
+  await index('credit_notes', { organizationId: 1, noteDate: -1, id: -1 });
+  await index('credit_notes', { invoiceId: 1 });
+  await index('credit_notes', { number: 1 }, { unique: true });
   await index('sequences', { organizationId: 1, kind: 1, fiscalYear: 1 }, { unique: true });
   await index(
     'formats',
