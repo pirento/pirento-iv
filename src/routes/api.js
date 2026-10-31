@@ -115,6 +115,7 @@ export function registerApiRoutes(app, context) {
   app.get('/api/customers/lookup', controllers.customers.lookup);
   app.get('/api/customers/export', controllers.customers.export);
   app.get('/api/customers', controllers.customers.list);
+  app.get('/api/customers/:id/billing-summary', controllers.customers.billingSummary);
   app.post('/api/customers', controllers.customers.create);
   app.put('/api/customers/:id', controllers.customers.update);
   app.delete('/api/customers/:id', controllers.customers.remove);

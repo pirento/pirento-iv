@@ -31,6 +31,21 @@ export function attachPageRoutes(backend) {
     res.set('Cache-Control', 'public, max-age=86400');
     res.type('image/svg+xml').sendFile(favicon);
   });
+  // Lets phones add the workspace to the home screen and open it like an app.
+  app.get('/manifest.webmanifest', (_req, res) => {
+    res.set('Cache-Control', 'public, max-age=86400');
+    res.type('application/manifest+json').send(
+      JSON.stringify({
+        name: 'Business Workspace',
+        short_name: 'Billing',
+        start_url: '/',
+        display: 'standalone',
+        background_color: '#f4f5f0',
+        theme_color: '#1b5646',
+        icons: [{ src: '/favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' }],
+      }),
+    );
+  });
   app.use('/shared', express.static(resolve(root, 'shared'), { dotfiles: 'deny', index: false }));
   app.use(
     '/vendor',

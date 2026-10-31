@@ -292,6 +292,12 @@
   padding: 2px 0 24px;
   outline-offset: -3px;
 }
+/* Phones: the page is scaled to the screen width (preview.js sets --doc-fit); print is unchanged. */
+@media screen {
+  .doc-paper.doc-paper {
+    zoom: var(--doc-fit, 1);
+  }
+}
 .doc-print-hint {
   width: 100%;
   flex-wrap: wrap;

@@ -220,6 +220,10 @@ const baseUrl = `/workspace/${encodeURIComponent(org.id)}/${data.route.view}`;
                 </div>
                 <% } %>
               </div>
+              <div id="doc-customer-summary" class="doc-customer-summary" role="status" hidden>
+                <p data-summary-text></p>
+                <button type="button" class="doc-text-button" data-copy-last hidden></button>
+              </div>
             </div>
             <div class="doc-meta-fields">
               <label class="doc-field doc-wide"
@@ -412,6 +416,9 @@ const baseUrl = `/workspace/${encodeURIComponent(org.id)}/${data.route.view}`;
             <option value="<%= unit %>"></option>
             <% }); %>
           </datalist>
+          <datalist id="doc-gst-options">
+            <% [0, 0.25, 3, 5, 12, 18, 28, 40].forEach(rate=>{ %><option value="<%= rate %>"></option><% }); %>
+          </datalist>
           <div id="doc-lines"><% (form.items||[{description:'',hsn:'',quantity:1,rate:0,gstRate:0,unit:'Nos'}]).forEach((line,index)=>{ %><%- include('line',{line,index,locked,isDelivery}) %><% }); %></div>
           <p class="doc-field-error" data-error-for="items" hidden></p>
           <button type="button" class="doc-add-item" data-action="add-line" <%= locked?'disabled':'' %>>
@@ -525,9 +532,18 @@ const baseUrl = `/workspace/${encodeURIComponent(org.id)}/${data.route.view}`;
     </section>
     <footer class="doc-page-footer">
       <p id="doc-editor-feedback" class="doc-save-error" role="alert" tabindex="-1"></p>
+      <% if(!isDelivery){ %><span class="doc-footer-total">Total <strong data-footer-total><%= t.money(existing?.totals.total||0) %></strong></span><% } %>
       <div>
         <a href="<%= baseUrl %>" class="doc-button doc-button-secondary">Back</a
-        ><% if(!finalized){ %><button
+        ><% if(!finalized && !existing){ %><button
+          id="doc-issue-button"
+          type="submit"
+          class="doc-button doc-button-secondary"
+          data-issue
+          hidden
+        >
+          Save &amp; issue</button
+        ><% } %><% if(!finalized){ %><button
           id="doc-save-button"
           type="submit"
           class="doc-button doc-button-primary"

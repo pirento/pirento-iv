@@ -479,3 +479,57 @@ test('the IRN and signed QR saved on the e-invoice page print on the invoice', a
   await expect(page.getByText(`IRN: ${'b'.repeat(64)}`)).toBeVisible();
   await expect(page.getByRole('img', { name: 'E-invoice QR code' })).toBeVisible();
 });
+
+test('on a phone, an invoice copies the last bill, warns about credit and is saved and issued', async ({
+  page,
+  app,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await signIn(page, app);
+  const customer = await api(page, app, '/customers', 'POST', {
+    ...customerInput(app.organizationId, 'Phone Customer'),
+    creditLimit: 150,
+  });
+  const last = await api(
+    page,
+    app,
+    '/documents',
+    'POST',
+    invoiceInput(app.organizationId, customer.id, {
+      status: 'sent',
+      items: [{ description: 'Monthly service', quantity: 2, rate: 50, hsn: '', gstRate: 0 }],
+    }),
+  );
+  await page.goto(workspace(app, 'invoices/new'));
+  await page.locator('#doc-customer').selectOption(customer.id);
+  const summary = page.locator('#doc-customer-summary');
+  await expect(summary).toContainText('Owes ₹100.00 on 1 invoice(s)');
+  await page
+    .getByRole('button', {
+      name: new RegExp('Copy 1 item\\(s\\) from ' + last.number.replaceAll('/', '\\/')),
+    })
+    .click();
+  await expect(page.locator('[data-line="description"]').first()).toHaveValue('Monthly service');
+  await expect(page.locator('.doc-line-pricing summary').first()).toContainText('standard');
+  await page.locator('[name="placeOfSupply"]').selectOption('09');
+  const total = page.locator('.doc-footer-total');
+  await expect(total).toBeInViewport();
+  await expect(total).toContainText('₹100.00');
+  await expect(summary).toContainText('Over the credit limit of ₹150.00');
+  await page.screenshot({
+    path: '/tmp/claude-0/-home-user-pirento-iv/24cb3550-63a0-5ffd-a5e3-0f8bc870052d/scratchpad/shots-now/phone-editor-after.png',
+  });
+  await page.getByRole('button', { name: 'Save & issue' }).click();
+  await expect(page).toHaveURL(/\/invoices\/preview\/[^/]+$/);
+  const saved = await app.backend.db
+    .collection('documents')
+    .findOne({ customerId: customer.id, id: { $ne: last.id } });
+  expect([saved.status, saved.totals.total]).toEqual(['sent', 100]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
+  const manifest = await page.request.get(`${app.base}/manifest.webmanifest`);
+  expect((await manifest.json()).display).toBe('standalone');
+  await page.screenshot({
+    path: '/tmp/claude-0/-home-user-pirento-iv/24cb3550-63a0-5ffd-a5e3-0f8bc870052d/scratchpad/shots-now/phone-preview-after.png',
+    fullPage: true,
+  });
+});
