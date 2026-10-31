@@ -106,7 +106,7 @@ const gstPayable = finance.totals.gstOnSales - finance.totals.gstOnExpenses;
                 <td><%= row.party %></td>
                 <td class="text-right"><%= amount(row.total) %></td>
                 <td class="text-right"><%= amount(row.balance) %></td>
-                <td><%= row.status %></td>
+                <td><%= helpers.statusLabel(row.status) %></td>
               </tr>
             <% } %>
             <% if (key === 'receipts') for (const row of registers.receipts) { %>
