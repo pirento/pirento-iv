@@ -54,6 +54,8 @@ export function createPaymentGateways(options) {
     if (!document) throw new OnlinePaymentError('Invoice not found.', 404);
     return document;
   }
+  // Settings saved on the Payments & email page (integration-settings.js) for this business.
+  const savedFor = async (id) => (options.integrationSettings ? options.integrationSettings(id) : {});
   async function organizationFor(id) {
     let organization;
     try {
@@ -94,7 +96,7 @@ export function createPaymentGateways(options) {
   }
   async function provider(organizationId, gateway) {
     const organization = await organizationFor(organizationId);
-    const scopedEnv = organizationEnvironment(organization, env);
+    const scopedEnv = organizationEnvironment(organization, env, await savedFor(organizationId));
     const relevant =
       gateway === 'razorpay'
         ? [scopedEnv.RAZORPAY_KEY_ID, scopedEnv.RAZORPAY_KEY_SECRET, scopedEnv.RAZORPAY_WEBHOOK_SECRET]
@@ -316,7 +318,7 @@ export function createPaymentGateways(options) {
   }
   async function processRazorpayWebhook(organizationId, body, signature, eventId) {
     const organization = await organizationFor(organizationId);
-    const scopedEnv = organizationEnvironment(organization, env);
+    const scopedEnv = organizationEnvironment(organization, env, await savedFor(organizationId));
     if (!verifyRazorpaySignature(body, signature, scopedEnv.RAZORPAY_WEBHOOK_SECRET ?? ''))
       throw new OnlinePaymentError('Invalid webhook signature.', 401);
     const candidate = await localRazorpayDocument(parseRazorpay(body));
@@ -332,7 +334,11 @@ export function createPaymentGateways(options) {
     );
   }
   async function processCashfreeWebhook(organizationId, body, signature, timestamp, eventId) {
-    const scopedEnv = organizationEnvironment(await organizationFor(organizationId), env);
+    const scopedEnv = organizationEnvironment(
+      await organizationFor(organizationId),
+      env,
+      await savedFor(organizationId),
+    );
     if (!verifyCashfreeSignature(body, signature, timestamp, scopedEnv.CASHFREE_CLIENT_SECRET ?? ''))
       throw new OnlinePaymentError('Invalid webhook signature.', 401);
     return (await provider(organizationId, 'cashfree')).processWebhook(body, signature, timestamp, eventId);

@@ -203,3 +203,32 @@ if (aiForm) {
   });
   remove.addEventListener('click', () => saveAi({ model: aiForm.model.value.trim(), removeKey: true }));
 }
+
+// Payments & email settings of this business (secrets are write-only).
+const settingsForm = document.querySelector('[data-settings-form]');
+if (settingsForm) {
+  const message = document.querySelector('[data-settings-message]');
+  const organizationId = getPageData().organization.id;
+  const saveSettings = async (body) => {
+    message.hidden = true;
+    try {
+      await api(`/integrations/${encodeURIComponent(organizationId)}/settings`, sendJson('PUT', body));
+      // Reload so the status cards and saved-key hints show the new settings.
+      window.location.reload();
+    } catch (error) {
+      message.className = 'mg-message error';
+      message.textContent = error.message;
+      message.hidden = false;
+    }
+  };
+  settingsForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const values = Object.fromEntries(new FormData(settingsForm));
+    // A blank secret keeps the saved one.
+    for (const field of settingsForm.querySelectorAll('input[type="password"]'))
+      if (!values[field.name]) delete values[field.name];
+    saveSettings(values);
+  });
+  for (const button of settingsForm.querySelectorAll('[data-clear]'))
+    button.addEventListener('click', () => saveSettings({ clear: [button.dataset.clear] }));
+}

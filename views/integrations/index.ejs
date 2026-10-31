@@ -24,8 +24,8 @@ const support = helpers.organizationSupportEmail(organization);
       <span class="mg-eyebrow"><%= organization.name %> · CONNECTED WORKFLOWS</span>
       <h1>Payments, email and GST for <%= organization.name %></h1>
       <p>
-        Review this business’s payment provider and sender. Change the gateway, support address, bank details
-        and QR in organization settings. GST lookup fills contact details from the shared lookup service.
+        Review this business’s payment provider and sender, and set its gateway keys, email sending (SMTP or
+        Resend) and reply addresses below. Bank details and QR stay in Business settings.
       </p>
       <div class="mg-identity-grid">
         <div><small>Legal business</small><strong><%= organization.legalName %></strong></div>
@@ -224,6 +224,92 @@ const support = helpers.organizationSupportEmail(organization);
         </details>
       </section>
     </div>
+    <% if (settings?.businesses) { %>
+    <section class="mg-card" id="all-businesses">
+      <h3>Every business</h3>
+      <div tabindex="0" role="region" aria-label="Payment gateway and email of every business" class="table-wrap">
+        <table class="finance-table">
+          <thead><tr><th>Business</th><th>Payment gateway</th><th>Email sending</th><th></th></tr></thead>
+          <tbody>
+            <% for (const row of settings.businesses) { %>
+              <tr>
+                <td><%= row.name %></td>
+                <td><%= row.payment.provider === 'none' ? 'Manual payments' : `${row.payment.provider === 'cashfree' ? 'Cashfree' : 'Razorpay'} · ${row.payment.configured ? 'ready' : 'setup needed'}` %></td>
+                <td><%= row.email.configured ? `${row.email.provider === 'smtp' ? 'SMTP' : 'Resend'} · ready` : 'Setup needed' %></td>
+                <td><a href="/workspace/<%= encodeURIComponent(row.id) %>/integrations#business-settings">Set up</a></td>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+    <% } %>
+    <% if (settings?.settings) { const saved = settings.settings; const secret = (name) => saved[name].set ? `Saved, ending ${saved[name].end} — leave blank to keep` : ''; %>
+    <section class="mg-card" id="business-settings">
+      <h3>Settings for <%= organization.name %></h3>
+      <p>Saved here, these win over the server settings for this business only. Keys and passwords are stored encrypted and are never shown again.</p>
+      <form data-settings-form>
+        <fieldset class="mg-form-grid">
+          <legend><strong>Payment gateway</strong></legend>
+          <label class="field">Gateway
+            <select name="paymentGateway">
+              <% for (const [value, label] of [['razorpay', 'Razorpay'], ['cashfree', 'Cashfree'], ['none', 'Manual payments only']]) { %>
+                <option value="<%= value %>" <%= helpers.organizationGateway(organization) === value ? 'selected' : '' %>><%= label %></option>
+              <% } %>
+            </select>
+          </label>
+          <span></span>
+          <label class="field">Razorpay key ID<input name="RAZORPAY_KEY_ID" maxlength="100" autocomplete="off" value="<%= saved.RAZORPAY_KEY_ID %>" placeholder="rzp_live_..." /></label>
+          <label class="field">Razorpay key secret<input name="RAZORPAY_KEY_SECRET" type="password" autocomplete="off" maxlength="500" placeholder="<%= secret('RAZORPAY_KEY_SECRET') %>" /></label>
+          <label class="field">Razorpay webhook secret<input name="RAZORPAY_WEBHOOK_SECRET" type="password" autocomplete="off" maxlength="500" placeholder="<%= secret('RAZORPAY_WEBHOOK_SECRET') %>" /></label>
+          <span></span>
+          <label class="field">Cashfree client ID<input name="CASHFREE_CLIENT_ID" maxlength="200" autocomplete="off" value="<%= saved.CASHFREE_CLIENT_ID %>" /></label>
+          <label class="field">Cashfree client secret<input name="CASHFREE_CLIENT_SECRET" type="password" autocomplete="off" maxlength="500" placeholder="<%= secret('CASHFREE_CLIENT_SECRET') %>" /></label>
+          <label class="field">Cashfree mode
+            <select name="CASHFREE_ENVIRONMENT">
+              <% for (const [value, label] of [['', 'Server setting'], ['sandbox', 'Sandbox (test)'], ['production', 'Production (live)']]) { %><option value="<%= value %>" <%= saved.CASHFREE_ENVIRONMENT === value ? 'selected' : '' %>><%= label %></option><% } %>
+            </select>
+          </label>
+        </fieldset>
+        <fieldset class="mg-form-grid">
+          <legend><strong>Sending email</strong> — an SMTP server (Hostinger, Gmail, Zoho, Outlook…) or a Resend API key</legend>
+          <label class="field">Send from address<input name="EMAIL_FROM" type="email" maxlength="254" value="<%= saved.EMAIL_FROM %>" placeholder="billing@yourdomain.com" /></label>
+          <label class="field">Automatic emails
+            <select name="EMAIL_AUTOMATION">
+              <% for (const [value, label] of [['', 'Server setting'], ['true', 'On'], ['false', 'Off']]) { %><option value="<%= value %>" <%= saved.EMAIL_AUTOMATION === value ? 'selected' : '' %>><%= label %></option><% } %>
+            </select>
+          </label>
+          <label class="field">SMTP server<input name="SMTP_HOST" maxlength="253" value="<%= saved.SMTP_HOST %>" placeholder="smtp.hostinger.com" /></label>
+          <label class="field">SMTP port
+            <select name="SMTP_PORT">
+              <% for (const value of ['', '587', '465', '25', '2525']) { %><option value="<%= value %>" <%= saved.SMTP_PORT === value ? 'selected' : '' %>><%= value || 'Default (587, or 465 with SSL)' %></option><% } %>
+            </select>
+          </label>
+          <label class="field">SMTP username<input name="SMTP_USER" maxlength="254" autocomplete="off" value="<%= saved.SMTP_USER %>" placeholder="billing@yourdomain.com" /></label>
+          <label class="field">SMTP password<input name="SMTP_PASSWORD" type="password" autocomplete="new-password" maxlength="500" placeholder="<%= secret('SMTP_PASSWORD') %>" /></label>
+          <label class="field">Security
+            <select name="SMTP_SECURE">
+              <% for (const [value, label] of [['', 'STARTTLS (port 587)'], ['true', 'SSL/TLS (port 465)']]) { %><option value="<%= value %>" <%= saved.SMTP_SECURE === value ? 'selected' : '' %>><%= label %></option><% } %>
+            </select>
+          </label>
+          <label class="field">Resend API key (if no SMTP)<input name="RESEND_API_KEY" type="password" autocomplete="off" maxlength="500" placeholder="<%= secret('RESEND_API_KEY') %>" /></label>
+        </fieldset>
+        <fieldset class="mg-form-grid">
+          <legend><strong>Receiving email</strong> — customers' replies go to these inboxes</legend>
+          <label class="field">Support email (quotations, help)<input name="supportEmail" type="email" maxlength="254" value="<%= organization.supportEmail || helpers.organizationSupportEmail(organization) %>" /></label>
+          <label class="field">Finance email (invoices, receipts, reminders)<input name="financeEmail" type="email" maxlength="254" value="<%= organization.financeEmail || '' %>" placeholder="finance@pirento.com" /></label>
+        </fieldset>
+        <div class="mg-actions">
+          <button class="button" type="submit">Save settings</button>
+          <% for (const [name, label] of [['RAZORPAY_KEY_SECRET', 'Razorpay secret'], ['CASHFREE_CLIENT_SECRET', 'Cashfree secret'], ['SMTP_PASSWORD', 'SMTP password'], ['RESEND_API_KEY', 'Resend key']]) { if (saved[name].set) { %>
+            <button class="button secondary" type="button" data-clear="<%= name %>">Remove <%= label %></button>
+          <% } } %>
+        </div>
+      </form>
+      <div class="mg-message" data-settings-message role="status" hidden></div>
+    </section>
+    <% } %>
+    <% if (data.user.role === 'admin') { %>
     <section class="mg-card" id="ai-settings">
       <header class="mg-card-heading">
         <div>
@@ -247,6 +333,7 @@ const support = helpers.organizationSupportEmail(organization);
       </form>
       <div class="mg-message" data-ai-message role="status" hidden></div>
     </section>
+    <% } %>
     <section class="mg-card">
       <h3>A clear path from sent to settled</h3>
       <div class="mg-grid">

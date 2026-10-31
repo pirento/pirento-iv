@@ -54,6 +54,8 @@ const adminViews = new Set([
   'letterhead',
   'integrations',
 ]);
+// Admin pages a Business owner login may open for its own business.
+const ownerViews = new Set(['business_settings', 'letterhead', 'integrations']);
 // Document screens share one ordered set; the order matches the former single documents.css cascade.
 const documentStyles = [
   'documents/editor',
@@ -187,6 +189,7 @@ export function createPageController(backend) {
       return res.redirect(`/workspace/${encodeURIComponent(route.organizationId)}/sessions`);
     if (
       user.role !== 'admin' &&
+      !(user.permission === 'owner' && ownerViews.has(route.view)) &&
       (adminViews.has(route.view) ||
         (route.view === 'organizations' && route.action) ||
         (route.view === 'recurring' && route.action === 'new'))

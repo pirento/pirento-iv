@@ -10,8 +10,10 @@ import { HttpError } from '../../middleware/errors.js';
 export function createController(context) {
   const { db, now, getOrganization } = context;
   const adminOnly = (res) => {
-    if (res.locals.user && res.locals.user.role !== 'admin')
-      throw new HttpError(403, 'Only an administrator can change the letterhead.');
+    // Administrators, or a Business owner login for its own business (the access guard checks the id).
+    const user = res.locals.user;
+    if (user && user.role !== 'admin' && user.permission !== 'owner')
+      throw new HttpError(403, 'Only an administrator or the business owner can change the letterhead.');
   };
   return {
     // PUT /api/letterheads/:organizationId

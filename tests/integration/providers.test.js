@@ -339,14 +339,14 @@ test(
     assert.ok(emails[1].body.from.startsWith('Shri Sarraf'));
     assert.ok(!emails[1].body.html.includes('Venturecore Solutions Private Limited'));
     check('Independent business keeps own email sender and legal identity');
-    // Invoice emails reply to the business's finance email; its own sending address wins over EMAIL_FROM.
+    // Invoice emails reply to the business's finance email; a From address saved on the
+    // Payments & email page wins over EMAIL_FROM and keeps the shared Resend key.
     assert.equal(emails[0].body.reply_to, 'finance@pirento.com');
     assert.equal(emails[1].body.reply_to, 'support@shrisarraf.com');
     const legalSaved = await backend.db.models.organizations.findById(legal.id);
-    await backend.db.models.organizations.save({
-      ...legalSaved,
+    await call('/integrations/' + legal.id + '/settings', 'PUT', {
+      EMAIL_FROM: 'billing@pirento.com',
       financeEmail: 'accounts@pirento.com',
-      emailFrom: 'billing@pirento.com',
     });
     await call(
       '/documents/' + inv.id + '/email',
@@ -361,6 +361,7 @@ test(
     );
     assert.equal(emails.at(-1).body.reply_to, 'finance@pirento.com', 'the saved invoice keeps its reply-to');
     await backend.db.models.organizations.save(legalSaved);
+    await call('/integrations/' + legal.id + '/settings', 'PUT', { EMAIL_FROM: '' });
     check('Business sending address and finance reply-to');
     const send = await call(
       '/documents/' + inv.id + '/email',

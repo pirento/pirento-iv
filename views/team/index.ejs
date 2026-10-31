@@ -56,7 +56,7 @@ const placeholder = {id:'',name:'',email:'',company:'',status:'pending',role:'st
       >
       <label class="mg-field" data-permission-field
         >Access level<select name="permission">
-          <% for (const [key,label] of [['full','Full — create, edit and delete'],['no-delete','Edit — cannot delete, void or cancel'],['view','View only — cannot change anything'],['accounts','Finance login — finance dashboard only (assigned businesses)']]) { %>
+          <% for (const [key,label] of [['full','Full — create, edit and delete'],['no-delete','Edit — cannot delete, void or cancel'],['view','View only — cannot change anything'],['accounts','Finance login — finance dashboard only (assigned businesses)'],['owner','Business owner — runs its own business, incl. its settings, letterhead, payments & email']]) { %>
           <option value="<%= key %>"><%= label %></option>
           <% } %>
         </select></label

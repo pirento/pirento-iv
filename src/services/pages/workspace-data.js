@@ -28,6 +28,7 @@ import { safeWorkspaceReturn } from '../../../public/js/core/workspace-route.js'
 /** Page-specific loading keeps unrelated financial snapshots and operations off normal navigation. */
 export function createWorkspacePageData({
   ai,
+  integrationSettings,
   db,
   auth,
   online,
@@ -322,6 +323,22 @@ export function createWorkspacePageData({
           razorpay: payment,
           gst: gstStatus(),
           ai: ai ? await ai.status() : { configured: false },
+          ...(!auth || user.role === 'admin' || user.permission === 'owner'
+            ? { settings: await integrationSettings.view(organizationId) }
+            : {}),
+          // Administrators see every business's gateway and email at a glance.
+          ...(!auth || user.role === 'admin'
+            ? {
+                businesses: await Promise.all(
+                  result.organizations.map(async (organization) => ({
+                    id: organization.id,
+                    name: organization.name,
+                    payment: await online.getStatus(organization.id),
+                    email: await mailer.status(organization.id),
+                  })),
+                ),
+              }
+            : {}),
           environmentPrefix: integrationEnvironmentPrefix(result.organization),
           webhookPath:
             payment.provider === 'none' ? '' : `/api/webhooks/${payment.provider}/${organizationId}`,
@@ -342,9 +359,14 @@ export function createWorkspacePageData({
           }
         });
       }
-      if (route?.view === 'letterhead')
-        read('letterhead', async () => (await db.models.letterheads.findById(organizationId)) ?? null);
-    } else if (
+    }
+    const owner = !auth || user.role === 'admin' || user.permission === 'owner';
+    if (owner && route?.view === 'letterhead')
+      read('letterhead', async () => (await db.models.letterheads.findById(organizationId)) ?? null);
+    if (
+      auth &&
+      user.role !== 'admin' &&
+      (!owner || !['business_settings', 'letterhead', 'integrations'].includes(route?.view)) &&
       [
         'team',
         'security',

@@ -174,6 +174,16 @@ function navigation(data) {
       { label: 'Account', items: [{ view: 'sessions', label: 'My sessions', icon: 'shield' }] },
     ];
   if (data.user.role === 'admin') groups.unshift(finance);
+  // A Business owner sets up its own business.
+  if (data.user.role !== 'admin' && data.user.permission === 'owner')
+    groups.push({
+      label: 'Business setup',
+      items: [
+        { view: 'business_settings', label: 'Business settings', icon: 'settings' },
+        { view: 'letterhead', label: 'Letterhead', icon: 'document' },
+        { view: 'integrations', label: 'Payments & email', icon: 'settings' },
+      ],
+    });
   if (data.user.role === 'admin')
     groups.push({
       label: 'Administration',

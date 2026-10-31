@@ -11,6 +11,7 @@
 import { mapAsync } from '../../async-collections.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
+import nodemailer from 'nodemailer';
 import {
   balanceDue,
   calculateLineAmount,
@@ -286,6 +287,20 @@ function paymentReminderPayload(document, reminder, asOf) {
 export function createMailer(db, options = {}) {
   const env = options.env ?? process.env,
     fetcher = options.fetch ?? fetch,
+    smtpSend =
+      options.smtpSend ??
+      ((smtp, message) =>
+        nodemailer
+          .createTransport({
+            host: smtp.host,
+            port: smtp.port,
+            secure: smtp.secure,
+            ...(smtp.user ? { auth: { user: smtp.user, pass: smtp.pass } } : {}),
+            connectionTimeout: 10_000,
+            greetingTimeout: 10_000,
+            socketTimeout: 20_000,
+          })
+          .sendMail(message)),
     now = options.now ?? (() => new Date());
   const leaseMs = options.leaseMs ?? LEASE_MS;
   const renewalMs = options.renewalMs ?? Math.floor(leaseMs / 3);
@@ -402,18 +417,31 @@ export function createMailer(db, options = {}) {
         : snapshot
       : undefined;
     const missing = Boolean(organizationId && (!org || org.id !== organizationId));
-    const scoped = org ? organizationEnvironment(org, env) : organizationId ? {} : env;
-    // The business's own sending address (Business settings) wins over the server EMAIL_FROM.
-    const own = org?.emailFrom?.trim() ?? '';
-    const from = validEmail(own)
-      ? `"${(org.tradeName || org.name || '').replace(/["<>\r\n]/g, '')}" <${own}>`
-      : (scoped.EMAIL_FROM ?? '').trim();
+    const saved = org && options.integrationSettings ? await options.integrationSettings(org.id) : {};
+    const scoped = org ? organizationEnvironment(org, env, saved) : organizationId ? {} : env;
+    const own = (scoped.EMAIL_FROM ?? '').trim();
+    // A bare address is sent with the business name, e.g. "A T Elevator" <billing@...>.
+    const from =
+      org && validEmail(own)
+        ? `"${(org.tradeName || org.name || '').replace(/["<>\r\n]/g, '')}" <${own}>`
+        : own;
     const address = from.match(/^[^<>\r\n]+<([^<>\r\n]+)>$/)?.[1] ?? from;
     const apiKey = (scoped.RESEND_API_KEY ?? '').trim();
-    const configured = !missing && Boolean(apiKey) && !/[\r\n]/.test(from) && validEmail(address);
+    // An SMTP server (host set) replaces the Resend API for this business.
+    const smtp = scoped.SMTP_HOST?.trim()
+      ? {
+          host: scoped.SMTP_HOST.trim(),
+          port: Number(scoped.SMTP_PORT) || (scoped.SMTP_SECURE === 'true' ? 465 : 587),
+          secure: scoped.SMTP_SECURE === 'true',
+          user: (scoped.SMTP_USER ?? '').trim(),
+          pass: scoped.SMTP_PASSWORD ?? '',
+        }
+      : null;
+    const configured = !missing && Boolean(smtp || apiKey) && !/[\r\n]/.test(from) && validEmail(address);
+    const credentials = smtp ? `smtp:${smtp.host}:${smtp.port}:${smtp.user}:${smtp.pass}` : apiKey;
     const integration = {
       configured,
-      provider: 'resend',
+      provider: smtp ? 'smtp' : 'resend',
       from,
       organizationId,
       replyTo: supportAddress(org),
@@ -422,15 +450,16 @@ export function createMailer(db, options = {}) {
         ? ''
         : missing
           ? 'The issuing organization is unavailable. Restore its email configuration before retrying.'
-          : 'Email sending is not configured for this business. Add its Resend API key and verified EMAIL_FROM address in server settings.',
+          : 'Email sending is not configured for this business. Add its sender address and SMTP server or Resend API key on the Payments & email page.',
     };
     return {
       integration,
       apiKey,
+      smtp,
       profile: {
         organizationId,
         businessType: org && isIndependentBusiness(org) ? 'independent' : 'division',
-        keyFingerprint: apiKey ? createHash('sha256').update(apiKey).digest('hex') : '',
+        keyFingerprint: credentials ? createHash('sha256').update(credentials).digest('hex') : '',
         replyTo: supportAddress(org),
       },
     };
@@ -1012,53 +1041,88 @@ export function createMailer(db, options = {}) {
         return transport;
       }
       transportStarted = true;
-      const signal = AbortSignal.any([lease.signal, AbortSignal.timeout(15_000)]);
-      const response = await abortable(
-        () =>
-          fetcher('https://api.resend.com/emails', {
-            method: 'POST',
-            redirect: 'error',
-            headers: {
-              Authorization: 'Bearer ' + config.apiKey,
-              'Content-Type': 'application/json',
-              'Idempotency-Key': 'venturecore-email/' + row.id,
-            },
-            body: JSON.stringify({
-              from: payload.sender,
-              reply_to: payload.senderProfile.replyTo,
-              to: [row.recipient],
-              subject: row.subject,
-              html: payload.html,
-              text: payload.text,
-              ...(payload.attachment ? { attachments: [payload.attachment] } : {}),
-            }),
+      const signal = AbortSignal.any([lease.signal, AbortSignal.timeout(config.smtp ? 30_000 : 15_000)]);
+      if (config.smtp) {
+        // shortcut: SMTP has no idempotency key, so a retry after a lost server reply can send twice.
+        try {
+          const info = await abortable(
+            () =>
+              smtpSend(config.smtp, {
+                from: payload.sender,
+                replyTo: payload.senderProfile.replyTo,
+                to: row.recipient,
+                subject: row.subject,
+                html: payload.html,
+                text: payload.text,
+                headers: { 'X-Entity-Ref-ID': 'venturecore-email/' + row.id },
+                attachments: payload.attachment
+                  ? [
+                      {
+                        filename: payload.attachment.filename,
+                        content: Buffer.from(payload.attachment.content, 'base64'),
+                      },
+                    ]
+                  : [],
+              }),
             signal,
-          }),
-        signal,
-      );
-      const body = await abortable(() => readProviderJson(response, 16 * 1024), signal).catch(() => {
-        signal.throwIfAborted();
-        return {};
-      });
-      if (response.ok && typeof body.id === 'string' && body.id) acceptedId = body.id.slice(0, 200);
-      else {
-        // Resend explicitly permits retrying a concurrent request with the same
-        // idempotency key. A different-payload conflict remains terminal.
-        const concurrent = response.status === 409 && body.name === 'concurrent_idempotent_requests';
-        retryable = concurrent || response.status === 429 || response.status >= 500 || response.ok;
-        failure = concurrent
-          ? 'The provider is still processing this delivery key. The same request will be retried.'
-          : response.ok
-            ? 'Email provider returned an unconfirmed result. The same delivery key will be retried.'
-            : response.status === 401 || response.status === 403
-              ? 'Email provider rejected the credentials or sender. Check server email settings.'
-              : response.status === 429
-                ? 'Email provider rate limit reached. Delivery will be retried.'
-                : response.status >= 500
-                  ? 'Email provider is temporarily unavailable. Delivery will be retried.'
-                  : 'Email provider rejected this message (HTTP ' +
-                    response.status +
-                    '). Check the verified sender and recipient.';
+          );
+          acceptedId = String(info?.messageId || 'smtp-accepted').slice(0, 200);
+        } catch (error) {
+          lease.signal.throwIfAborted();
+          // 5xx replies (bad login, rejected sender or recipient) will not succeed on retry.
+          retryable = !(error?.responseCode >= 500);
+          failure = retryable
+            ? 'The SMTP server could not be reached. Delivery will be retried.'
+            : `The SMTP server rejected this message (${error.responseCode}). Check the SMTP login, sender and recipient.`;
+        }
+      } else {
+        const response = await abortable(
+          () =>
+            fetcher('https://api.resend.com/emails', {
+              method: 'POST',
+              redirect: 'error',
+              headers: {
+                Authorization: 'Bearer ' + config.apiKey,
+                'Content-Type': 'application/json',
+                'Idempotency-Key': 'venturecore-email/' + row.id,
+              },
+              body: JSON.stringify({
+                from: payload.sender,
+                reply_to: payload.senderProfile.replyTo,
+                to: [row.recipient],
+                subject: row.subject,
+                html: payload.html,
+                text: payload.text,
+                ...(payload.attachment ? { attachments: [payload.attachment] } : {}),
+              }),
+              signal,
+            }),
+          signal,
+        );
+        const body = await abortable(() => readProviderJson(response, 16 * 1024), signal).catch(() => {
+          signal.throwIfAborted();
+          return {};
+        });
+        if (response.ok && typeof body.id === 'string' && body.id) acceptedId = body.id.slice(0, 200);
+        else {
+          // Resend explicitly permits retrying a concurrent request with the same
+          // idempotency key. A different-payload conflict remains terminal.
+          const concurrent = response.status === 409 && body.name === 'concurrent_idempotent_requests';
+          retryable = concurrent || response.status === 429 || response.status >= 500 || response.ok;
+          failure = concurrent
+            ? 'The provider is still processing this delivery key. The same request will be retried.'
+            : response.ok
+              ? 'Email provider returned an unconfirmed result. The same delivery key will be retried.'
+              : response.status === 401 || response.status === 403
+                ? 'Email provider rejected the credentials or sender. Check server email settings.'
+                : response.status === 429
+                  ? 'Email provider rate limit reached. Delivery will be retried.'
+                  : response.status >= 500
+                    ? 'Email provider is temporarily unavailable. Delivery will be retried.'
+                    : 'Email provider rejected this message (HTTP ' +
+                      response.status +
+                      '). Check the verified sender and recipient.';
+        }
       }
     } catch {
       lease.signal.throwIfAborted();

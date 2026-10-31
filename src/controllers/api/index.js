@@ -27,6 +27,7 @@ import { createController as stockAdjustments } from './stock-adjustments.contro
 import { createController as einvoice } from './einvoice.controller.js';
 import { createController as letterheads } from './letterheads.controller.js';
 import { createController as ai } from './ai.controller.js';
+import { createController as integrationSettings } from './integration-settings.controller.js';
 
 /** One controller object per API resource; route paths live in src/routes/api.js. */
 export function createApiControllers(context) {
@@ -47,6 +48,7 @@ export function createApiControllers(context) {
     einvoice: einvoice(context),
     letterheads: letterheads(context),
     ai: ai(context),
+    integrationSettings: integrationSettings(context),
     catalog: catalog(context),
     formats: formats(context),
     customers: customers(context),
