@@ -36,6 +36,7 @@ export async function renderInvoiceAttachment(doc) {
   const sources = [
     ['logo', documentLogo(doc), format.showLogo],
     ...documentSigningBlocks(doc).map((block) => [block.key, block.imageUrl, true]),
+    ['letterhead', doc.letterhead?.image, Boolean(doc.letterhead)],
     [
       'paymentQr',
       doc.organizationSnapshot.paymentQrUrl,
@@ -52,7 +53,8 @@ export async function renderInvoiceAttachment(doc) {
       continue;
     }
     const buffer = Buffer.from(parsed[2], 'base64');
-    if (buffer.length > 500 * 1024) throw new Error('An uploaded invoice image exceeds the supported size.');
+    if (buffer.length > (key === 'letterhead' ? 1536 : 500) * 1024)
+      throw new Error('An uploaded invoice image exceeds the supported size.');
     const image = sharp(buffer, {
       limitInputPixels: 16_000_000,
       pages: 1,

@@ -31,6 +31,7 @@ export const WORKSPACE_VIEWS = [
   'backups',
   'business_settings',
   'dashboard_branding',
+  'letterhead',
   'help',
 ];
 // Browser event fired after changeLocation() switches the URL without a page load.

@@ -95,6 +95,7 @@ export async function downloadDocumentPdf(doc) {
           : 'primary signature',
       true,
     ]),
+    ['letterhead', doc.letterhead?.image, 'letterhead', Boolean(doc.letterhead)],
     [
       'paymentQr',
       doc.organizationSnapshot.paymentQrUrl,

@@ -84,6 +84,7 @@ export function initialDocumentForm(data) {
     notes: existing?.notes || '',
     terms: existing?.terms ?? (kind === 'delivery_note' ? '' : org.terms || ''),
     formatId: existing ? existing.formatId : (formats.find((format) => format.isDefault) || formats[0])?.id,
+    useLetterhead: existing ? Boolean(existing.letterhead) : Boolean(data.letterhead?.defaultOn),
     businessProductId: existing?.businessProductId,
     gstRegistrationId: existing?.gstRegistrationId,
     branding: existing?.branding ? structuredClone(existing.branding) : undefined,

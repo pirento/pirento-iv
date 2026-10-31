@@ -1,10 +1,14 @@
 /** Image upload fields: reads a PNG/JPEG/WebP file (max 500 KB) into an inline data URL with a live preview. */
 
 /** The one image reader for every upload (image fields, logos, document branding). Returns a data URL. */
-export async function readImage(file) {
-  if (!file || !['image/png', 'image/jpeg', 'image/webp'].includes(file.type))
-    throw new Error('Choose a PNG, JPEG or WebP image.');
-  if (file.size > 500 * 1024) throw new Error('Choose an image smaller than 500 KB.');
+export async function readImage(
+  file,
+  { maxKb = 500, types = ['image/png', 'image/jpeg', 'image/webp'] } = {},
+) {
+  if (!file || !types.includes(file.type))
+    throw new Error(`Choose a ${types.map((type) => type.split('/')[1].toUpperCase()).join(', ')} image.`);
+  if (file.size > maxKb * 1024)
+    throw new Error(`Choose an image smaller than ${maxKb >= 1024 ? `${maxKb / 1024} MB` : `${maxKb} KB`}.`);
   const url = await new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result));

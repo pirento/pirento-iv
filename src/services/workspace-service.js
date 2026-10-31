@@ -355,11 +355,24 @@ export function createWorkspaceService(context) {
       finalizedAt: null,
       businessProductId: source?.businessProductId ?? input.businessProductId,
       businessProductSnapshot,
+      letterhead: await letterheadFor(organization.id, input.useLetterhead),
     };
     await db.models.documents.insert(document);
     await emailIssuedDocument(document);
     if (document.installmentPlan) await recordPlanChange(document.id, null, document.installmentPlan);
     return document;
+  }
+  // The letterhead a document is printed on: a copy of the business letterhead, or null.
+  async function letterheadFor(organizationId, use) {
+    if (!use) return null;
+    const row = await db.models.letterheads.findById(organizationId);
+    if (!row)
+      throw new HttpError(
+        400,
+        'Upload a letterhead for this business first (Manage → Letterhead), or print on the plain format.',
+      );
+    const { image, top, bottom, left, right } = row;
+    return { image, top, bottom, left, right };
   }
   // Queues the automatic email for an issued (status "sent") invoice/quotation/proforma.
   async function emailIssuedDocument(document) {
@@ -459,6 +472,7 @@ export function createWorkspaceService(context) {
     saveDocument,
     sellerRegistration,
     newDocument,
+    letterheadFor,
     emailIssuedDocument,
     recordPayment,
     fiscalYear,

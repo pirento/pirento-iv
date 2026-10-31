@@ -70,7 +70,7 @@ export function createAccessGuard(db) {
         return;
       }
     }
-    if (resource === 'organizations' && id && !allowed.has(id)) {
+    if (['organizations', 'letterheads'].includes(resource) && id && !allowed.has(id)) {
       denied();
       return;
     }

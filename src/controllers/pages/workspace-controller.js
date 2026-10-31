@@ -31,6 +31,7 @@ const titles = {
   organizations: 'Businesses',
   catalog: 'Products & services',
   stock: 'Stock',
+  letterhead: 'Letterhead',
   formats: 'Document formats',
   business_products: 'Business products',
   team: 'Team access',
@@ -49,6 +50,7 @@ const adminViews = new Set([
   'backups',
   'business_settings',
   'dashboard_branding',
+  'letterhead',
   'integrations',
 ]);
 // Document screens share one ordered set; the order matches the former single documents.css cascade.
@@ -77,6 +79,7 @@ const pageStylesheets = {
   'einvoice/index': ['receivables'],
   'reports/index': ['receivables'],
   'stock/index': ['receivables'],
+  'letterhead/index': ['receivables'],
   'ledger/statement': ['receivables'],
   'reminders/index': ['receivables'],
   'recurring/index': ['recurring'],
@@ -255,6 +258,7 @@ export function createPageController(backend) {
         credit_notes: route.id ? 'credit-notes/print' : 'credit-notes/index',
         reports: 'reports/index',
         stock: 'stock/index',
+        letterhead: 'letterhead/index',
         e_invoice: 'einvoice/index',
         reminders: 'reminders/index',
         recurring: 'recurring/index',

@@ -293,6 +293,7 @@ test('directory pages, editor search and CSV export keep results complete and pa
     'Directory Customer 121',
   ]);
   await page.locator('#doc-customer').selectOption(customers.at(-1).id);
+  await page.locator('#doc-catalog-panel > summary').click();
   await page.locator('#doc-catalog-search').fill('Product 121');
   await expect(page.locator('#doc-catalog-results [data-catalog-id]')).toHaveCount(1);
   await expect(page.locator('#doc-catalog-results')).toContainText('Directory Product 121');
@@ -532,4 +533,43 @@ test('on a phone, an invoice copies the last bill, warns about credit and is sav
     path: '/tmp/claude-0/-home-user-pirento-iv/24cb3550-63a0-5ffd-a5e3-0f8bc870052d/scratchpad/shots-now/phone-preview-after.png',
     fullPage: true,
   });
+});
+
+test('a letterhead uploaded for a business is used for new documents and can be switched off', async ({
+  page,
+  app,
+}) => {
+  await signIn(page, app);
+  const customer = await api(page, app, '/customers', 'POST', customerInput(app.organizationId));
+  await page.goto(workspace(app, 'letterhead'));
+  const form = page.locator('[data-letterhead-form]');
+  await form.locator('[data-letterhead-file]').setInputFiles(
+    process.env.LETTERHEAD_IMAGE || {
+      name: 'letterhead.png',
+      mimeType: 'image/png',
+      buffer: Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+        'base64',
+      ),
+    },
+  );
+  await form.locator('[name="top"]').fill('40');
+  await form.locator('[name="defaultOn"]').check();
+  await form.getByRole('button', { name: 'Save letterhead' }).click();
+  await expect(page.getByRole('button', { name: 'Remove letterhead' })).toBeVisible();
+
+  await page.goto(workspace(app, 'invoices/new'));
+  await expect(page.locator('#doc-catalog-panel')).not.toHaveAttribute('open', '');
+  await expect(page.locator('[name="useLetterhead"]')).toHaveValue('true');
+  await page.locator('#doc-customer').selectOption(customer.id);
+  await page.locator('[name="placeOfSupply"]').selectOption('09');
+  await page.locator('[data-line="description"]').first().fill('Annual maintenance');
+  await page.locator('[data-line="rate"]').first().fill('1000');
+  await page.locator('#doc-save-button').click();
+  await expect(page).toHaveURL(/\/invoices\/preview\/[^/]+$/);
+  await expect(page.locator('.doc-paper')).toHaveClass(/doc-on-letterhead/);
+  if (process.env.SHOTS)
+    await page.screenshot({ path: `${process.env.SHOTS}/letterhead-preview.png`, fullPage: true });
+  const saved = await app.backend.db.collection('documents').findOne({ customerId: customer.id });
+  expect(saved.letterhead.top).toBe(40);
 });

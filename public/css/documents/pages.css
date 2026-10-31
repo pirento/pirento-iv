@@ -114,8 +114,20 @@
   border: 1px solid #ecdcd1;
   border-radius: 10px;
   overflow: hidden;
-  margin-bottom: 15px;
+  margin: 12px 0 15px;
   background: #fcf8f4;
+}
+/* The catalog stays folded until needed, so a new document starts short. */
+.doc-catalog-summary {
+  cursor: pointer;
+  padding: 12px 14px;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--green);
+  list-style-position: inside;
+}
+.doc-catalog-picker[open] > .doc-catalog-summary {
+  border-bottom: 1px solid #efe3db;
 }
 .doc-catalog-results {
   max-height: 226px;

@@ -102,6 +102,8 @@ export function createModels(context) {
         all('expenses', { organizationId, billDate: { $gte: from, $lt: to } }, { billDate: -1, id: -1 }),
     },
     stockAdjustments: business('stock_adjustments'),
+    // One letterhead per business, keyed by the business id.
+    letterheads: business('letterheads'),
     // Credit notes of one business between two note dates, newest first, or of one invoice.
     creditNotes: {
       ...business('credit_notes'),

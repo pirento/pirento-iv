@@ -49,6 +49,7 @@ export function createController(context) {
     saveDocument,
     sellerRegistration,
     newDocument,
+    letterheadFor,
     emailIssuedDocument,
     recordPayment,
     fiscalYear,
@@ -243,6 +244,12 @@ export function createController(context) {
               )
             : current.totals;
           validateInstallmentTotal(installmentPlan, totals.total);
+          // Printing on the letterhead keeps the copy taken when it was first chosen.
+          const useLetterhead =
+            input.useLetterhead === undefined ? Boolean(current.letterhead) : input.useLetterhead;
+          const letterhead = useLetterhead
+            ? (current.letterhead ?? (await letterheadFor(current.organizationId, true)))
+            : null;
           const document = {
             ...current,
             ...input,
@@ -258,6 +265,8 @@ export function createController(context) {
             businessProductSnapshot,
             installmentPlan,
             gstRegistrationId,
+            useLetterhead,
+            letterhead,
           };
           await saveDocument(document);
           if (document.status === 'cancelled') await mailer.holdCancelledDocument(document);
@@ -336,6 +345,7 @@ export function createController(context) {
             branding: quotation.branding,
             businessProductId: quotation.businessProductId,
             installmentPlan: quotation.installmentPlan,
+            useLetterhead: Boolean(quotation.letterhead),
           };
           const result = await newDocument(
             input,
@@ -402,6 +412,7 @@ export function createController(context) {
             gstRegistrationId: invoice.gstRegistrationId,
             branding: invoice.branding,
             businessProductId: invoice.businessProductId,
+            useLetterhead: Boolean(invoice.letterhead),
           };
           const result = await newDocument(
             input,

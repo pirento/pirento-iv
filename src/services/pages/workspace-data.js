@@ -230,15 +230,26 @@ export function createWorkspacePageData({
           }
         });
       }
+      if (route?.view === 'letterhead')
+        read('letterhead', async () => (await db.models.letterheads.findById(organizationId)) ?? null);
     } else if (
-      ['team', 'security', 'backups', 'integrations', 'business_settings', 'dashboard_branding'].includes(
-        route?.view,
-      )
+      [
+        'team',
+        'security',
+        'backups',
+        'integrations',
+        'business_settings',
+        'dashboard_branding',
+        'letterhead',
+      ].includes(route?.view)
     ) {
       throw new HttpError(403, 'Administrator access is required for this page.');
     }
     await Promise.all(tasks);
     if (editor) {
+      // Only whether a letterhead exists and is the default; the image stays out of page data.
+      const letterhead = await db.models.letterheads.findById(organizationId);
+      result.letterhead = letterhead ? { defaultOn: letterhead.defaultOn } : null;
       const [contactPage, catalogPage] = await Promise.all([
         directories.lookup(
           'customers',

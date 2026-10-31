@@ -169,6 +169,7 @@ function navigation(data) {
       items: [
         { view: 'business_settings', label: 'Business settings', icon: 'settings' },
         { view: 'dashboard_branding', label: 'Workspace branding', icon: 'settings' },
+        { view: 'letterhead', label: 'Letterhead', icon: 'document' },
         { view: 'team', label: 'Team access', icon: 'people' },
         { view: 'security', label: 'Security activity', icon: 'shield' },
         { view: 'integrations', label: 'Payments & email', icon: 'settings' },

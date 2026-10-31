@@ -341,6 +341,22 @@
 .doc-paper.doc-density-compact {
   line-height: 1.1;
 }
+/* On the business letterhead: its image repeats per page and content sits in its blank area. */
+.doc-paper.doc-on-letterhead {
+  padding: var(--doc-lh-top) var(--doc-lh-right) var(--doc-lh-bottom) var(--doc-lh-left);
+  background-color: #fff;
+  background-repeat: repeat-y;
+  background-position: top center;
+  background-size: 100% var(--doc-page-height);
+}
+.doc-on-letterhead .doc-paper-accent,
+.doc-on-letterhead .doc-brand-block,
+.doc-on-letterhead .doc-paper-footer {
+  display: none;
+}
+.doc-on-letterhead .doc-paper-header {
+  justify-content: flex-end;
+}
 .doc-paper .doc-paper-header {
   gap: 20px;
   padding-bottom: 18pt;

@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 import ejs from 'ejs';
 import { helpers } from '../src/controllers/pages/view-helpers.js';
+import { buildDocumentDefinition } from '../shared/pdf.js';
 
 const root = fileURLToPath(new URL('../views/', import.meta.url));
 function fixture(kind = 'invoice', layout = 'modern') {
@@ -185,4 +186,29 @@ test('payment and email pages contain server-rendered balances and initially saf
   assert.match(email, /customer@example.invalid/);
   assert.match(email, /id="messaging-send"[^>]*disabled/);
   assert.match(email, /PDF attachment/);
+});
+
+test('a document on the letterhead puts its content in the blank area in the preview and PDF', async () => {
+  const image =
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+  for (const kind of ['invoice', 'quotation', 'delivery_note']) {
+    const data = fixture(kind);
+    data.document.letterhead = { image, top: 45, bottom: 30, left: 15, right: 20 };
+    const html = await render('documents/preview', data);
+    assert.match(html, /class="doc-paper [^"]*doc-on-letterhead"/);
+    assert.match(html, /--doc-lh-top:45mm;--doc-lh-right:20mm;--doc-lh-bottom:30mm;--doc-lh-left:15mm/);
+    assert.doesNotMatch(html, /data-preview-action="print"/, 'letterhead documents print through the PDF');
+    const definition = buildDocumentDefinition(data.document);
+    const mm = 72 / 25.4;
+    assert.deepEqual(
+      definition.pageMargins.map((value) => Math.round(value / mm)),
+      [15, 45, 20, 30],
+    );
+    assert.equal(definition.images.letterhead, image);
+    assert.equal(definition.footer, undefined);
+    assert.equal(definition.background().image, 'letterhead');
+  }
+  const plain = buildDocumentDefinition(fixture('invoice').document);
+  assert.equal(plain.images.letterhead, undefined);
+  assert.equal(typeof plain.footer, 'function');
 });

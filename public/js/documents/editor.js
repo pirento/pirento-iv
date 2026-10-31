@@ -207,6 +207,7 @@ function syncFields() {
     const element = field(key);
     if (element && ['string', 'number'].includes(typeof value)) element.value = value;
   }
+  if (field('useLetterhead')) field('useLetterhead').value = String(Boolean(form.useLetterhead));
   for (const element of editor.querySelectorAll('[data-shipping]'))
     element.value = form.shipping?.[element.dataset.shipping] || '';
   const branding = currentBranding();
@@ -666,9 +667,15 @@ editor.addEventListener('input', (event) => {
   }
   if (
     target.name &&
-    !['customerId', 'businessProductId', 'formatId', 'gstRegistrationId', 'status', 'placeOfSupply'].includes(
-      target.name,
-    )
+    ![
+      'customerId',
+      'businessProductId',
+      'formatId',
+      'gstRegistrationId',
+      'status',
+      'placeOfSupply',
+      'useLetterhead',
+    ].includes(target.name)
   )
     update(target.name, target.type === 'number' ? Number(target.value) : target.value);
 });
@@ -676,6 +683,7 @@ editor.addEventListener('change', async (event) => {
   const target = event.target;
   if (target.name === 'customerId') return chooseCustomer(target.value);
   if (target.name === 'businessProductId') return chooseProduct(target.value);
+  if (target.name === 'useLetterhead') return update('useLetterhead', target.value === 'true');
   if (target.id === 'doc-catalog-type') return catalogPicker?.search({ immediate: true });
   if (['formatId', 'gstRegistrationId', 'status', 'placeOfSupply'].includes(target.name)) {
     update(target.name, target.name === 'formatId' ? target.value || undefined : target.value);

@@ -21,6 +21,9 @@ const showQr = !delivery && format.showPaymentQr && organization.paymentQrUrl;
 const base = `/workspace/${encodeURIComponent(doc.organizationId)}/${data.route.view}`;
 const locked = Boolean(doc.finalizedAt || doc.convertedInvoiceId);
 const styles = `--doc-accent:${colors.accent};--doc-on-accent:${colors.onAccent};--doc-accent-text:${colors.accentText};--doc-page-width:${geometry.widthMm}mm;--doc-page-height:${geometry.heightMm}mm;--doc-margin:${geometry.marginMm}mm;--doc-font-size:${geometry.fontSize}pt;--doc-logo-width:${geometry.logoWidth}px;--doc-signature-width:${geometry.signatureWidth}px;--doc-stamp-width:${geometry.stampWidth}px;--doc-qr-width:${geometry.paymentQrWidth}px;--doc-logo-height:${Math.min(96, Math.max(42.67, geometry.logoWidth))}px`;
+// Printed on the business letterhead: its image is the page background and content sits in its blank area.
+const letterhead = doc.letterhead;
+const letterheadStyles = letterhead ? `;background-image:url("${letterhead.image}");--doc-lh-top:${letterhead.top}mm;--doc-lh-right:${letterhead.right}mm;--doc-lh-bottom:${letterhead.bottom}mm;--doc-lh-left:${letterhead.left}mm` : '';
 %>
 <section class="workspace-page doc-preview-page doc-preview" aria-labelledby="doc-preview-heading">
   <style>
@@ -75,13 +78,14 @@ const styles = `--doc-accent:${colors.accent};--doc-on-accent:${colors.onAccent}
         rel="noopener noreferrer"
         >WhatsApp</a
       ><% } %>
-      <button type="button" class="doc-button doc-button-secondary" data-preview-action="print">Print</button>
+      <% if(!letterhead){ %><button type="button" class="doc-button doc-button-secondary" data-preview-action="print">Print</button><% } %>
       <button type="button" class="doc-button doc-button-primary" data-preview-action="pdf">
         Download PDF
       </button>
     </div>
   </header>
   <p id="doc-preview-feedback" class="doc-tax-note" role="status" hidden></p>
+  <% if(letterhead){ %><p class="doc-tax-note">Printed on the business letterhead. Use Download PDF to print or send it with the letterhead on every page.</p><% } %>
   <div class="doc-print-hint">
     <span
       ><%= format.name %> · <%= format.layout %> · <%= geometry.pageSize %> <%= geometry.orientation %></span
@@ -92,8 +96,8 @@ const styles = `--doc-accent:${colors.accent};--doc-on-accent:${colors.onAccent}
   </div>
   <div class="doc-paper-viewport" tabindex="0" aria-label="Document preview; scroll to view the full page">
     <article
-      class="doc-paper doc-template-<%= format.layout %> doc-density-<%= format.density %> doc-table-<%= format.tableStyle||'ruled' %> <%= narrow?'doc-paper-narrow':'' %> <%= delivery?'doc-delivery-paper':'' %> <%= format.showLogo&&logo?'doc-has-logo':'' %>"
-      style="<%= styles %>"
+      class="doc-paper doc-template-<%= format.layout %> doc-density-<%= format.density %> doc-table-<%= format.tableStyle||'ruled' %> <%= narrow?'doc-paper-narrow':'' %> <%= delivery?'doc-delivery-paper':'' %> <%= format.showLogo&&logo?'doc-has-logo':'' %> <%= letterhead?'doc-on-letterhead':'' %>"
+      style="<%= styles + letterheadStyles %>"
     >
       <div class="doc-paper-accent"></div>
       <header class="doc-paper-header">

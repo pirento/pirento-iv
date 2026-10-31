@@ -56,6 +56,7 @@ export const COLLECTIONS = [
   'expenses',
   'credit_notes',
   'stock_adjustments',
+  'letterheads',
 ];
 
 /**
@@ -180,6 +181,7 @@ async function initializeCollections(context) {
     'expenses',
     'credit_notes',
     'stock_adjustments',
+    'letterheads',
   ];
   for (const name of ids) await index(name, { id: 1 }, { unique: true });
   for (const name of ['customers', 'documents', 'catalog', 'formats', 'business_products'])

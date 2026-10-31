@@ -466,6 +466,31 @@ export const expenseSchema = z
 export const voidPaymentSchema = z.object({
   reason: requiredText(2000),
 });
+// A business letterhead: a full-page PNG or JPEG (up to 1.5 MB) and the blank area, in mm from each
+// page edge, where document content is written. defaultOn picks it for new documents.
+const letterheadImage = z
+  .string()
+  .max(2_100_000)
+  .refine((value) => {
+    const image = /^data:image\/(png|jpeg);base64,([a-z0-9+/]+={0,2})$/i.exec(value);
+    if (!image) return false;
+    const bytes = Buffer.from(image[2], 'base64');
+    if (bytes.length > 1536 * 1024 || bytes.toString('base64') !== image[2]) return false;
+    return image[1].toLowerCase() === 'png'
+      ? bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
+      : bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255;
+  }, 'Upload the letterhead as a PNG or JPEG image up to 1.5 MB.');
+const marginMm = (max) => z.number().finite().min(0).max(max);
+export const letterheadSchema = z
+  .object({
+    image: letterheadImage,
+    top: marginMm(150),
+    bottom: marginMm(150),
+    left: marginMm(60),
+    right: marginMm(60),
+    defaultOn: z.boolean(),
+  })
+  .strict();
 // The IRN, acknowledgement and signed QR code the e-invoice portal returned for an invoice.
 export const einvoiceSchema = z
   .object({
@@ -603,6 +628,7 @@ export const documentSchema = z
     branding: brandingSchema.optional(),
     businessProductId: text(100).optional(),
     installmentPlan: installmentPlanSchema.nullable().optional(),
+    useLetterhead: z.boolean().optional(),
   })
   .superRefine((value, ctx) => {
     if (value.dueDate && value.dueDate < value.issueDate)

@@ -35,6 +35,7 @@ import { createCustomerLedger } from './ledger/customer-ledger.js';
 import { createPaymentReminders } from './integrations/email/payment-reminders.js';
 import { createRecurringInvoices } from './recurring/recurring-invoices.js';
 import { migrateStoredImages } from '../models/image-store.js';
+import { migrateFormatsToTeal } from '../models/workspace-seed.js';
 
 /**
  * Builds the API application: returns the Express app with the services on app.locals.services
@@ -213,6 +214,7 @@ async function initializeApplication(options, environment, db) {
   app.locals.initialize = async () => {
     await db.models.email.compactSent();
     await migrateStoredImages(db);
+    await migrateFormatsToTeal(db);
     const owner = await auth?.initializeOwner();
     await backups.initialize();
     readiness.markReady();
