@@ -21,7 +21,7 @@ import {
   paidAmount,
   pricingDescription,
 } from '../../../../shared/types.js';
-import { isIndependentBusiness } from '../../../../shared/business-identity.js';
+import { isIndependentBusiness, organizationFinanceEmail } from '../../../../shared/business-identity.js';
 import { organizationEnvironment } from '../../../config/business-config.js';
 import { readProviderJson } from '../provider-http.js';
 import { indiaBusinessDate } from '../../../../shared/business-date.js';
@@ -138,6 +138,12 @@ function supportAddress(org) {
     : org?.id === 'shri-sarraf'
       ? 'support@shrisarraf.com'
       : 'support@pirento.com';
+}
+// Reply-to: the finance email for invoices (and their receipts and reminders), else support.
+function replyAddress(org, kind) {
+  if (kind !== 'invoice' || !org) return supportAddress(org);
+  const finance = organizationFinanceEmail(org).trim();
+  return validEmail(finance) ? finance : supportAddress(org);
 }
 // --- Email content (HTML bodies for each message type) ---
 function emailFrame(title, body, company, support = 'support@pirento.com') {
@@ -397,7 +403,11 @@ export function createMailer(db, options = {}) {
       : undefined;
     const missing = Boolean(organizationId && (!org || org.id !== organizationId));
     const scoped = org ? organizationEnvironment(org, env) : organizationId ? {} : env;
-    const from = (scoped.EMAIL_FROM ?? '').trim();
+    // The business's own sending address (Business settings) wins over the server EMAIL_FROM.
+    const own = org?.emailFrom?.trim() ?? '';
+    const from = validEmail(own)
+      ? `"${(org.tradeName || org.name || '').replace(/["<>\r\n]/g, '')}" <${own}>`
+      : (scoped.EMAIL_FROM ?? '').trim();
     const address = from.match(/^[^<>\r\n]+<([^<>\r\n]+)>$/)?.[1] ?? from;
     const apiKey = (scoped.RESEND_API_KEY ?? '').trim();
     const configured = !missing && Boolean(apiKey) && !/[\r\n]/.test(from) && validEmail(address);
@@ -431,7 +441,7 @@ export function createMailer(db, options = {}) {
   async function payloadConfiguration(payload) {
     const organizationId = payload.organizationId ?? payload.document?.organizationId;
     const resolved = await configuration(organizationId, payload.document?.organizationSnapshot);
-    resolved.profile.replyTo = supportAddress(payload.document?.organizationSnapshot);
+    resolved.profile.replyTo = replyAddress(payload.document?.organizationSnapshot, payload.document?.kind);
     const identityMatches =
       !payload.document ||
       Boolean(

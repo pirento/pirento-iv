@@ -19,6 +19,7 @@ import { expenseCsv, expenseTotals, readExpenseMonth } from '../expenses/expense
 import { buildReport, financialYearRange, readReportYear } from './reports.js';
 import { einvoiceProblems } from '../documents/einvoice.js';
 import { businessSummary, financePdf, financeWorkbook, groupTotals } from './finance.js';
+import { PAYMENT_METHODS } from '../../../shared/types.js';
 import { renderInvoiceAttachment, renderPdfBuffer } from '../documents/invoice-pdf.js';
 import { xlsx, zip } from '../exports/xlsx.js';
 import { CREDIT_NOTE_REASONS, DEBIT_NOTE_REASONS, EXPENSE_CATEGORIES } from '../validation/validation.js';
@@ -26,6 +27,7 @@ import { safeWorkspaceReturn } from '../../../public/js/core/workspace-route.js'
 
 /** Page-specific loading keeps unrelated financial snapshots and operations off normal navigation. */
 export function createWorkspacePageData({
+  ai,
   db,
   auth,
   online,
@@ -197,7 +199,7 @@ export function createWorkspacePageData({
     if (route?.view === 'stock') read('stockPage', () => queries.stockLevels(organizationId));
     if (route?.view === 'finance') {
       if (!financeAllowed(user))
-        throw new HttpError(403, 'Group finance is for administrators and Accounts logins.');
+        throw new HttpError(403, 'The finance dashboard is for administrators and Finance logins.');
       read('finance', async () => {
         const finance = await financeData(result.organizations, route.query, result.businessDate);
         const rows = finance.businesses.map((business) => business.summary);
@@ -224,7 +226,62 @@ export function createWorkspacePageData({
               })),
           ),
         };
-        return { year: finance.year, label: finance.label, rows, totals: groupTotals(rows), bank };
+        // Registers across every business, newest first.
+        // shortcut: each register shows the newest 500 rows; the Excel download has all of them.
+        const newest = (rows) => rows.sort((a, b) => b.date.localeCompare(a.date)).slice(0, 500);
+        const registers = {
+          invoices: newest(
+            finance.businesses.flatMap(({ summary, detail }) =>
+              detail.invoices.map((doc) => ({
+                id: doc.id,
+                businessId: summary.id,
+                business: summary.name,
+                date: doc.issueDate,
+                number: doc.number,
+                type: doc.debitNoteFor ? 'Debit note' : 'Invoice',
+                party: doc.customerSnapshot?.name ?? '',
+                total: doc.totals.total,
+                balance: doc.status === 'cancelled' ? 0 : (doc.balanceDue ?? 0),
+                status: doc.status,
+              })),
+            ),
+          ),
+          receipts: newest(
+            finance.businesses.flatMap(({ summary, detail }) =>
+              detail.payments.map((payment) => ({
+                business: summary.name,
+                date: payment.paidOn,
+                number: payment.document.number,
+                party: payment.document.customerSnapshot?.name ?? '',
+                mode: PAYMENT_METHODS[payment.method] ?? payment.method ?? '',
+                reference: payment.reference ?? '',
+                amount: payment.amount,
+              })),
+            ),
+          ),
+          expenses: newest(
+            finance.businesses.flatMap(({ summary, expenses }) =>
+              expenses.map((row) => ({
+                business: summary.name,
+                date: row.billDate,
+                vendor: row.vendorName,
+                billNumber: row.billNumber ?? '',
+                category: row.category ?? '',
+                total: row.total,
+                paidOn: row.paidOn ?? '',
+              })),
+            ),
+          ),
+        };
+        return {
+          year: finance.year,
+          label: finance.label,
+          rows,
+          totals: groupTotals(rows),
+          bank,
+          registers,
+          ai: ai ? await ai.status() : { configured: false },
+        };
       });
     }
     if (route?.view === 'e_invoice')
@@ -264,6 +321,7 @@ export function createWorkspacePageData({
           payment,
           razorpay: payment,
           gst: gstStatus(),
+          ai: ai ? await ai.status() : { configured: false },
           environmentPrefix: integrationEnvironmentPrefix(result.organization),
           webhookPath:
             payment.provider === 'none' ? '' : `/api/webhooks/${payment.provider}/${organizationId}`,

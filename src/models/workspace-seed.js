@@ -58,6 +58,7 @@ export async function initializeWorkspace(database) {
           businessType: id === 'shri-sarraf' ? 'independent' : 'division',
           paymentGateway: id === 'shri-sarraf' ? 'cashfree' : 'razorpay',
           supportEmail: id === 'shri-sarraf' ? 'support@shrisarraf.com' : 'support@pirento.com',
+          ...(id === 'shri-sarraf' ? {} : { financeEmail: 'finance@pirento.com' }),
           gstRegistrations: [],
           invoicePrefix,
           quotationPrefix,

@@ -24,7 +24,13 @@ export function createAccessGuard(db) {
       next();
       return;
     }
-    if (!['GET', 'HEAD'].includes(req.method) && ['view', 'accounts'].includes(user.permission)) {
+    // Finance logins may still ask the AI helpers on their dashboard to read and match statements.
+    const financeHelper = user.permission === 'accounts' && /^\/finance\/ai\//.test(req.path);
+    if (
+      !['GET', 'HEAD'].includes(req.method) &&
+      ['view', 'accounts'].includes(user.permission) &&
+      !financeHelper
+    ) {
       res.status(403).json({
         error: 'Your account can view records but not change them. Ask an administrator for edit access.',
       });

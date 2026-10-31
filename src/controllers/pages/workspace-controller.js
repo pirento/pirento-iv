@@ -15,7 +15,7 @@ import { pipeline } from 'node:stream/promises';
 // Browser tab / page heading for each workspace view.
 const titles = {
   overview: 'Overview',
-  finance: 'Group finance',
+  finance: 'Finance dashboard',
   invoices: 'Invoices',
   quotations: 'Quotations',
   proformas: 'Proforma invoices',
@@ -112,6 +112,9 @@ function rememberedOrganization(req) {
   }
 }
 
+// A Finance login (staff with the 'accounts' access level) sees only the finance dashboard.
+const financeOnly = (user) => user.role !== 'admin' && user.permission === 'accounts';
+
 /** Returns the Express handlers used by src/routes/pages.js: home, authentication, workspace, notFound, error. */
 export function createPageController(backend) {
   const { app, auth } = backend;
@@ -147,7 +150,8 @@ export function createPageController(backend) {
     const data = await app.locals.workspaceData(user, undefined, { view: 'home' });
     const remembered = rememberedOrganization(req);
     const selected = data.organizations.find((org) => org.id === remembered) || data.organization;
-    return res.redirect(`/workspace/${encodeURIComponent(selected.id)}/overview`);
+    const start = financeOnly(user) ? 'finance' : 'overview';
+    return res.redirect(`/workspace/${encodeURIComponent(selected.id)}/${start}`);
   }
 
   async function authentication(req, res) {
@@ -189,6 +193,13 @@ export function createPageController(backend) {
     ) {
       return renderError(res, 403, 'Administrator access is required for this page.');
     }
+    // Finance logins have their own dashboard: Group finance, document previews and My sessions.
+    if (
+      financeOnly(user) &&
+      !['finance', 'sessions'].includes(route.view) &&
+      !(documentKinds[route.view] && route.action === 'preview')
+    )
+      return res.redirect(`/workspace/${encodeURIComponent(route.organizationId)}/finance`);
     let data;
     try {
       if (route.view === 'finance' && ['xlsx', 'pdf', 'zip'].includes(req.query.download)) {

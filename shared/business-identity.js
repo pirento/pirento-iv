@@ -11,6 +11,11 @@ export const isIndependentBusiness = (organization) =>
 export const organizationSupportEmail = (organization) =>
   organization.supportEmail ??
   (organization.id === 'shri-sarraf' ? 'support@shrisarraf.com' : 'support@pirento.com');
+// Finance email (reply-to on invoices, receipts and reminders): business setting, else the
+// company finance desk; independent businesses fall back to their own support email.
+export const organizationFinanceEmail = (organization) =>
+  organization.financeEmail ||
+  (isIndependentBusiness(organization) ? organizationSupportEmail(organization) : 'finance@pirento.com');
 // Online payment provider for the business: its setting, else Cashfree for Shri Sarraf and Razorpay for others.
 export const organizationGateway = (organization) =>
   organization.paymentGateway ?? (organization.id === 'shri-sarraf' ? 'cashfree' : 'razorpay');

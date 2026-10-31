@@ -36,6 +36,7 @@ import { createPaymentReminders } from './integrations/email/payment-reminders.j
 import { createRecurringInvoices } from './recurring/recurring-invoices.js';
 import { migrateStoredImages } from '../models/image-store.js';
 import { migrateFormatsToTeal } from '../models/workspace-seed.js';
+import { createAiAssistant } from './integrations/ai/openai.js';
 
 /**
  * Builds the API application: returns the Express app with the services on app.locals.services
@@ -220,7 +221,14 @@ async function initializeApplication(options, environment, db) {
     readiness.markReady();
     return owner ?? null;
   };
+  const ai = createAiAssistant({
+    db,
+    environment,
+    production: environment.NODE_ENV === 'production',
+    fetcher: options.aiFetch,
+  });
   const pageData = createWorkspacePageData({
+    ai,
     db,
     auth,
     online,
@@ -248,6 +256,7 @@ async function initializeApplication(options, environment, db) {
   const errorHandler = createApiErrorHandler(reportError);
   app.locals.errorHandler = errorHandler;
   const controllerContext = {
+    ai,
     environment,
     db,
     auth,

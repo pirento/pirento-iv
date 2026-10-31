@@ -32,7 +32,20 @@ test(
   'admins create logins; Accounts logins see Group finance and download it, read-only',
   options,
   async (t) => {
+    // Fake OpenAI: returns `aiAnswer` as the model's JSON and keeps each request.
+    let aiAnswer;
+    const aiRequests = [];
+    const aiFetch = async (url, init) => {
+      aiRequests.push({ url, headers: init.headers, body: JSON.parse(init.body) });
+      return new Response(
+        JSON.stringify({
+          output: [{ type: 'message', content: [{ type: 'output_text', text: JSON.stringify(aiAnswer) }] }],
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    };
     const { base, backend } = await createFixture(t, {
+      aiFetch,
       now: () => new Date('2026-10-31T06:00:00Z'),
       environment: { INITIAL_ADMIN_EMAIL: owner.email, INITIAL_ADMIN_PASSWORD: owner.password },
     });
@@ -192,9 +205,93 @@ test(
     });
     assert.equal(page.status, 200);
     const html = (await page.text()).replace(/\s+/g, ' ');
-    assert.match(html, /Group finance/);
+    assert.match(html, /Finance dashboard/);
     assert.match(html, /2 business\(es\)/, 'only the businesses assigned to the login');
-    assert.match(html, />A T Elevator<\/a>.*?₹90,000\.00.*?₹16,200\.00.*?₹63,000\.00/);
+    assert.match(html, /<td>A T Elevator.*?₹90,000\.00.*?₹16,200\.00.*?₹63,000\.00/);
+    assert.match(html, new RegExp(`/invoices/preview/${invoice.id}">${invoice.number}<`), 'invoice register');
+    assert.match(html, /Money received \(1\).*?HDFC XX4507/, 'receipt register');
+    assert.match(html, /Expenses \(1\).*?Landlord/, 'expense register');
+    assert.doesNotMatch(
+      html,
+      /href="[^"]*\/(invoices|customers|team)"/,
+      'a finance login has only the finance menu',
+    );
+    // Other pages send a Finance login back to its dashboard; document previews stay open.
+    const away = await fetch(`${base}/workspace/${organizationId}/customers`, {
+      headers: { Cookie: accountant },
+      redirect: 'manual',
+    });
+    assert.equal(away.status, 302);
+    assert.equal(away.headers.get('location'), `/workspace/${organizationId}/finance`);
+    const preview = await fetch(`${base}/workspace/${organizationId}/invoices/preview/${invoice.id}`, {
+      headers: { Cookie: accountant },
+      redirect: 'manual',
+    });
+    assert.equal(preview.status, 200);
+    const home = await fetch(`${base}/`, { headers: { Cookie: accountant }, redirect: 'manual' });
+    assert.match(home.headers.get('location'), /\/finance$/);
+
+    // AI assistant: admin-only settings, the key stored encrypted, finance logins use the helpers.
+    const statement = { text: 'Date | Narration | Credit\n15/10/2026 | NEFT SPARK | 63,000.00' };
+    await call('/finance/ai/statement', { method: 'POST', body: statement, cookie: accountant, status: 409 });
+    await call('/ai-settings', { cookie: accountant, status: 403 });
+    await call('/ai-settings', {
+      method: 'PUT',
+      body: { apiKey: 'sk-test', model: 'gpt-4o-mini' },
+      cookie: accountant,
+      status: 403,
+    });
+    const saved = await call('/ai-settings', {
+      method: 'PUT',
+      body: { apiKey: 'sk-test-secret-9876', model: 'gpt-4o-mini' },
+      cookie: admin,
+    });
+    assert.deepEqual(saved.data, { configured: true, model: 'gpt-4o-mini', keyEnd: '9876' });
+    const stored = await backend.db.collection('workspace_metadata').findOne({ _id: 'openai-settings' });
+    assert.ok(!JSON.stringify(stored).includes('sk-test-secret'), 'the key is encrypted at rest');
+    aiAnswer = {
+      lines: [
+        { date: '15-10-2026', narration: 'NEFT SPARK', reference: 'N123', credit: 63000, debit: 0 },
+        { date: 'not a date', narration: 'Opening balance', reference: '', credit: 5, debit: 0 },
+      ],
+    };
+    const read = await call('/finance/ai/statement', { method: 'POST', body: statement, cookie: accountant });
+    assert.deepEqual(read.data.lines, [
+      { date: '2026-10-15', narration: 'NEFT SPARK', reference: 'N123', credit: 63000, debit: 0 },
+    ]);
+    assert.equal(aiRequests.at(-1).url, 'https://api.openai.com/v1/responses');
+    assert.equal(aiRequests.at(-1).headers.Authorization, 'Bearer sk-test-secret-9876');
+    assert.equal(aiRequests.at(-1).body.text.format.type, 'json_schema');
+    aiAnswer = {
+      suggestions: [
+        { line: 0, books: [0], reason: 'Receipt less TDS' },
+        { line: 4, books: [0], reason: 'out of range' },
+      ],
+    };
+    const suggested = await call('/finance/ai/matches', {
+      method: 'POST',
+      cookie: accountant,
+      body: {
+        lines: [{ date: '2026-10-16', narration: 'NEFT SPARK', reference: '', credit: 61740, debit: 0 }],
+        books: [
+          {
+            date: '2026-10-15',
+            amount: 63000,
+            reference: 'HDFC XX4507',
+            label: invoice.number,
+            business: 'A T Elevator',
+            direction: 'credit',
+          },
+        ],
+      },
+    });
+    assert.deepEqual(suggested.data.suggestions, [{ line: 0, books: [0], reason: 'Receipt less TDS' }]);
+    const removed = await call('/ai-settings', {
+      method: 'PUT',
+      body: { model: 'gpt-4o-mini', removeKey: true },
+      cookie: admin,
+    });
+    assert.equal(removed.data.configured, false);
     const substaffLogin = (
       await call('/auth/login', {
         method: 'POST',

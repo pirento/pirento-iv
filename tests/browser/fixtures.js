@@ -24,6 +24,17 @@ export const test = base.extend({
     const rejectProvider = async () => {
       throw new Error('External provider transport is disabled in browser tests.');
     };
+    // Fake OpenAI: tests set ai.answer (the JSON the model returns) and read ai.requests.
+    const ai = { answer: null, requests: [] };
+    const aiFetch = async (_url, init) => {
+      ai.requests.push(JSON.parse(init.body));
+      return new Response(
+        JSON.stringify({
+          output: [{ type: 'message', content: [{ type: 'output_text', text: JSON.stringify(ai.answer) }] }],
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    };
     try {
       const fixture = await createFixture(
         { after: (callback) => cleanup.push(callback) },
@@ -38,6 +49,7 @@ export const test = base.extend({
           fetch: rejectProvider,
           emailFetch: rejectProvider,
           paymentFetch: rejectProvider,
+          aiFetch,
         },
       );
       attachPageRoutes(fixture.backend);
@@ -47,7 +59,7 @@ export const test = base.extend({
         stateCode: '09',
         address: 'Synthetic test office, Lucknow',
       });
-      await use({ ...fixture, credentials, organizationId: organization.id, resetMessages });
+      await use({ ...fixture, ai, credentials, organizationId: organization.id, resetMessages });
     } finally {
       for (const callback of cleanup.reverse()) await callback();
     }

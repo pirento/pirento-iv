@@ -224,6 +224,29 @@ const support = helpers.organizationSupportEmail(organization);
         </details>
       </section>
     </div>
+    <section class="mg-card" id="ai-settings">
+      <header class="mg-card-heading">
+        <div>
+          <h3>AI assistant (OpenAI)</h3>
+          <small>One key for the whole company</small>
+        </div>
+        <span class="mg-badge" data-ai-state><%= settings?.ai?.configured ? `Key ending ${settings.ai.keyEnd}` : 'Not set' %></span>
+      </header>
+      <p>
+        Used on the finance dashboard to read bank statements in any layout (PDF too) and to suggest matches
+        for receipts cut by TDS or bank charges. The key is stored encrypted and never shown again. Statements
+        sent for reading go to OpenAI.
+      </p>
+      <form class="mg-form-grid" data-ai-form>
+        <label class="field">OpenAI API key<input name="apiKey" type="password" autocomplete="off" maxlength="300" placeholder="<%= settings?.ai?.configured ? 'Leave blank to keep the saved key' : 'sk-...' %>" /></label>
+        <label class="field">Model<input name="model" required maxlength="80" value="<%= settings?.ai?.model || 'gpt-4o-mini' %>" /></label>
+        <div class="mg-actions">
+          <button class="button" type="submit">Save AI settings</button>
+          <button class="button secondary" type="button" data-ai-remove <%= settings?.ai?.configured ? '' : 'hidden' %>>Remove key</button>
+        </div>
+      </form>
+      <div class="mg-message" data-ai-message role="status" hidden></div>
+    </section>
     <section class="mg-card">
       <h3>A clear path from sent to settled</h3>
       <div class="mg-grid">

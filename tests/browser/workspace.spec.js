@@ -575,7 +575,7 @@ test('a letterhead uploaded for a business is used for new documents and can be 
   expect(saved.letterhead.top).toBe(40);
 });
 
-test('an administrator creates a login, and Group finance matches a bank statement', async ({
+test('an administrator creates a login, and the finance dashboard matches a bank statement', async ({
   page,
   app,
 }) => {
@@ -613,7 +613,8 @@ test('an administrator creates a login, and Group finance matches a bank stateme
     requestId: 'bank-match',
   });
   await page.goto(workspace(app, 'finance'));
-  await expect(page.getByRole('heading', { name: 'Group finance', level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Finance dashboard', level: 1 })).toBeVisible();
+  await expect(page.locator('[data-register]').first()).toContainText(invoice.number);
   const [year, month, day] = today.split('-');
   await page.locator('[data-bank-file]').setInputFiles({
     name: 'statement.csv',
@@ -639,4 +640,30 @@ test('an administrator creates a login, and Group finance matches a bank stateme
     ]),
   });
   await expect(result).toContainText('1 matched · 0 only in the bank · 0 only in the books');
+
+  // AI assistant: the admin saves the OpenAI key, then a PDF statement is read by AI and the
+  // line it cannot match (a receipt less TDS) gets a suggestion.
+  await page.goto(workspace(app, 'integrations'));
+  const aiForm = page.locator('[data-ai-form]');
+  await aiForm.locator('[name="apiKey"]').fill('sk-test-key-1234');
+  await aiForm.getByRole('button', { name: 'Save AI settings' }).click();
+  await expect(page.locator('[data-ai-state]')).toHaveText('Key ending 1234');
+  await page.goto(workspace(app, 'finance'));
+  app.ai.answer = {
+    lines: [{ date: today, narration: 'NEFT CUSTOMER LESS TDS', reference: '', credit: 98, debit: 0 }],
+  };
+  await page.locator('[data-bank-file]').setInputFiles({
+    name: 'statement.pdf',
+    mimeType: 'application/pdf',
+    buffer: Buffer.from('%PDF-1.4 synthetic statement'),
+  });
+  await expect(result).toContainText('0 matched · 1 only in the bank · 1 only in the books');
+  expect(app.ai.requests.at(-1).input[0].content[0]).toMatchObject({
+    type: 'input_file',
+    filename: 'statement.pdf',
+  });
+  app.ai.answer = { suggestions: [{ line: 0, books: [0], reason: 'Receipt less 2% TDS' }] };
+  await result.getByRole('button', { name: 'Suggest matches with AI' }).click();
+  await expect(result.locator('[data-ai-suggestions]')).toContainText('Receipt less 2% TDS');
+  await expect(result.locator('[data-ai-suggestions]')).toContainText(invoice.number);
 });

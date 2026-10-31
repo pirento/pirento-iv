@@ -343,3 +343,17 @@ body.reminder-dialog-open {
     grid-template-columns: 1fr;
   }
 }
+
+/* Finance dashboard registers (views/finance/index.ejs). */
+.finance-register {
+  border-top: 1px solid var(--line, #efdfd2);
+  padding: 0.75rem 0;
+}
+.finance-register summary {
+  cursor: pointer;
+  padding: 0.25rem 0;
+}
+.finance-register .table-wrap {
+  max-height: 32rem;
+  overflow: auto;
+}

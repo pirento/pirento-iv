@@ -4,7 +4,7 @@
  */
 
 import { getPageData } from '../core/page.js';
-import { api, showError } from './common.js';
+import { api, sendJson, showError } from './common.js';
 
 const data = getPageData();
 const root = document.getElementById('integrations-page');
@@ -173,3 +173,33 @@ async function load() {
 refresh.addEventListener('click', load);
 if (data.integrationStatus) render(data.integrationStatus);
 else void load();
+
+// AI assistant settings (the OpenAI key is write-only; the page shows its last 4 characters).
+const aiForm = document.querySelector('[data-ai-form]');
+if (aiForm) {
+  const message = document.querySelector('[data-ai-message]');
+  const remove = document.querySelector('[data-ai-remove]');
+  const saveAi = async (body) => {
+    message.hidden = true;
+    try {
+      const status = await api('/ai-settings', sendJson('PUT', body));
+      document.querySelector('[data-ai-state]').textContent = status.configured
+        ? `Key ending ${status.keyEnd}`
+        : 'Not set';
+      remove.hidden = !status.configured;
+      aiForm.apiKey.value = '';
+      aiForm.apiKey.placeholder = status.configured ? 'Leave blank to keep the saved key' : 'sk-...';
+      message.className = 'mg-message';
+      message.textContent = 'AI settings saved.';
+    } catch (error) {
+      message.className = 'mg-message error';
+      message.textContent = error.message;
+    }
+    message.hidden = false;
+  };
+  aiForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    saveAi({ apiKey: aiForm.apiKey.value.trim() || undefined, model: aiForm.model.value.trim() });
+  });
+  remove.addEventListener('click', () => saveAi({ model: aiForm.model.value.trim(), removeKey: true }));
+}

@@ -163,9 +163,17 @@ function navigation(data) {
       ],
     },
   ];
-  // Group finance: administrators and Accounts logins.
-  if (data.user.role === 'admin' || data.user.permission === 'accounts')
-    groups.unshift({ label: 'Company', items: [{ view: 'finance', label: 'Group finance', icon: 'chart' }] });
+  const finance = {
+    label: 'Finance',
+    items: [{ view: 'finance', label: 'Finance dashboard', icon: 'chart' }],
+  };
+  // Finance logins get only the finance dashboard; administrators open it from their menu.
+  if (data.user.role !== 'admin' && data.user.permission === 'accounts')
+    return [
+      finance,
+      { label: 'Account', items: [{ view: 'sessions', label: 'My sessions', icon: 'shield' }] },
+    ];
+  if (data.user.role === 'admin') groups.unshift(finance);
   if (data.user.role === 'admin')
     groups.push({
       label: 'Administration',

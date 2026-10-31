@@ -102,6 +102,10 @@ export function registerApiRoutes(app, context) {
   app.post('/api/credit-notes/:id/cancel', controllers.creditNotes.cancel);
   app.post('/api/credit-notes/:id/refund', controllers.creditNotes.refund);
   app.post('/api/stock-adjustments', controllers.stockAdjustments.create);
+  app.get('/api/ai-settings', controllers.ai.status);
+  app.put('/api/ai-settings', controllers.ai.save);
+  app.post('/api/finance/ai/statement', controllers.ai.statement);
+  app.post('/api/finance/ai/matches', controllers.ai.matches);
   app.put('/api/letterheads/:organizationId', controllers.letterheads.save);
   app.delete('/api/letterheads/:organizationId', controllers.letterheads.remove);
   app.delete('/api/stock-adjustments/:id', controllers.stockAdjustments.remove);
