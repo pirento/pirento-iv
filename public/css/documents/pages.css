@@ -5,16 +5,16 @@
   max-width: 1180px;
   min-width: 0;
   margin: 0 auto;
-  border: 1px solid #e2e9e3;
+  border: 1px solid #ebe4e0;
   box-shadow: none;
-  color: #182b28;
+  color: #17262c;
 }
 .workspace-page.doc-preview-page {
   width: 100%;
   max-width: 1260px;
   min-width: 0;
   margin: 0 auto;
-  color: #182b28;
+  color: #17262c;
 }
 .doc-editor-page .doc-page-header {
   gap: 20px;
@@ -29,7 +29,7 @@
 }
 .doc-preview-page .doc-preview-toolbar {
   box-shadow: none;
-  border: 1px solid #e2e9e3;
+  border: 1px solid #ebe4e0;
   align-items: center;
 }
 .doc-preview-page .doc-preview-heading {
@@ -111,24 +111,24 @@
   }
 }
 .doc-catalog-picker {
-  border: 1px solid #dde7d6;
+  border: 1px solid #ecdcd1;
   border-radius: 10px;
   overflow: hidden;
   margin-bottom: 15px;
-  background: #f9fbf6;
+  background: #fcf8f4;
 }
 .doc-catalog-results {
   max-height: 226px;
   overflow: auto;
   background: #fff;
-  border-top: 1px solid #e4ebdf;
-  border-bottom: 1px solid #e4ebdf;
+  border-top: 1px solid #efe3db;
+  border-bottom: 1px solid #efe3db;
   scrollbar-width: thin;
 }
 .doc-catalog-feedback {
   font-size: 10px;
   line-height: 1.6;
-  color: #718164;
+  color: #647781;
   margin: 0;
   padding: 9px 15px;
 }
@@ -166,14 +166,14 @@
   grid-column: 1/-1;
 }
 .doc-shipping-section {
-  border: 1px solid #e0e7db;
+  border: 1px solid #ebdfd7;
   border-radius: 10px;
   margin: 0 0 28px;
   overflow: hidden;
 }
 .doc-shipping-section h4 {
   font-size: 11px;
-  color: #3f5537;
+  color: #374b55;
   font-weight: 600;
   margin: 0;
 }
@@ -187,7 +187,7 @@
   }
 }
 .doc-branding-panel {
-  border: 1px solid #e0e7da;
+  border: 1px solid #ebded6;
   border-radius: 10px;
   margin: -9px 0 25px;
   background: #fff;
@@ -200,8 +200,8 @@
   padding: 15px 18px;
   cursor: pointer;
   list-style: none;
-  color: #62794b;
-  background: #f9fbf5;
+  color: #486d7c;
+  background: #fdf7f3;
 }
 .doc-branding-panel > summary::-webkit-details-marker {
   display: none;
@@ -214,18 +214,18 @@
 .doc-branding-panel > summary strong {
   font-size: 12px;
   font-weight: 550;
-  color: #4a6039;
+  color: #365663;
 }
 .doc-branding-panel > summary small {
   font-size: 10px;
-  color: #869775;
+  color: #a1816b;
 }
 .doc-branding-panel[open] > summary > svg:last-child {
   transform: rotate(180deg);
 }
 .doc-branding-fields {
   border: 0;
-  border-top: 1px solid #e5ebdd;
+  border-top: 1px solid #efe2d9;
   padding: 18px 20px;
   margin: 0;
   min-width: 0;
@@ -234,8 +234,8 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  background: #f8faf4;
-  border: 1px dashed #d9e4cc;
+  background: #fcf6f2;
+  border: 1px dashed #cadee6;
   border-radius: 7px;
   padding: 12px;
   margin: 13px 0;
@@ -247,7 +247,7 @@
 }
 .doc-inherited-logo > span {
   font-size: 10px;
-  color: #7d8f6b;
+  color: #9a7760;
 }
 .doc-branding-image-grid {
   display: grid;
@@ -256,8 +256,8 @@
   margin: 20px 0;
 }
 .doc-branding-image-grid > section {
-  border: 1px solid #e2e9d9;
-  background: #fbfcf8;
+  border: 1px solid #eeded4;
+  background: #fdf9f7;
   padding: 14px;
   border-radius: 8px;
   min-width: 0;
@@ -266,17 +266,17 @@
   font-size: 11px;
   font-weight: 600;
   margin: 0 0 14px;
-  color: #4b6339;
+  color: #365866;
   min-height: 19px;
   display: flex;
   align-items: center;
 }
 .doc-plan-summary {
-  border: 1px solid #dce7cd;
+  border: 1px solid #cbe0e9;
   border-radius: 9px;
   padding: 17px 18px;
   margin-bottom: 25px;
-  background: #f7faf2;
+  background: #fcf5f0;
 }
 .doc-plan-summary > div {
   display: flex;
@@ -286,12 +286,12 @@
 }
 .doc-plan-summary > div > strong {
   font-size: 12px;
-  color: #466432;
+  color: #2e5768;
   font-weight: 600;
 }
 .doc-plan-summary > div > span {
   font-size: 10px;
-  color: #7b9067;
+  color: #9c755b;
 }
 .doc-plan-summary > div > button {
   margin-left: auto;
@@ -309,12 +309,12 @@
   grid-template-columns: 1fr auto auto;
   gap: 18px;
   padding: 8px 0;
-  border-top: 1px solid #e3ebd9;
-  color: #7b8b69;
+  border-top: 1px solid #f0dfd4;
+  color: #95755f;
 }
 .doc-plan-summary li strong {
   font-weight: 600;
-  color: #526c3e;
+  color: #3b606f;
 }
 @media (max-width: 650px) {
   .doc-branding-panel > summary {

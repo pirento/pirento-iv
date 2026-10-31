@@ -16,7 +16,7 @@
 }
 .doc-editor-page .doc-line-card {
   padding: 20px;
-  border: 1px solid #dce4df;
+  border: 1px solid #e6dfda;
   border-radius: 12px;
   margin: 16px 0;
   background: #fff;
@@ -40,17 +40,17 @@
   display: block;
   padding: 11px 12px;
   border-radius: 7px;
-  color: #173c2e;
-  background: #f1f6f3;
+  color: #14333f;
+  background: #f8f3ef;
   font-weight: 650;
 }
 .doc-editor-page .doc-line-pricing {
   padding-top: 14px;
   margin-top: 16px;
-  border-top: 1px solid #e4e9e5;
+  border-top: 1px solid #ebe6e2;
 }
 .doc-editor-page .doc-line-pricing summary {
-  color: #365f4c;
+  color: #335562;
   cursor: pointer;
   font-size: 13px;
 }
@@ -61,7 +61,7 @@
   width: 100%;
   margin: 10px 0;
   min-height: 40px;
-  border: 1px solid #d9e2dc;
+  border: 1px solid #e5dcd6;
   border-radius: 7px;
   padding: 10px 12px;
   background: #fff;
@@ -80,31 +80,31 @@
   gap: 7px;
   padding: 15px;
   text-align: left;
-  border: 1px solid #dce5dd;
+  border: 1px solid #e8dfd9;
   border-radius: 9px;
   background: white;
   min-width: 0;
 }
 .doc-editor-page .doc-catalog-choice:hover {
-  border-color: #719d81;
-  background: #f6faf7;
+  border-color: #aa8064;
+  background: #fbf7f5;
 }
 .doc-editor-page .doc-catalog-choice strong {
   font-size: 13px;
-  color: #243e31;
+  color: #223740;
 }
 .doc-editor-page .doc-catalog-choice span {
-  color: #68766d;
+  color: #687176;
   font-size: 11px;
   overflow-wrap: anywhere;
 }
 .doc-editor-page .doc-catalog-choice span:last-child {
-  color: #246046;
+  color: #205164;
   font-weight: 650;
 }
 .doc-editor-page .doc-catalog-choice b {
   font-size: 13px;
-  color: #1a563c;
+  color: #15475a;
 }
 .doc-editor-page .doc-image-preview {
   min-height: 12px;
@@ -120,7 +120,7 @@
 }
 .doc-editor-page .doc-branding-image-grid > section {
   min-width: 0;
-  border: 1px solid #e1e7e2;
+  border: 1px solid #e9e3df;
   border-radius: 9px;
   padding: 16px;
 }
@@ -172,12 +172,12 @@
   justify-content: space-between;
   gap: 16px;
   padding: 14px 30px;
-  border-bottom: 1px solid #e8eeeb;
-  background: #fafbf8;
+  border-bottom: 1px solid #f0eae6;
+  background: #fcf9f7;
 }
 .doc-draft-tools > p {
   font-size: 12px;
-  color: #607169;
+  color: #606b71;
   line-height: 1.6;
 }
 .doc-draft-tools > button {
@@ -188,14 +188,14 @@
   max-height: calc(100dvh - 40px);
   overflow: auto;
   padding: 24px;
-  border: 1px solid #d6e1d9;
+  border: 1px solid #e4dad3;
   border-radius: 14px;
   background: #fff;
-  color: #182b28;
-  box-shadow: 0 20px 70px #14271740;
+  color: #17262c;
+  box-shadow: 0 20px 70px #14212740;
 }
 .doc-reset-dialog::backdrop {
-  background: #14271770;
+  background: #14212770;
 }
 .doc-reset-dialog h2 {
   margin: 0 0 12px;
@@ -229,7 +229,7 @@ body.draft-dialog-open {
 .payment-panel .payment-record-section {
   margin: 24px 0;
   padding: 24px;
-  border: 1px solid #e0e7e2;
+  border: 1px solid #e9e2de;
   border-radius: 14px;
 }
 .payment-panel h2,
@@ -315,7 +315,7 @@ body.draft-dialog-open {
   }
 }
 .doc-preview-page .doc-print-hint {
-  color: #627168;
+  color: #626c71;
 }
 
 /* Search navigation wraps on phones without expanding the document editor. */

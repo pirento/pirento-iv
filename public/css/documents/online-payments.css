@@ -20,7 +20,7 @@
 .online-payment-heading p {
   font-size: 10px;
   line-height: 1.6;
-  color: #6d8580;
+  color: #8c7566;
   margin: 0;
 }
 .online-payment-mode {
@@ -29,9 +29,9 @@
   font-weight: 650;
   letter-spacing: 0.2px;
   padding: 5px 8px;
-  border: 1px solid #d4e5db;
-  background: #edf7ee;
-  color: #427544;
+  border: 1px solid #eadacf;
+  background: #faf0ea;
+  color: #3e6879;
   border-radius: 20px;
 }
 .online-payment-message {
@@ -40,9 +40,9 @@
   padding: 12px 13px;
   border-radius: 8px;
   margin: 0 0 15px;
-  color: #5a736a;
-  background: #f0f5f0;
-  border: 1px solid #dfe9df;
+  color: #5a6b73;
+  background: #f7f2ee;
+  border: 1px solid #ece2dc;
   overflow-wrap: anywhere;
 }
 .online-payment-message strong {
@@ -54,9 +54,9 @@
   background: #fff6ef;
 }
 .online-payment-message-success {
-  color: #3d7447;
-  background: #f1f8ed;
-  border-color: #d9e9d1;
+  color: #396678;
+  background: #fbf1ea;
+  border-color: #f0d9ca;
 }
 .online-payment-message:last-child {
   margin-bottom: 0;
@@ -66,7 +66,7 @@
   align-items: center;
   gap: 8px;
   font-size: 11px;
-  color: #789086;
+  color: #978071;
   padding: 12px 0;
 }
 .online-payment-create {
@@ -78,7 +78,7 @@
 .online-payment-note {
   font-size: 10px;
   line-height: 1.7;
-  color: #859589;
+  color: #9a8a80;
   margin: 13px 0 0;
 }
 .online-payment-list {
@@ -87,7 +87,7 @@
   margin-top: 17px;
 }
 .online-payment-link {
-  border: 1px solid #dfe7df;
+  border: 1px solid #e9e2dd;
   border-radius: 9px;
   padding: 14px;
   background: #fff;
@@ -104,28 +104,28 @@
   display: block;
   font-size: 14px;
   font-weight: 650;
-  color: #315a49;
+  color: #2e505d;
   font-variant-numeric: tabular-nums;
 }
 .online-payment-link-top p {
   font-size: 10px;
-  color: #8a998c;
+  color: #9d8f86;
   margin: 5px 0 0;
   line-height: 1.7;
 }
 .online-payment-link-status {
   font-size: 9px;
   padding: 5px 8px;
-  background: #f2f5ec;
-  border: 1px solid #e0e7d6;
+  background: #f8efe9;
+  border: 1px solid #ecdcd1;
   border-radius: 20px;
-  color: #7a8967;
+  color: #93735d;
   white-space: nowrap;
 }
 .online-payment-link-status-paid {
-  background: #edf7ed;
-  color: #467b48;
-  border-color: #d5e8d4;
+  background: #faf0ea;
+  color: #426e7f;
+  border-color: #eedbce;
 }
 .online-payment-link-status-failed,
 .online-payment-link-status-creation_unknown {
@@ -139,14 +139,14 @@
   gap: 8px;
   padding: 9px 10px;
   border-radius: 6px;
-  background: #f5f8f4;
-  border: 1px solid #e4ebe0;
+  background: #f9f5f3;
+  border: 1px solid #eee4dd;
   min-width: 0;
   margin-bottom: 10px;
 }
 .online-payment-link-address a {
   font-size: 11px;
-  color: #34745e;
+  color: #2f6479;
   overflow-wrap: anywhere;
   text-decoration: none;
   line-height: 1.6;
@@ -156,11 +156,11 @@
   text-decoration: underline;
 }
 .online-payment-link-address a:focus-visible {
-  outline: 2px solid #8cae77;
+  outline: 2px solid #73a0b2;
   outline-offset: 3px;
 }
 .online-payment-link-address > svg {
-  color: #829a89;
+  color: #a18a7b;
   flex-shrink: 0;
 }
 .online-payment-link-actions {
@@ -179,7 +179,7 @@
   gap: 7px;
   font-size: 10px;
   line-height: 1.75;
-  color: #869887;
+  color: #9d8c81;
   margin: 17px 0 0;
 }
 .online-payment-footer svg {
@@ -194,7 +194,7 @@
 }
 .online-payment-verified {
   font-size: 9px;
-  color: #417d54;
+  color: #3d6e82;
   margin: 9px 0 0 46px;
   display: flex;
   gap: 5px;
@@ -204,7 +204,7 @@
   font-size: 10px !important;
   border: 0;
   background: transparent;
-  color: #6c856f;
+  color: #8c7464;
   text-decoration: underline;
   text-underline-offset: 3px;
   margin: 13px 0 0;

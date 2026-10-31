@@ -40,8 +40,8 @@ export function attachPageRoutes(backend) {
         short_name: 'Billing',
         start_url: '/',
         display: 'standalone',
-        background_color: '#f4f5f0',
-        theme_color: '#1b5646',
+        background_color: '#fbf1e9',
+        theme_color: '#0e4d64',
         icons: [{ src: '/favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' }],
       }),
     );

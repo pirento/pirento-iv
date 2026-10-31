@@ -60,12 +60,12 @@
   padding: 6px 10px;
 }
 .recurring-status-active {
-  background: #e5f1e8;
-  color: #226344;
+  background: #f5e9e1;
+  color: #1d5368;
 }
 .recurring-status-paused {
-  background: #edf0ed;
-  color: #56625b;
+  background: #f1eeec;
+  color: #565e62;
 }
 .recurring-status-error {
   background: #faece7;
@@ -260,7 +260,7 @@
   color: var(--ink);
 }
 .recurring-dialog::backdrop {
-  background: #13271980;
+  background: #13202780;
 }
 .recurring-dialog h2 {
   margin: 0 0 16px;

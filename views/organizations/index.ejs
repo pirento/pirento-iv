@@ -3,7 +3,7 @@
 const isSettings = data.route.view === 'business_settings';
 const source = isSettings ? data.organization : data.organizations.find(org=>org.id===data.route.id);
 const editing = isSettings || Boolean(data.route.action);
-const defaults = {name:'',legalName:'',tradeName:'',businessConstitution:'',businessType:'division',supportEmail:'support@pirento.com',paymentGateway:'razorpay',gstRegistrations:[],gstin:'',email:'',phone:'',address:'',stateCode:'',accentColor:'#26705b',logoUrl:'',invoicePrefix:'INV',quotationPrefix:'QUO',billingProfile:'general',enableProductSelection:false,secondarySignatureLabel:'',secondarySignatureImageUrl:'',stampLabel:'',stampImageUrl:'',pan:'',cin:'',bankBranch:'',accountType:'',signatureImageUrl:'',paymentQrUrl:'',bankName:'',accountName:'',accountNumber:'',ifsc:'',terms:'',signature:'',template:'modern'};
+const defaults = {name:'',legalName:'',tradeName:'',businessConstitution:'',businessType:'division',supportEmail:'support@pirento.com',paymentGateway:'razorpay',gstRegistrations:[],gstin:'',email:'',phone:'',address:'',stateCode:'',accentColor:'#0e4d64',logoUrl:'',invoicePrefix:'INV',quotationPrefix:'QUO',billingProfile:'general',enableProductSelection:false,secondarySignatureLabel:'',secondarySignatureImageUrl:'',stampLabel:'',stampImageUrl:'',pan:'',cin:'',bankBranch:'',accountType:'',signatureImageUrl:'',paymentQrUrl:'',bankName:'',accountName:'',accountNumber:'',ifsc:'',terms:'',signature:'',template:'modern'};
 const form = {...defaults,...source};
 if(source) form.billingProfile=helpers.billingProfileFor(source);
 %>
