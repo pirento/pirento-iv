@@ -197,6 +197,7 @@ async function initializeApplication(options, environment, db) {
               ? 'paid'
               : 'received',
         amount: notification.payment?.amount,
+        paidOn: notification.payment?.paidOn,
         reference: notification.payment?.reference,
         paymentUrl: notification.paymentUrl,
         automatic: true,

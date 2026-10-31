@@ -210,11 +210,14 @@ test(
     assert.match(message.html, /background:#1e88e5/, 'the A T Elevator stripe');
     assert.match(message.html, /color:#172b4d/, 'the A T Elevator colour');
     assert.doesNotMatch(message.html, /Description/, 'items stay in the attached PDF');
-    assert.match(message.html, /Balance due.*₹1,180\.00/s);
+    assert.doesNotMatch(message.html, /₹/, 'amounts and payment details stay in the PDF');
     assert.match(message.html, /mailto:accounts@elevator\.example/);
-    assert.match(message.text, /Balance due: ₹1,180\.00\nInvoice: ATEI\/2627\/0001/);
-    assert.match(message.text, /The invoice is attached as a PDF\./);
-    assert.match(message.text, /Questions\? Reply to this email or write to accounts@elevator\.example\./);
+    assert.match(message.text, /Please find your tax invoice ATEI\/2627\/0001 attached\./);
+    assert.match(message.text, /Attached: Tax invoice ATEI\/2627\/0001 \(PDF\)/);
+    assert.match(
+      message.text,
+      /Questions\? Write to accounts@elevator\.example or simply reply to this email\./,
+    );
 
     // Its logo is served for email apps, which do not show images embedded in the message.
     const pixel =

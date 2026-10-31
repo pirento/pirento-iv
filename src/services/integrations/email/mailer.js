@@ -12,7 +12,7 @@ import { mapAsync } from '../../async-collections.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import nodemailer from 'nodemailer';
-import { balanceDue, DOCUMENT_LABELS, money } from '../../../../shared/types.js';
+import { balanceDue, DOCUMENT_LABELS } from '../../../../shared/types.js';
 import { isIndependentBusiness, organizationFinanceEmail } from '../../../../shared/business-identity.js';
 import { organizationEnvironment } from '../../../config/business-config.js';
 import { readProviderJson } from '../provider-http.js';
@@ -138,15 +138,9 @@ function replyAddress(org, kind) {
   return validEmail(finance) ? finance : supportAddress(org);
 }
 // --- Email content (HTML bodies for each message type) ---
-// Emails are short: what the message is about, the key figures, how to pay and who to write to.
-// The full document travels as the attached PDF. Layout uses tables and inline styles, which is
+// Emails are short and friendly: a few lines and buttons. Amounts, dates and payment details stay
+// in the attached PDF. Layout uses tables and inline styles, which is
 // what email apps render reliably.
-const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-// 2026-10-15 -> 15 Oct 2026
-const day = (iso) => {
-  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso ?? '');
-  return match ? `${Number(match[3])} ${MONTH_NAMES[Number(match[2]) - 1]} ${match[1]}` : (iso ?? '');
-};
 const safeColor = (...colors) => colors.find((color) => /^#[0-9a-f]{6}$/i.test(color ?? '')) ?? '#0e4d64';
 const INK = '#13303b';
 const MUTED = '#5c6b73';
@@ -203,144 +197,183 @@ function logoSize(dataUrl = '') {
 function emailFrame({ title, preheader = '', brand, body }) {
   const { color } = brand;
   const header = brand.logo
-    ? `<img src="${escaped(brand.logo)}" alt="${escaped(brand.name)}"${brand.logoSize.width ? ` width="${brand.logoSize.width}"` : ''} height="${brand.logoSize.height}" style="display:block;${brand.logoSize.width ? `width:${brand.logoSize.width}px;` : ''}height:${brand.logoSize.height}px;max-width:100%;border:0">`
-    : `<div style="font-size:21px;font-weight:bold;line-height:1.3;color:${color}">${escaped(brand.name)}</div>`;
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><style>@media only screen and (max-width:480px){.m-pad{padding-left:18px!important;padding-right:18px!important}.m-stack{display:block!important;width:auto!important;padding:8px 16px!important}}</style><title>${escaped(title)}</title></head><body style="margin:0;padding:0;background:#f4efe9;color:${INK};font-family:Arial,Helvetica,sans-serif;-webkit-text-size-adjust:100%"><div style="display:none;max-height:0;overflow:hidden;opacity:0">${escaped(preheader)}</div><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4efe9"><tr><td align="center" style="padding:24px 12px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid ${LINE}"><tr><td style="height:6px;line-height:6px;font-size:0;background:${brand.accent}">&nbsp;</td></tr><tr><td class="m-pad" style="padding:22px 28px 18px;border-bottom:1px solid ${LINE}">${header}${brand.legal ? `<div style="margin-top:8px;font-size:12px;line-height:1.5;color:${MUTED}">${escaped(brand.legal)}</div>` : ''}</td></tr><tr><td class="m-pad" style="padding:26px 28px 24px;font-size:15px;line-height:1.6"><h1 style="margin:0 0 14px;font-size:21px;line-height:1.3;color:${color}">${escaped(title)}</h1>${body}<p style="margin:22px 0 0">Regards,<br><strong>${escaped(brand.name)}</strong></p></td></tr><tr><td class="m-pad" style="padding:18px 28px;background:#faf6f2;border-top:1px solid ${LINE};font-size:12px;line-height:1.6;color:${MUTED}">${brand.footer.map((line) => textLines(line)).join('<br>')}${brand.footer.length ? '<br>' : ''}Questions? Reply to this email or write to <a href="mailto:${escaped(brand.contact)}" style="color:${color}">${escaped(brand.contact)}</a>.</td></tr></table></td></tr></table></body></html>`;
+    ? `<img src="${escaped(brand.logo)}" alt="${escaped(brand.name)}"${brand.logoSize.width ? ` width="${brand.logoSize.width}"` : ''} height="${brand.logoSize.height}" style="display:block;margin:0 auto;${brand.logoSize.width ? `width:${brand.logoSize.width}px;` : ''}height:${brand.logoSize.height}px;max-width:100%;border:0">`
+    : `<div style="font-size:22px;font-weight:bold;line-height:1.3;color:${color}">${escaped(brand.name)}</div>`;
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><style>@media only screen and (max-width:480px){.m-pad{padding-left:20px!important;padding-right:20px!important}.m-btn{display:block!important;padding:6px 0!important}}</style><title>${escaped(title)}</title></head><body style="margin:0;padding:0;background:#f4efe9;color:${INK};font-family:Arial,Helvetica,sans-serif;-webkit-text-size-adjust:100%"><div style="display:none;max-height:0;overflow:hidden;opacity:0">${escaped(preheader)}</div><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4efe9"><tr><td align="center" style="padding:28px 12px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid ${LINE}"><tr><td style="height:6px;line-height:6px;font-size:0;background:${brand.accent}">&nbsp;</td></tr><tr><td class="m-pad" align="center" style="padding:30px 36px 0;text-align:center">${header}${brand.legal ? `<div style="margin-top:8px;font-size:12px;line-height:1.5;color:${MUTED}">${escaped(brand.legal)}</div>` : ''}</td></tr><tr><td class="m-pad" align="center" style="padding:26px 36px 32px;text-align:center;font-size:15px;line-height:1.65"><h1 style="margin:0 0 18px;font-size:23px;line-height:1.3;color:${color}">${escaped(title)}</h1>${body}<p style="margin:26px 0 0;color:${MUTED}">Warm regards,<br><strong style="color:${INK}">${escaped(brand.name)}</strong></p></td></tr><tr><td class="m-pad" align="center" style="padding:18px 36px 22px;background:#faf6f2;border-top:1px solid ${LINE};text-align:center;font-size:12px;line-height:1.6;color:${MUTED}">${brand.footer.map((line) => textLines(line)).join('<br>')}${brand.footer.length ? '<br>' : ''}Questions? Write to <a href="mailto:${escaped(brand.contact)}" style="color:${color}">${escaped(brand.contact)}</a> or simply reply to this email.</td></tr></table></td></tr></table></body></html>`;
 }
 const textFooter = (brand) =>
   [
-    'Regards,',
+    'Warm regards,',
     brand.name,
     '',
     ...brand.footer,
-    `Questions? Reply to this email or write to ${brand.contact}.`,
+    `Questions? Write to ${brand.contact} or simply reply to this email.`,
   ].join('\n');
 
-// Key figures as boxes (HTML) and lines (text), e.g. [['Balance due', '₹1,000.00', true], ['Due date', '15 Oct 2026']].
-function facts(color, rows) {
-  return {
-    html: `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:18px 0;background:#f6f9fa;border:1px solid #dfe9ec;border-radius:10px"><tr>${rows
-      .map(
-        ([label, value, strong]) =>
-          `<td class="m-stack" style="padding:14px 16px;vertical-align:top"><div style="font-size:11px;letter-spacing:.6px;text-transform:uppercase;color:${MUTED}">${escaped(label)}</div><div style="margin-top:4px;font-size:${strong ? 20 : 15}px;font-weight:bold;color:${strong ? color : INK}">${escaped(value)}</div></td>`,
-      )
-      .join('')}</tr></table>`,
-    text: rows.map(([label, value]) => `${label}: ${value}`).join('\n'),
-  };
+// A reply to the business with the subject filled in, e.g. for "Accept quotation".
+const mailto = (brand, subject) => `mailto:${brand.contact}?subject=${encodeURIComponent(subject)}`;
+
+/**
+ * One email body, HTML and text: a greeting, a few friendly lines, buttons and the attached-PDF
+ * note. Amounts, dates and payment details stay in the attached PDF.
+ */
+function compose(brand, { title, name, lines = [], buttons = [], attached }) {
+  const para = (line) => `<p style="margin:0 0 12px">${escaped(line)}</p>`;
+  const button = ({ label, href, primary }) =>
+    `<td class="m-btn" style="padding:6px"><a href="${escaped(href)}" style="display:inline-block;padding:13px 26px;border-radius:999px;font-weight:bold;font-size:15px;text-decoration:none;${primary ? `background:${brand.color};color:#ffffff;border:2px solid ${brand.color}` : `background:#ffffff;color:${brand.color};border:2px solid ${brand.color}`}">${escaped(label)}</a></td>`;
+  const html = `<p style="margin:0 0 12px">Dear ${escaped(name)},</p>${lines.map(para).join('')}${attached ? `<table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:18px auto 6px"><tr><td style="padding:10px 18px;border-radius:999px;background:#f4f1ec;font-size:14px;color:${INK}">&#128206;&nbsp; ${escaped(attached)}</td></tr></table>` : ''}${buttons.length ? `<table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:14px auto 0"><tr>${buttons.map(button).join('')}</tr></table>` : ''}`;
+  const text = [
+    title,
+    '',
+    `Dear ${name},`,
+    ...lines,
+    '',
+    attached ? `Attached: ${attached}` : '',
+    ...buttons.map(({ label, href }) => `${label}: ${href.replace(/^mailto:([^?]+).*/, '$1')}`),
+    '',
+    textFooter(brand),
+  ]
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n');
+  return { html, text };
 }
-function documentFacts(doc, color) {
-  const due = doc.kind === 'invoice' ? balanceDue(doc) : 0;
-  const rows = [
-    [due > 0 ? 'Balance due' : 'Total', money(due > 0 ? due : doc.totals.total), true],
-    [DOCUMENT_LABELS[doc.kind], doc.number],
-    ['Date', day(doc.issueDate)],
-  ];
-  if (doc.dueDate && !(doc.kind === 'invoice' && due <= 0))
-    rows.push([doc.kind === 'quotation' ? 'Valid until' : 'Due date', day(doc.dueDate)]);
-  return facts(color, rows);
+
+// What the document is called in emails: Tax invoice (with the seller's GSTIN), Invoice, Debit note, ...
+function documentName(doc) {
+  if (doc.debitNoteFor) return 'Debit note';
+  if (doc.kind === 'invoice') return doc.organizationSnapshot?.gstin ? 'Tax invoice' : 'Invoice';
+  return DOCUMENT_LABELS[doc.kind];
 }
-// Bank transfer details of the business, for documents still to be paid.
-function bankDetails(org, color) {
-  if (!org.accountNumber) return { html: '', text: '' };
-  const rows = [
-    ['Account name', org.accountName],
-    ['Bank', [org.bankName, org.bankBranch].filter(Boolean).join(', ')],
-    ['Account number', org.accountNumber],
-    ['IFSC', org.ifsc],
-  ].filter(([, value]) => value);
-  return {
-    html: `<h3 style="margin:22px 0 8px;font-size:15px;color:${color}">Pay by bank transfer</h3><table role="presentation" cellpadding="0" cellspacing="0" style="font-size:14px">${rows.map(([label, value]) => `<tr><td style="padding:3px 16px 3px 0;color:${MUTED}">${escaped(label)}</td><td style="padding:3px 0"><strong>${escaped(value)}</strong></td></tr>`).join('')}</table>`,
-    text: ['Pay by bank transfer:', ...rows.map(([label, value]) => `${label}: ${value}`)].join('\n'),
-  };
+const lower = (label) => label.charAt(0).toLowerCase() + label.slice(1);
+const businessName = (doc) => doc.organizationSnapshot.tradeName || doc.organizationSnapshot.name;
+const payOnline = (url) => (url ? [{ label: 'Pay online', href: url, primary: true }] : []);
+
+/** Subject line of a document email, e.g. "Tax invoice ATEI/2627/0001 from A T Elevator". */
+function documentSubject(doc) {
+  const head = `${documentName(doc)} ${doc.number} from ${businessName(doc)}`;
+  return doc.kind === 'invoice' && balanceDue(doc) <= 0 ? `${head} · Paid` : head;
 }
-// Bank details while money is due on the document.
-const paymentDetails = (doc, color) =>
-  (doc.kind === 'invoice' && balanceDue(doc) > 0) || doc.kind === 'proforma'
-    ? bankDetails(doc.organizationSnapshot, color)
-    : { html: '', text: '' };
-function paymentAction(url, color = '#0e4d64') {
-  const provider = url && new URL(url).hostname.endsWith('cashfree.com') ? 'Cashfree' : 'Razorpay';
-  return url
-    ? {
-        html: `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:4px 0 8px"><tr><td style="background:${color};border-radius:8px"><a href="${escaped(url)}" style="display:inline-block;padding:13px 24px;color:#ffffff;text-decoration:none;font-weight:bold;font-size:15px">Pay securely with ${provider}</a></td></tr></table><p style="margin:0 0 8px;font-size:12px;color:${MUTED};word-break:break-all">Or open: ${escaped(url)}</p>`,
-        text: `Pay securely with ${provider}: ${url}`,
-      }
-    : { html: '', text: '' };
-}
-const ATTACHED = (doc) => `The ${DOCUMENT_LABELS[doc.kind].toLowerCase()} is attached as a PDF.`;
-const attachedNote = (doc) =>
-  `<p style="margin:0;font-size:14px;color:${MUTED}">&#128206; ${escaped(ATTACHED(doc))}</p>`;
-// Opening line of a document email.
-function documentIntro(doc) {
-  const label = DOCUMENT_LABELS[doc.kind].toLowerCase();
-  if (doc.kind === 'invoice' && balanceDue(doc) > 0)
-    return `Thank you for your business. Here is your ${label} ${doc.number} for ${money(doc.totals.total)}.`;
-  if (doc.kind === 'invoice') return `Here is your ${label} ${doc.number}. It is fully paid — thank you.`;
+
+/** The email for a document: invoice, debit note, quotation or proforma invoice (challans are not emailed). */
+function documentEmail(doc, paymentUrl, brand) {
+  const name = documentName(doc);
+  const label = lower(name);
+  const title = `${name} ${doc.number}`;
+  const customer = doc.customerSnapshot.name;
+  const attached = `${name} ${doc.number} (PDF)`;
+  const reply = (text, subject = title) => ({ label: text, href: mailto(brand, subject) });
   if (doc.kind === 'quotation')
-    return `Thank you for your enquiry. Here is our quotation ${doc.number} for ${money(doc.totals.total)}. Reply to this email to go ahead or to ask a question.`;
-  return `Here is your ${label} ${doc.number}.`;
+    return compose(brand, {
+      title,
+      name: customer,
+      lines: [
+        `Thank you for your interest in ${brand.name}. Please find our quotation ${doc.number} attached — it has the full scope, prices and terms.`,
+        'If it looks good, just tap “Accept quotation” and we will take it from there. Happy to answer any questions too.',
+      ],
+      attached,
+      buttons: [
+        { ...reply('Accept quotation', `Accepting quotation ${doc.number}`), primary: true },
+        reply('Ask a question', `Question about quotation ${doc.number}`),
+      ],
+    });
+  if (doc.kind === 'proforma')
+    return compose(brand, {
+      title,
+      name: customer,
+      lines: [
+        `Please find your proforma invoice ${doc.number} attached. The amount and payment details are in the PDF.`,
+        'Once the payment is received, we will send the tax invoice.',
+      ],
+      attached,
+      buttons: [reply('Reply to us')],
+    });
+  // Invoices and debit notes.
+  const due = balanceDue(doc);
+  if (due <= 0)
+    return compose(brand, {
+      title,
+      name: customer,
+      lines: [
+        `Thank you! Your ${label} ${doc.number} is fully paid.`,
+        'A copy is attached for your records.',
+      ],
+      attached,
+      buttons: [reply('Reply to us')],
+    });
+  const paidSome = doc.totals.total - due > 0;
+  return compose(brand, {
+    title,
+    name: customer,
+    lines: [
+      doc.debitNoteFor
+        ? `Please find attached debit note ${doc.number}, raised against invoice ${doc.debitNoteFor.number}.`
+        : paidSome
+          ? `Thank you for your payment so far. Please find your updated ${label} ${doc.number} attached.`
+          : `Thank you for choosing ${brand.name}. Please find your ${label} ${doc.number} attached.`,
+      'The amount, due date and payment details are all in the PDF.',
+    ],
+    attached,
+    buttons: [...payOnline(paymentUrl), { ...reply('Reply to us'), primary: !paymentUrl }],
+  });
 }
+
 function invoicePayload(doc, paymentUrl, origin) {
   validatePaymentUrl(paymentUrl, doc.organizationSnapshot);
   const brand = brandOf(doc.organizationSnapshot, { origin, kind: doc.kind });
-  const figures = documentFacts(doc, brand.color),
-    action =
-      doc.kind === 'invoice' && balanceDue(doc) > 0
-        ? paymentAction(paymentUrl, brand.color)
-        : { html: '', text: '' },
-    bank = paymentDetails(doc, brand.color);
-  const title = `${DOCUMENT_LABELS[doc.kind]} ${doc.number}`;
-  const intro = documentIntro(doc);
+  const title = `${documentName(doc)} ${doc.number}`;
+  const email = documentEmail(
+    doc,
+    doc.kind === 'invoice' && balanceDue(doc) > 0 ? paymentUrl : undefined,
+    brand,
+  );
   return {
     organizationId: doc.organizationId,
-    html: emailFrame({
-      title,
-      preheader: intro,
-      brand,
-      body: `<p style="margin:0 0 8px">Dear ${escaped(doc.customerSnapshot.name)},</p><p style="margin:0">${escaped(intro)}</p>${figures.html}${action.html}${attachedNote(doc)}${bank.html}`,
-    }),
-    text: [
-      title,
-      '',
-      `Dear ${doc.customerSnapshot.name},`,
-      intro,
-      '',
-      figures.text,
-      '',
-      action.text,
-      ATTACHED(doc),
-      '',
-      bank.text,
-      '',
-      textFooter(brand),
-    ]
-      .join('\n')
-      .replace(/\n{3,}/g, '\n\n'),
+    html: emailFrame({ title, preheader: documentSubject(doc), brand, body: email.html }),
+    text: email.text,
     document: doc,
   };
 }
+
 function paymentReminderPayload(document, reminder, asOf, origin) {
   const target = reminderTargets(document, asOf).find(
     (item) => item.installmentId === reminder.installmentId,
   );
   if (!target || target.dueDate !== reminder.dueDate)
     throw new EmailQueueError('This payment reminder no longer matches an unpaid due amount.', 409);
-  const title =
+  const name = lower(documentName(document));
+  const [title, line] =
     target.status === 'overdue'
-      ? 'Payment overdue'
+      ? [
+          'A gentle reminder',
+          `Our records show that the payment for ${name} ${document.number} is now past its due date. We would be grateful if you could arrange it at your earliest convenience.`,
+        ]
       : target.status === 'due_today'
-        ? 'Payment due today'
-        : 'Upcoming payment';
-  const summary = `${target.label}: ${money(target.balanceDue)} remains due on ${day(target.dueDate)}. The invoice balance is ${money(target.invoiceBalance)}.`;
+        ? [
+            'Payment due today',
+            `A quick reminder that the payment for ${name} ${document.number} is due today.`,
+          ]
+        : [
+            'Upcoming payment',
+            `A friendly reminder that the payment for ${name} ${document.number} is coming up soon.`,
+          ];
   const brand = brandOf(document.organizationSnapshot, { origin, kind: document.kind });
-  const figures = facts(brand.color, [
-    ['Amount due', money(target.balanceDue), true],
-    [target.status === 'overdue' ? 'Was due on' : 'Due date', day(target.dueDate)],
-    ['Invoice', document.number],
-  ]);
-  const bank = paymentDetails(document, brand.color);
-  const request =
-    'If you have already paid, please reply with the payment reference so we can update your balance.';
+  const email = compose(brand, {
+    title,
+    name: document.customerSnapshot.name,
+    lines: [
+      line,
+      'The invoice is attached again with the amount and payment details. If you have already paid, thank you — just let us know.',
+    ],
+    attached: `${documentName(document)} ${document.number} (PDF)`,
+    buttons: [
+      {
+        label: 'I have already paid',
+        href: mailto(brand, `Payment made for ${name} ${document.number}`),
+        primary: true,
+      },
+      { label: 'Reply to us', href: mailto(brand, `${documentName(document)} ${document.number}`) },
+    ],
+  });
   return {
     organizationId: document.organizationId,
     document,
@@ -357,29 +390,8 @@ function paymentReminderPayload(document, reminder, asOf, origin) {
       invoiceBalance: target.invoiceBalance,
       documentFingerprint: reminderDocumentFingerprint(document),
     },
-    html: emailFrame({
-      title,
-      preheader: summary,
-      brand,
-      body: `<p style="margin:0 0 8px">Dear ${escaped(document.customerSnapshot.name)},</p><p style="margin:0">${escaped(summary)}</p>${figures.html}<p style="margin:0 0 8px">${escaped(request)}</p>${attachedNote(document)}${bank.html}`,
-    }),
-    text: [
-      title,
-      '',
-      `Dear ${document.customerSnapshot.name},`,
-      summary,
-      '',
-      figures.text,
-      '',
-      request,
-      ATTACHED(document),
-      '',
-      bank.text,
-      '',
-      textFooter(brand),
-    ]
-      .join('\n')
-      .replace(/\n{3,}/g, '\n\n'),
+    html: emailFrame({ title, preheader: line, brand, body: email.html }),
+    text: email.text,
   };
 }
 /**
@@ -873,11 +885,10 @@ export function createMailer(db, options = {}) {
     return await serialize(saved);
   }
   async function enqueueInvoice(doc, input) {
-    const title = `${DOCUMENT_LABELS[doc.kind]} ${doc.number}`;
     return await enqueue(
       'invoice',
       doc.customerSnapshot.email,
-      `${title} · ${doc.organizationSnapshot.name}`,
+      documentSubject(doc),
       {
         ...invoicePayload(doc, input.paymentUrl, publicOrigin),
         resolvePaymentLink: Boolean(input.resolvePaymentLink),
@@ -905,70 +916,58 @@ export function createMailer(db, options = {}) {
   async function enqueuePayment(doc, input) {
     validatePaymentUrl(input.paymentUrl, doc.organizationSnapshot);
     const outcome = input.outcome === 'paid' && balanceDue(doc) > 0 ? 'received' : input.outcome;
-    const title =
-      outcome === 'failed'
-        ? 'Payment unsuccessful'
-        : outcome === 'paid'
-          ? `Payment complete${doc.finalizedAt ? ' · Paid / Final' : ''}`
-          : 'Part payment received';
-    const summary =
-      outcome === 'failed'
-        ? 'The payment attempt was unsuccessful. No successful payment has been recorded for this attempt. If money was debited, contact your bank or the issuing organization before retrying.'
-        : `${input.amount === undefined ? 'Your payment' : `Your payment of ${money(input.amount)}`} has been recorded.${outcome === 'paid' ? ' This invoice is fully paid.' : ` The remaining balance is ${money(balanceDue(doc))}.`}`;
     const brand = brandOf(doc.organizationSnapshot, { origin: publicOrigin, kind: doc.kind });
-    const action =
-        balanceDue(doc) > 0 ? paymentAction(input.paymentUrl, brand.color) : { html: '', text: '' },
-      bank = outcome === 'failed' ? paymentDetails(doc, brand.color) : { html: '', text: '' };
-    const reference = input.reference ? `Payment reference: ${input.reference}` : '';
-    const figures = facts(
-      brand.color,
+    const name = documentName(doc);
+    const label = `${lower(name)} ${doc.number}`;
+    const reply = { label: 'Reply to us', href: mailto(brand, `${name} ${doc.number}`) };
+    const url = balanceDue(doc) > 0 ? input.paymentUrl : undefined;
+    const [title, subject, lines, buttons, attached] =
       outcome === 'failed'
         ? [
-            ['Balance due', money(balanceDue(doc)), true],
-            ['Invoice', doc.number],
+            'Payment not completed',
+            `Payment unsuccessful · ${name} ${doc.number} · ${businessName(doc)}`,
+            [
+              `Your online payment for ${label} did not go through, so nothing has been recorded against it.`,
+              'If money was debited from your account, your bank usually returns it within 5–7 working days. You are welcome to try again, or reply to us if you need help.',
+            ],
+            [...(url ? [{ label: 'Try again', href: url, primary: true }] : []), { ...reply, primary: !url }],
+            `${name} ${doc.number} (PDF)`,
           ]
-        : [
-            ...(input.amount === undefined ? [] : [['Amount received', money(input.amount), true]]),
-            ['Balance due', money(balanceDue(doc)), input.amount === undefined],
-            ['Invoice', doc.number],
-          ],
-    );
-    const thanks = outcome === 'failed' ? '' : 'Thank you for your payment.';
+        : outcome === 'paid'
+          ? [
+              'Thank you for your payment',
+              `Payment received · ${name} ${doc.number} fully paid · ${businessName(doc)}`,
+              [
+                `We have received your payment, and ${label} is now fully paid.`,
+                'Thank you for your business — the paid invoice is attached for your records.',
+              ],
+              [reply],
+              `Paid ${lower(name)} ${doc.number} (PDF)`,
+            ]
+          : [
+              'Thank you for your payment',
+              `Payment received · ${name} ${doc.number} · ${businessName(doc)}`,
+              [
+                `We have received your payment against ${label}. Thank you!`,
+                'The updated invoice, with the balance and payment details, is attached.',
+              ],
+              [...payOnline(url), { ...reply, primary: !url }],
+              `Updated ${lower(name)} ${doc.number} (PDF)`,
+            ];
+    const email = compose(brand, { title, name: doc.customerSnapshot.name, lines, buttons, attached });
     return await enqueue(
       outcome === 'failed' ? 'payment_failed' : outcome === 'paid' ? 'payment_paid' : 'payment_received',
       doc.customerSnapshot.email,
-      `${title} · ${doc.number}`,
+      subject,
       {
         organizationId: doc.organizationId,
-        html: emailFrame({
-          title,
-          preheader: summary,
-          brand,
-          body: `<p style="margin:0 0 8px">Dear ${escaped(doc.customerSnapshot.name)},</p><p style="margin:0">${escaped(summary)}${thanks ? ` ${escaped(thanks)}` : ''}</p>${reference ? `<p style="margin:8px 0 0;color:${MUTED}">${escaped(reference)}</p>` : ''}${figures.html}${action.html}${attachedNote(doc)}${bank.html}`,
-        }),
-        text: [
-          title,
-          '',
-          `Dear ${doc.customerSnapshot.name},`,
-          `${summary}${thanks ? ` ${thanks}` : ''}`,
-          reference,
-          '',
-          figures.text,
-          '',
-          action.text,
-          ATTACHED(doc),
-          '',
-          bank.text,
-          '',
-          textFooter(brand),
-        ]
-          .join('\n')
-          .replace(/\n{3,}/g, '\n\n'),
+        html: emailFrame({ title, preheader: subject, brand, body: email.html }),
+        text: email.text,
         document: doc,
       },
       input.eventKey,
       doc.id,
-      Boolean(input.paymentUrl && action.html),
+      Boolean(url),
       input.automatic,
     );
   }
@@ -990,7 +989,17 @@ export function createMailer(db, options = {}) {
         ))
     )
       throw new EmailQueueError('Password reset links require HTTPS.');
-    const title = 'Reset your Venturecore INV password';
+    const title = 'Reset your password';
+    const brand = brandOf(null);
+    const email = compose(brand, {
+      title,
+      name: input.name,
+      lines: [
+        'We received a request to reset your password. The button below is valid for 30 minutes and can be used once.',
+        'If you did not ask for this, you can ignore this email — your password stays the same.',
+      ],
+      buttons: [{ label: 'Reset password', href: url.href, primary: true }],
+    });
     return await enqueue(
       'password_reset',
       input.to,
@@ -999,10 +1008,10 @@ export function createMailer(db, options = {}) {
         html: emailFrame({
           title,
           preheader: 'Choose a new password within 30 minutes.',
-          brand: brandOf(null),
-          body: `<p style="margin:0 0 8px">Hello ${escaped(input.name)},</p><p style="margin:0">Use the button below to choose a new password. The link is valid for 30 minutes and can be used once.</p><table role="presentation" cellpadding="0" cellspacing="0" style="margin:22px 0"><tr><td style="background:#0e4d64;border-radius:8px"><a href="${escaped(url.href)}" style="display:inline-block;padding:13px 24px;color:#ffffff;text-decoration:none;font-weight:bold">Reset password</a></td></tr></table><p style="margin:0 0 16px;color:${MUTED}">If you did not ask for this, you can ignore this email; your password stays the same.</p>`,
+          brand,
+          body: email.html,
         }),
-        text: `${title}\n\nHello ${input.name},\nUse this single-use link within 30 minutes: ${url.href}\nIf you did not request this, you can ignore this email.\nSupport: support@pirento.com`,
+        text: email.text,
         expiresAt: new Date(now().getTime() + 30 * 60_000).toISOString(),
       },
       input.eventKey,
