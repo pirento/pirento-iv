@@ -3,6 +3,7 @@
  * workspace settings and the default business products. Never overwrites later user edits.
  */
 
+import { readFile } from 'node:fs/promises';
 import { COMPANY_NAME } from '../../shared/types.js';
 import { presetFormatsFor } from '../../shared/template-presets.js';
 import { billingProfileFor, ECOSYSTEM_PRODUCT_NAMES } from '../../shared/billing-presets.js';
@@ -129,4 +130,33 @@ export async function migrateFormatsToTeal(context) {
     { upsert: true },
   );
   return result.modifiedCount;
+}
+
+// Logos and brand colours of the group's businesses (public/images/brands/<id>.png): the colour is
+// the business's accent (email headings and buttons), brandAccent the stripe at the top of its emails.
+export const BRANDS = {
+  'at-elevators': { accentColor: '#172b4d', brandAccent: '#1e88e5' },
+  'ingenio-space': { accentColor: '#111111', brandAccent: '#f26a1b' },
+  'shri-sarraf': { accentColor: '#3b0a1f', brandAccent: '#c4864a' },
+  'pipeline2-legal': { accentColor: '#11223a', brandAccent: '#1f88fe' },
+};
+
+/** One-time update: gives these businesses their logo and colours; later edits in Business settings stay. */
+export async function applyBrandLogos(context) {
+  const marker = { _id: 'brand-logos-v1' };
+  const metadata = context.collection('workspace_metadata');
+  if (await metadata.findOne(marker)) return 0;
+  let updated = 0;
+  for (const [id, colours] of Object.entries(BRANDS)) {
+    const logo = await readFile(new URL(`../../public/images/brands/${id}.png`, import.meta.url));
+    const result = await context
+      .collection('organizations')
+      .updateOne(
+        { id },
+        { $set: { ...colours, logoUrl: `data:image/png;base64,${logo.toString('base64')}` } },
+      );
+    updated += result.modifiedCount;
+  }
+  await metadata.updateOne(marker, { $setOnInsert: { completedAt: new Date(), updated } }, { upsert: true });
+  return updated;
 }

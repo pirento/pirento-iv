@@ -207,10 +207,13 @@ test(
     assert.equal(message.to, 'buyer@example.test');
     assert.equal(message.attachments[0].content.subarray(0, 4).toString(), '%PDF');
     // The email carries the business's look and details, in HTML and text.
-    assert.match(message.html, /background:#0e4d64/);
+    assert.match(message.html, /background:#1e88e5/, 'the A T Elevator stripe');
+    assert.match(message.html, /color:#172b4d/, 'the A T Elevator colour');
+    assert.doesNotMatch(message.html, /Description/, 'items stay in the attached PDF');
     assert.match(message.html, /Balance due.*₹1,180\.00/s);
     assert.match(message.html, /mailto:accounts@elevator\.example/);
-    assert.match(message.text, /due by 15 Oct 2026|attached/);
+    assert.match(message.text, /Balance due: ₹1,180\.00\nInvoice: ATEI\/2627\/0001/);
+    assert.match(message.text, /The invoice is attached as a PDF\./);
     assert.match(message.text, /Questions\? Reply to this email or write to accounts@elevator\.example\./);
 
     // Its logo is served for email apps, which do not show images embedded in the message.
@@ -222,7 +225,12 @@ test(
     });
     const logo = await fetch(`${base}/brand/${organizationId}/logo`);
     assert.equal(logo.headers.get('content-type'), 'image/png');
-    assert.equal((await fetch(`${base}/brand/pipeline2-legal/logo`)).status, 404, 'no logo, no image');
+    assert.equal(logo.headers.get('cross-origin-resource-policy'), 'cross-origin', 'email apps may load it');
+    assert.equal(
+      (await fetch(`${base}/brand/pipeline2-legal/logo`)).headers.get('content-type'),
+      'image/png',
+    );
+    assert.equal((await fetch(`${base}/brand/no-such-business/logo`)).status, 404);
 
     // Removing a secret: SMTP without its password still sends (servers that need no login).
     const cleared = await call(`/integrations/${organizationId}/settings`, {

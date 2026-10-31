@@ -59,7 +59,8 @@ export function attachPageRoutes(backend) {
         organization?.logoUrl ?? '',
       );
       if (!image) return next();
-      res.set('Cache-Control', 'public, max-age=86400');
+      // Email apps load the logo from their own pages, so it must be loadable cross-origin.
+      res.set({ 'Cache-Control': 'public, max-age=86400', 'Cross-Origin-Resource-Policy': 'cross-origin' });
       res.type(image[1]).send(Buffer.from(image[2], 'base64'));
     } catch (error) {
       next(error);

@@ -115,7 +115,7 @@ test(
     const freshEmail = await backend.db.collection('email_outbox').findOne({ document_id: fresh.id });
     assert.ok(freshEmail.payload.html.includes(money(10.08)));
     assert.ok(!freshEmail.payload.html.includes(money(10.07)));
-    assert.ok(freshEmail.payload.text.includes(` | ${money(10.08)}`));
+    assert.ok(freshEmail.payload.text.includes(money(10.08)));
 
     async function legacyDocument(extra = {}) {
       const document = await api('/documents', 'POST', input(extra), 201);
@@ -145,7 +145,7 @@ test(
     const oldEmail = await backend.db.collection('email_outbox').findOne({ document_id: issued.id });
     assert.ok(oldEmail.payload.html.includes(money(10.07)));
     assert.ok(!oldEmail.payload.html.includes(money(10.08)));
-    assert.ok(oldEmail.payload.text.includes(` | ${money(10.07)}`));
+    assert.ok(oldEmail.payload.text.includes(money(10.07)));
     const updatedNotes = await api(`/documents/${issued.id}`, 'PUT', { ...issued, notes: 'A later note' });
     assert.deepEqual(updatedNotes.totals, legacyTotals);
     await api(

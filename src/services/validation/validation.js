@@ -121,6 +121,10 @@ export const organizationSchema = z
     businessType: z.enum(['division', 'independent']).optional(),
     supportEmail: email.optional(),
     financeEmail: email.optional(),
+    brandAccent: z
+      .string()
+      .regex(/^#[0-9a-fA-F]{6}$/, 'Use a six-digit hex color.')
+      .optional(),
     paymentGateway: z.enum(['razorpay', 'cashfree', 'none']).optional(),
     gstRegistrations: z
       .array(gstRegistrationSchema)
