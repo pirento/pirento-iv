@@ -1,0 +1,107 @@
+<%# Group finance /workspace/<id>/finance?year=YYYY (administrators and Accounts logins): one financial year across every business this login can open, downloads (Excel, PDF, invoice PDFs) and bank statement matching. Script: /js/workspace/finance.js. -%>
+<%
+const finance = data.finance;
+const amount = value => helpers.money(value || 0);
+const thisYear = Number(data.businessDate.slice(0, 4)) - (Number(data.businessDate.slice(5, 7)) < 4 ? 1 : 0);
+const gstPayable = finance.totals.gstOnSales - finance.totals.gstOnExpenses;
+%>
+<header class="page-header">
+  <div>
+    <span class="eyebrow">COMPANY</span>
+    <h1>Group finance</h1>
+    <p><%= data.workspaceSettings.companyName %> · <%= finance.label %> (April to March) · <%= finance.rows.length %> business(es). Download the year as Excel or PDF, every invoice PDF, or match a bank statement.</p>
+  </div>
+</header>
+<section class="card">
+  <form class="finance-filters" method="get" action="<%= helpers.url(data, 'finance') %>">
+    <label class="field">
+      Financial year
+      <select name="year">
+        <% for (let year = thisYear; year >= thisYear - 5; year -= 1) { %>
+          <option value="<%= year %>" <%= finance.year === year ? 'selected' : '' %>>FY <%= year %>-<%= String(year + 1).slice(2) %></option>
+        <% } %>
+      </select>
+    </label>
+    <button class="button" type="submit">Show year</button>
+  </form>
+  <div class="metrics-grid finance-metrics">
+    <% for (const [label, value, hint] of [
+      ['Sales', amount(finance.totals.sales), `${amount(finance.totals.salesWithGst)} with GST`],
+      ['Money received', amount(finance.totals.received), 'Receipts dated in the year'],
+      ['Outstanding today', amount(finance.totals.outstanding), `${amount(finance.totals.overdue)} overdue`],
+      ['Expenses', amount(finance.totals.expenses), 'Before GST'],
+      ['Profit', amount(finance.totals.profit), 'Sales minus expenses, before GST'],
+      ['GST payable (estimate)', amount(gstPayable), 'GST on sales minus input GST on expenses'],
+    ]) { %>
+      <section class="metric">
+        <div class="metric-label"><%= label %></div>
+        <div class="metric-value"><%= value %></div>
+        <div class="metric-hint"><%= hint %></div>
+      </section>
+    <% } %>
+  </div>
+</section>
+<section class="card">
+  <div class="finance-section-heading"><h2>Every business</h2></div>
+  <div tabindex="0" role="region" aria-label="Every business" class="table-wrap">
+    <table class="finance-table">
+      <thead>
+        <tr>
+          <th>Business</th>
+          <th class="text-right">Sales</th>
+          <th class="text-right">GST on sales</th>
+          <th class="text-right">Received</th>
+          <th class="text-right">Outstanding</th>
+          <th class="text-right">Expenses</th>
+          <th class="text-right">Input GST</th>
+          <th class="text-right">Profit</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% for (const row of finance.rows) { %>
+          <tr>
+            <td><a href="/workspace/<%= encodeURIComponent(row.id) %>/reports?year=<%= finance.year %>"><%= row.name %></a><% if (row.gstin) { %><small><%= row.gstin %></small><% } %></td>
+            <td class="text-right"><%= amount(row.sales) %></td>
+            <td class="text-right"><%= amount(row.gstOnSales) %></td>
+            <td class="text-right"><%= amount(row.received) %></td>
+            <td class="text-right"><%= amount(row.outstanding) %><% if (row.overdue > 0) { %><small><%= amount(row.overdue) %> overdue</small><% } %></td>
+            <td class="text-right"><%= amount(row.expenses) %></td>
+            <td class="text-right"><%= amount(row.gstOnExpenses) %></td>
+            <td class="text-right"><strong><%= amount(row.profit) %></strong></td>
+          </tr>
+        <% } %>
+      </tbody>
+      <tfoot>
+        <tr>
+          <th>Group total</th>
+          <% for (const key of ['sales', 'gstOnSales', 'received', 'outstanding', 'expenses', 'gstOnExpenses', 'profit']) { %><th class="text-right"><%= amount(finance.totals[key]) %></th><% } %>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</section>
+<section class="card">
+  <div class="finance-section-heading"><h2>Download</h2></div>
+  <form class="finance-filters" method="get" action="<%= helpers.url(data, 'finance') %>">
+    <input type="hidden" name="year" value="<%= finance.year %>" />
+    <label class="field">
+      Business
+      <select name="business">
+        <option value="">All businesses</option>
+        <% for (const row of finance.rows) { %><option value="<%= row.id %>"><%= row.name %></option><% } %>
+      </select>
+    </label>
+    <button class="button button-primary" type="submit" name="download" value="xlsx">Excel workbook</button>
+    <button class="button" type="submit" name="download" value="pdf">PDF summary</button>
+    <button class="button" type="submit" name="download" value="zip">All invoice PDFs (ZIP)</button>
+  </form>
+  <p class="finance-basis">The Excel workbook has Summary, Invoices, Payment Ledger (date, document, party, GSTIN, mode, bank reference, amount with taxable value and CGST/SGST/IGST), Expenses and GSTR-1 B2B sheets. The ZIP holds every issued invoice as PDF (up to 300) with the workbook.</p>
+</section>
+<section class="card">
+  <div class="finance-section-heading"><h2>Match a bank statement</h2></div>
+  <p class="finance-basis">Download the statement from your bank as CSV or Excel (.xlsx) and choose it here. Credits are matched with receipts and debits with paid expenses of <%= finance.label %> (same amount, up to 3 days apart; a reference in the narration wins). The file is read on this computer and is not uploaded.</p>
+  <label class="field">Bank statement (CSV or .xlsx)<input type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" data-bank-file /></label>
+  <div class="alert alert-error" data-bank-error hidden role="alert"></div>
+  <div data-bank-result aria-live="polite"></div>
+</section>
+<script type="module" src="/js/workspace/finance.js"></script>

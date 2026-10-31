@@ -4,7 +4,7 @@
  * Administrators can use everything. Staff accounts may only touch the businesses
  * assigned to them: this checks organizationId in the query/body, and for URLs like
  * /api/<resource>/<id> it looks up which business owns that record. Staff permission
- * 'view' cannot change anything; 'no-delete' cannot delete, void receipts or cancel documents or credit notes.
+ * 'view' and 'accounts' cannot change anything; 'no-delete' cannot delete, void receipts or cancel documents or credit notes.
  */
 
 /**
@@ -24,7 +24,7 @@ export function createAccessGuard(db) {
       next();
       return;
     }
-    if (!['GET', 'HEAD'].includes(req.method) && user.permission === 'view') {
+    if (!['GET', 'HEAD'].includes(req.method) && ['view', 'accounts'].includes(user.permission)) {
       res.status(403).json({
         error: 'Your account can view records but not change them. Ask an administrator for edit access.',
       });

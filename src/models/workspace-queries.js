@@ -213,9 +213,12 @@ export function createWorkspaceQueries(db) {
           ...options(),
           projection: {
             _id: 0,
+            id: 1,
             number: 1,
             status: 1,
             issueDate: 1,
+            amountPaid: 1,
+            balanceDue: 1,
             placeOfSupply: 1,
             discountPercent: 1,
             items: 1,
@@ -377,5 +380,68 @@ export function createWorkspaceQueries(db) {
     };
   }
 
-  return { documentPage, documentExport, overview, gstr1Invoices, reportData, stockLevels };
+  /**
+   * Group finance rows for one business and date range: issued and cancelled invoices (as for GSTR-1)
+   * and non-voided receipts (not credit notes) with the invoice each one paid.
+   */
+  async function financeRows(organizationId, range) {
+    const [invoices, receipts] = await Promise.all([
+      gstr1Invoices(organizationId, range),
+      db
+        .collection('payments')
+        .find(
+          {
+            $or: [{ organizationId }, { organizationId: null }],
+            voidedAt: null,
+            creditNoteId: null,
+            paidOn: { $gte: range.from, $lt: range.to },
+          },
+          {
+            ...options(),
+            projection: {
+              _id: 0,
+              id: 1,
+              documentId: 1,
+              amount: 1,
+              paidOn: 1,
+              method: 1,
+              reference: 1,
+              notes: 1,
+            },
+          },
+        )
+        .sort({ paidOn: 1, _id: 1 })
+        .toArray(),
+    ]);
+    // Receipts count only when their invoice is in this business (older receipts lack organizationId).
+    const paid = await db
+      .collection('documents')
+      .find(
+        { organizationId, id: { $in: [...new Set(receipts.map((row) => row.documentId))] } },
+        {
+          ...options(),
+          projection: {
+            _id: 0,
+            id: 1,
+            number: 1,
+            title: 1,
+            placeOfSupply: 1,
+            totals: 1,
+            'customerSnapshot.name': 1,
+            'customerSnapshot.gstin': 1,
+            'organizationSnapshot.stateCode': 1,
+          },
+        },
+      )
+      .toArray();
+    const byId = new Map(paid.map((document) => [document.id, document]));
+    return {
+      invoices,
+      payments: receipts
+        .filter((row) => byId.has(row.documentId))
+        .map((row) => ({ ...row, document: byId.get(row.documentId) })),
+    };
+  }
+
+  return { documentPage, documentExport, overview, gstr1Invoices, reportData, stockLevels, financeRows };
 }

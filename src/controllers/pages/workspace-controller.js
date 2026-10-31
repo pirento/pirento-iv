@@ -15,6 +15,7 @@ import { pipeline } from 'node:stream/promises';
 // Browser tab / page heading for each workspace view.
 const titles = {
   overview: 'Overview',
+  finance: 'Group finance',
   invoices: 'Invoices',
   quotations: 'Quotations',
   proformas: 'Proforma invoices',
@@ -80,6 +81,7 @@ const pageStylesheets = {
   'reports/index': ['receivables'],
   'stock/index': ['receivables'],
   'letterhead/index': ['receivables'],
+  'finance/index': ['receivables'],
   'ledger/statement': ['receivables'],
   'reminders/index': ['receivables'],
   'recurring/index': ['recurring'],
@@ -189,6 +191,17 @@ export function createPageController(backend) {
     }
     let data;
     try {
+      if (route.view === 'finance' && ['xlsx', 'pdf', 'zip'].includes(req.query.download)) {
+        const file = await app.locals.financeExport(user, route.organizationId, {
+          ...route,
+          query: req.query,
+        });
+        res.set('Cache-Control', 'no-store');
+        res.attachment(file.filename);
+        res.type(file.type);
+        res.send(file.body);
+        return;
+      }
       if (
         ((documentKinds[route.view] && !route.action) ||
           ['ledger', 'gst_returns', 'expenses'].includes(route.view)) &&
@@ -259,6 +272,7 @@ export function createPageController(backend) {
         reports: 'reports/index',
         stock: 'stock/index',
         letterhead: 'letterhead/index',
+        finance: 'finance/index',
         e_invoice: 'einvoice/index',
         reminders: 'reminders/index',
         recurring: 'recurring/index',

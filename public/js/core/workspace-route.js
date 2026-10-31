@@ -6,6 +6,7 @@
 // Every valid <view> in a workspace URL.
 export const WORKSPACE_VIEWS = [
   'overview',
+  'finance',
   'invoices',
   'quotations',
   'proformas',

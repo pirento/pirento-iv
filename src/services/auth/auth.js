@@ -55,13 +55,25 @@ const twoStepInput = z
   .object({ code: z.string().regex(/^\d{6}$/, 'Enter the 6-digit code from your authenticator app.') })
   .strict();
 // Staff permission levels (administrators always have full access); a missing value means 'full'.
-export const STAFF_PERMISSIONS = ['full', 'no-delete', 'view'];
+// 'accounts' is view-only too, and also opens Group finance for the businesses assigned.
+export const STAFF_PERMISSIONS = ['full', 'no-delete', 'view', 'accounts'];
 const access = z
   .object({
     role: z.enum(['admin', 'staff']),
     status: z.enum(['pending', 'active', 'disabled']),
     organizationIds: z.array(z.string().min(1).max(120)).max(1000),
     permission: z.enum(STAFF_PERMISSIONS).optional(),
+  })
+  .strict();
+// A login an administrator creates directly (active at once; the administrator shares the password).
+const newAccount = z
+  .object({
+    name: z.string().trim().min(2).max(120),
+    email,
+    password,
+    role: z.enum(['admin', 'staff']),
+    organizationIds: z.array(z.string().min(1).max(120)).max(1000),
+    permission: z.enum(STAFF_PERMISSIONS).default('full'),
   })
   .strict();
 const tokenHash = (value) => createHash('sha256').update(value).digest('hex');
@@ -483,6 +495,42 @@ export function createAuth(db, options = {}) {
   router.get('/users', requireSession, requireAdmin, async (_req, res) => {
     const rows = await db.models.auth.listUsers();
     res.json(rows.map(safeUser));
+  });
+  router.post('/users', requireSession, requireAdmin, async (req, res) => {
+    const input = newAccount.safeParse(req.body);
+    if (!input.success) return res.status(400).json({ error: input.error.issues[0].message });
+    const { name, role, password: initialPassword } = input.data;
+    const address = input.data.email;
+    const organizationIds = [...new Set(input.data.organizationIds)];
+    if (role === 'staff' && organizationIds.length === 0)
+      return res.status(400).json({ error: 'Assign at least one organization to a staff login.' });
+    for (const id of organizationIds)
+      if (!(await db.models.organizations.findById(id)))
+        return res.status(400).json({ error: 'One or more organizations no longer exist.' });
+    const hash = await hashPassword(initialPassword);
+    const id = randomUUID();
+    const permission = role === 'admin' ? 'full' : input.data.permission;
+    const created = await db.transaction(async () => {
+      if (await userByEmail(address)) return false;
+      const timestamp = new Date(now()).toISOString();
+      await db.models.auth.insertUser(
+        id,
+        name,
+        address,
+        '',
+        hash,
+        role,
+        'active',
+        organizationIds,
+        timestamp,
+        timestamp,
+      );
+      await db.models.auth.updateAccess(role, 'active', organizationIds, permission, timestamp, id);
+      await audit('account-created', id, res.locals.user.id, { role, organizationIds, permission });
+      return true;
+    });
+    if (!created) return res.status(409).json({ error: 'A login with this email already exists.' });
+    res.status(201).json(safeUser(await userById(id)));
   });
   router.patch('/users/:id', requireSession, requireAdmin, async (req, res) => {
     const input = access.safeParse(req.body);

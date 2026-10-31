@@ -1,6 +1,7 @@
 /** Browser tests (`npm run test:browser`): real sign-in, navigation, contacts/catalog, invoices, drafts and payments in Chromium. */
 
 import { readFile } from 'node:fs/promises';
+import { xlsx } from '../../src/services/exports/xlsx.js';
 import {
   test,
   expect,
@@ -572,4 +573,70 @@ test('a letterhead uploaded for a business is used for new documents and can be 
     await page.screenshot({ path: `${process.env.SHOTS}/letterhead-preview.png`, fullPage: true });
   const saved = await app.backend.db.collection('documents').findOne({ customerId: customer.id });
   expect(saved.letterhead.top).toBe(40);
+});
+
+test('an administrator creates a login, and Group finance matches a bank statement', async ({
+  page,
+  app,
+}) => {
+  await signIn(page, app);
+  await page.goto(workspace(app, 'team'));
+  const create = page.locator('[data-create-login]');
+  await create.locator('summary').click();
+  const form = create.locator('[data-create-form]');
+  await form.locator('[name="name"]').fill('Group Accountant');
+  await form.locator('[name="email"]').fill('accounts@example.test');
+  await form.getByRole('button', { name: 'Generate' }).click();
+  await expect(form.locator('[name="password"]')).toHaveValue(/^[A-Za-z0-9]{16}$/);
+  await form.locator('[name="permission"]').selectOption('accounts');
+  await form.locator(`[name="organizationIds"][value="${app.organizationId}"]`).check();
+  await form.getByRole('button', { name: 'Create login' }).click();
+  await expect(page.locator('[data-notice]')).toContainText('Login created for Group Accountant');
+  const saved = await app.backend.db.collection('auth_users').findOne({ email: 'accounts@example.test' });
+  expect([saved.status, saved.permission]).toEqual(['active', 'accounts']);
+
+  const customer = await api(page, app, '/customers', 'POST', customerInput(app.organizationId));
+  const invoice = await api(
+    page,
+    app,
+    '/documents',
+    'POST',
+    invoiceInput(app.organizationId, customer.id, { status: 'sent' }),
+  );
+  const today = invoice.issueDate;
+  await api(page, app, `/documents/${invoice.id}/payments`, 'POST', {
+    amount: 100,
+    paidOn: today,
+    method: 'upi',
+    reference: 'UPI123456',
+    notes: '',
+    requestId: 'bank-match',
+  });
+  await page.goto(workspace(app, 'finance'));
+  await expect(page.getByRole('heading', { name: 'Group finance', level: 1 })).toBeVisible();
+  const [year, month, day] = today.split('-');
+  await page.locator('[data-bank-file]').setInputFiles({
+    name: 'statement.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from(
+      `Date,Narration,Chq./Ref.No.,Value Dt,Withdrawal Amt.,Deposit Amt.,Closing Balance\n${day}/${month}/${year},UPI-CUSTOMER,UPI123456,${day}/${month}/${year},,100.00,100.00\n${day}/${month}/${year},CHARGES,,${day}/${month}/${year},5.90,,94.10\n`,
+    ),
+  });
+  const result = page.locator('[data-bank-result]');
+  await expect(result).toContainText('1 matched · 1 only in the bank · 0 only in the books');
+  await expect(result.locator('tbody tr').first()).toContainText(invoice.number);
+  await page.locator('[data-bank-file]').setInputFiles({
+    name: 'statement.xlsx',
+    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    buffer: xlsx([
+      {
+        name: 'Statement',
+        rows: [
+          ['Txn Date', 'Description', 'Ref No', 'Debit', 'Credit'],
+          [`${day}-${month}-${year}`, 'UPI CUSTOMER', 'UPI123456', '', 100],
+        ],
+      },
+    ]),
+  });
+  await expect(result).toContainText('1 matched · 0 only in the bank · 0 only in the books');
 });

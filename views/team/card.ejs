@@ -37,7 +37,7 @@ const date = value => value ? new Intl.DateTimeFormat('en-IN', { year:'numeric',
         </select></label
       ><label class="mg-field" data-permission-field <%= member.role === 'admin' ? 'hidden' : '' %>
         >Staff permission<select name="permission">
-          <% for (const [key,label] of [['full','Full — create, edit and delete'],['no-delete','Edit — cannot delete, void or cancel'],['view','View only — cannot change anything']]) { %>
+          <% for (const [key,label] of [['full','Full — create, edit and delete'],['no-delete','Edit — cannot delete, void or cancel'],['view','View only — cannot change anything'],['accounts','Accounts — view, Group finance and downloads']]) { %>
           <option value="<%= key %>" <%= (member.permission || 'full') === key ? 'selected' : '' %>><%= label %></option>
           <% } %>
         </select></label

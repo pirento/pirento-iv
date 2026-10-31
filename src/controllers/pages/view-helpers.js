@@ -163,6 +163,9 @@ function navigation(data) {
       ],
     },
   ];
+  // Group finance: administrators and Accounts logins.
+  if (data.user.role === 'admin' || data.user.permission === 'accounts')
+    groups.unshift({ label: 'Company', items: [{ view: 'finance', label: 'Group finance', icon: 'chart' }] });
   if (data.user.role === 'admin')
     groups.push({
       label: 'Administration',

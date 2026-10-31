@@ -18,6 +18,9 @@ import { buildGstr1, gstr1Csv, GSTR1_SECTIONS, monthRange, readGstr1Filters } fr
 import { expenseCsv, expenseTotals, readExpenseMonth } from '../expenses/expenses.js';
 import { buildReport, financialYearRange, readReportYear } from './reports.js';
 import { einvoiceProblems } from '../documents/einvoice.js';
+import { businessSummary, financePdf, financeWorkbook, groupTotals } from './finance.js';
+import { renderInvoiceAttachment, renderPdfBuffer } from '../documents/invoice-pdf.js';
+import { xlsx, zip } from '../exports/xlsx.js';
 import { CREDIT_NOTE_REASONS, DEBIT_NOTE_REASONS, EXPENSE_CATEGORIES } from '../validation/validation.js';
 import { safeWorkspaceReturn } from '../../../public/js/core/workspace-route.js';
 
@@ -63,6 +66,25 @@ export function createWorkspacePageData({
       businessProducts: [],
       documents: [],
     };
+  }
+
+  // Group finance is for administrators and Accounts logins, across the businesses they can open.
+  const financeAllowed = (user) => !auth || user.role === 'admin' || user.permission === 'accounts';
+  async function financeData(organizations, query, businessDate) {
+    const year = readReportYear(query, businessDate);
+    const range = financialYearRange(year);
+    const businesses = await Promise.all(
+      organizations.map(async (organization) => {
+        const [rows, expenses, detail] = await Promise.all([
+          queries.reportData(organization.id, range),
+          db.models.expenses.listBetween(organization.id, range),
+          queries.financeRows(organization.id, range),
+        ]);
+        const report = buildReport({ ...rows, expenses, year, asOf: businessDate });
+        return { summary: businessSummary(organization, report, expenses), detail, expenses };
+      }),
+    );
+    return { year, label: `FY ${year}-${String(year + 1).slice(2)}`, businesses };
   }
 
   // Full page data for a route ({ view, action, id, query }) - one branch per workspace view.
@@ -173,6 +195,38 @@ export function createWorkspacePageData({
     if (route?.view === 'credit_notes')
       read('creditNotePage', () => creditNotePage(organizationId, route, result.businessDate));
     if (route?.view === 'stock') read('stockPage', () => queries.stockLevels(organizationId));
+    if (route?.view === 'finance') {
+      if (!financeAllowed(user))
+        throw new HttpError(403, 'Group finance is for administrators and Accounts logins.');
+      read('finance', async () => {
+        const finance = await financeData(result.organizations, route.query, result.businessDate);
+        const rows = finance.businesses.map((business) => business.summary);
+        // shortcut: every receipt and paid bill of the year goes into the page for bank matching; page by month if a year grows large.
+        const bank = {
+          receipts: finance.businesses.flatMap(({ summary, detail }) =>
+            detail.payments.map((payment) => ({
+              date: payment.paidOn,
+              amount: payment.amount,
+              reference: payment.reference ?? '',
+              label: `${payment.document.number} · ${payment.document.customerSnapshot?.name ?? ''}`,
+              business: summary.name,
+            })),
+          ),
+          payments: finance.businesses.flatMap(({ summary, expenses }) =>
+            expenses
+              .filter((row) => row.paidOn)
+              .map((row) => ({
+                date: row.paidOn,
+                amount: row.total,
+                reference: row.billNumber ?? '',
+                label: `${row.vendorName}${row.billNumber ? ` · ${row.billNumber}` : ''}`,
+                business: summary.name,
+              })),
+          ),
+        };
+        return { year: finance.year, label: finance.label, rows, totals: groupTotals(rows), bank };
+      });
+    }
     if (route?.view === 'e_invoice')
       read('einvoicePage', async () => {
         const doc = await db.models.documents.findById(route.id);
@@ -409,5 +463,59 @@ export function createWorkspacePageData({
     };
   }
 
-  return { load, exportDocuments, exportGstr1, exportExpenses };
+  // Group finance downloads: ?download=xlsx | pdf | zip (invoice PDFs and the workbook), &business=<id> for one.
+  async function exportFinance(user, organizationId, route) {
+    const data = await base(user, organizationId);
+    if (!financeAllowed(user))
+      throw new HttpError(403, 'Group finance is for administrators and Accounts logins.');
+    const business = typeof route.query.business === 'string' ? route.query.business : '';
+    const organizations = business
+      ? data.organizations.filter((organization) => organization.id === business)
+      : data.organizations;
+    if (!organizations.length) throw new HttpError(404, 'Business not found.');
+    const finance = await financeData(organizations, route.query, data.businessDate);
+    const name = `${business ? organizations[0].name.replace(/[^a-z0-9]+/gi, '-') : 'Group'}-finance-${finance.label.replace(/\W+/g, '')}`;
+    const workbook = () => xlsx(financeWorkbook(finance.label, finance.businesses));
+    const format = String(route.query.download);
+    if (format === 'xlsx')
+      return {
+        filename: `${name}.xlsx`,
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        body: workbook(),
+      };
+    if (format === 'pdf')
+      return {
+        filename: `${name}.pdf`,
+        type: 'application/pdf',
+        body: await renderPdfBuffer(
+          financePdf(
+            finance.label,
+            finance.businesses.map((row) => row.summary),
+            data.businessDate,
+          ),
+        ),
+      };
+    if (format === 'zip') {
+      // shortcut: at most 300 invoice PDFs per download, rendered one by one; choose one business for more.
+      const issued = finance.businesses
+        .flatMap(({ summary, detail }) =>
+          detail.invoices
+            .filter((doc) => doc.status !== 'cancelled')
+            .map((doc) => ({ business: summary.name, id: doc.id })),
+        )
+        .slice(0, 300);
+      const entries = [{ name: `${name}.xlsx`, data: workbook() }];
+      for (const item of issued) {
+        const pdf = await renderInvoiceAttachment(await db.models.documents.findById(item.id));
+        entries.push({
+          name: `${item.business.replace(/[^a-z0-9]+/gi, '-')}/${pdf.filename}`,
+          data: Buffer.from(pdf.content, 'base64'),
+        });
+      }
+      return { filename: `${name}.zip`, type: 'application/zip', body: zip(entries) };
+    }
+    throw new HttpError(404, 'Choose an Excel, PDF or ZIP download.');
+  }
+
+  return { load, exportDocuments, exportGstr1, exportExpenses, exportFinance };
 }

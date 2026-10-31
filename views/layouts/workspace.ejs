@@ -89,7 +89,7 @@
       <%- include('../partials/preview-notice') %>
       <main id="main-content" class="page-content" tabindex="-1">
         <div class="alert alert-error" data-page-error hidden role="alert"></div>
-        <% if (data.user.role !== 'admin' && data.user.permission === 'view') { %>
+        <% if (data.user.role !== 'admin' && ['view', 'accounts'].includes(data.user.permission)) { %>
         <p class="alert alert-info" role="status">View-only access: you can open and download records, but your account cannot change them.</p>
         <% } %>
         <%- include('../' + bodyView, { data, helpers }) %>

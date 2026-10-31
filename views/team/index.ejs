@@ -31,6 +31,47 @@ const placeholder = {id:'',name:'',email:'',company:'',status:'pending',role:'st
   </div>
   <div data-notice class="mg-message success" role="status" hidden></div>
   <div data-error class="mg-message error" role="alert" tabindex="-1" hidden></div>
+  <details class="mg-card mg-create-login" data-create-login>
+    <summary><strong>+ Create a login</strong> <span class="mg-note">for staff, sub-staff or Accounts — active at once, no approval step</span></summary>
+    <form class="mg-form-grid" data-create-form autocomplete="off">
+      <div data-error class="mg-message error" role="alert" tabindex="-1" hidden></div>
+      <label class="mg-field">Full name<input name="name" minlength="2" maxlength="120" required /></label>
+      <label class="mg-field">Login email<input name="email" type="email" maxlength="254" required /></label>
+      <label class="mg-field"
+        >Password (share it with the person)<span class="mg-inline"
+          ><input name="password" type="text" minlength="12" maxlength="256" required data-new-password /><button
+            type="button"
+            class="button secondary"
+            data-generate-password
+          >
+            Generate
+          </button></span
+        ></label
+      >
+      <label class="mg-field"
+        >Workspace role<select name="role">
+          <option value="staff">Staff — assigned organizations</option>
+          <option value="admin">Administrator — full workspace</option>
+        </select></label
+      >
+      <label class="mg-field" data-permission-field
+        >Access level<select name="permission">
+          <% for (const [key,label] of [['full','Full — create, edit and delete'],['no-delete','Edit — cannot delete, void or cancel'],['view','View only — cannot change anything'],['accounts','Accounts — view, Group finance and downloads']]) { %>
+          <option value="<%= key %>"><%= label %></option>
+          <% } %>
+        </select></label
+      >
+      <fieldset class="mg-fieldset" data-organization-options>
+        <legend>Organizations this person can access</legend>
+        <div class="mg-org-options">
+          <% for (const organization of data.organizations || []) { %><label class="mg-checkbox"
+            ><input name="organizationIds" type="checkbox" value="<%= organization.id %>" /><span><%= organization.name %></span></label
+          ><% } %>
+        </div>
+      </fieldset>
+      <div class="form-actions"><button type="submit" class="button button-primary">Create login</button></div>
+    </form>
+  </details>
   <div class="mg-toolbar">
     <label class="mg-search"
       ><span class="mg-sr-only">Search team members</span

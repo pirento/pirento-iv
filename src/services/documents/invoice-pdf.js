@@ -81,15 +81,24 @@ export async function renderInvoiceAttachment(doc) {
       color: '#66736a',
       margin: [0, 8, 0, 0],
     });
+  const buffer = await renderPdfBuffer(definition, 'The invoice PDF is too large to email.');
+  return {
+    filename: pdfFileName(doc),
+    content: buffer.toString('base64'),
+  };
+}
+
+/** Renders a pdfmake definition to a Buffer, stopping above 15 MB with `tooLarge` as the error. */
+export async function renderPdfBuffer(definition, tooLarge = 'The PDF is too large.') {
   const stream = await pdfmake.createPdf(definition).getStream();
-  const buffer = await new Promise((resolve, reject) => {
+  return await new Promise((resolve, reject) => {
     try {
       const chunks = [];
       let size = 0;
       stream.on('data', (chunk) => {
         size += chunk.length;
         if (size > 15 * 1024 * 1024) {
-          stream.destroy(new Error('The invoice PDF is too large to email.'));
+          stream.destroy(new Error(tooLarge));
           return;
         }
         chunks.push(Buffer.from(chunk));
@@ -101,8 +110,4 @@ export async function renderInvoiceAttachment(doc) {
       reject(error);
     }
   });
-  return {
-    filename: pdfFileName(doc),
-    content: buffer.toString('base64'),
-  };
 }

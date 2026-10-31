@@ -1798,3 +1798,37 @@
 .mg-page .fmt-sample {
   overflow-wrap: anywhere;
 }
+
+/* --- Team access: create a login --- */
+.mg-create-login {
+  margin-bottom: 16px;
+}
+.mg-create-login > summary {
+  cursor: pointer;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: baseline;
+}
+.mg-create-login form {
+  margin-top: 14px;
+}
+.mg-create-login .mg-fieldset,
+.mg-create-login .form-actions,
+.mg-create-login [data-error] {
+  grid-column: 1 / -1;
+}
+.mg-inline {
+  display: flex;
+  gap: 8px;
+}
+.mg-inline input {
+  flex: 1;
+  min-width: 0;
+}
+.mg-create-login > summary .mg-note {
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
