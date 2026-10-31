@@ -2,7 +2,8 @@
 # Production should use an authenticated MongoDB replica set or Atlas cluster.
 services:
   mongodb:
-    image: mongo:8.0
+    # Pinned: a floating tag changed under CI and its container stopped starting.
+    image: mongo:8.0.12
     command: ['mongod', '--replSet', 'rs0', '--bind_ip_all']
     ports:
       - '127.0.0.1:27017:27017'
