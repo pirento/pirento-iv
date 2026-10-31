@@ -28,6 +28,9 @@ jobs:
         run: npm run verify:release
         env:
           MONGODB_TEST_URI: mongodb://127.0.0.1:27017/?replicaSet=rs0
+      - name: Show database logs
+        if: failure()
+        run: docker compose logs --no-color mongodb | tail -n 80
       - name: Preserve failure diagnostics
         if: failure()
         uses: actions/upload-artifact@v5

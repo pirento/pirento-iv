@@ -1,0 +1,150 @@
+<%# Finance dashboard /workspace/<id>/finance?year=YYYY (administrators and Finance logins): one financial year across every business this login can open: totals, invoice/receipt/expense registers, downloads (Excel, PDF, invoice PDFs) and bank statement matching (AI reading when set up). Script: /js/workspace/finance.js. -%>
+<%
+const finance = data.finance;
+const amount = value => helpers.money(value || 0);
+const thisYear = Number(data.businessDate.slice(0, 4)) - (Number(data.businessDate.slice(5, 7)) < 4 ? 1 : 0);
+const gstPayable = finance.totals.gstOnSales - finance.totals.gstOnExpenses;
+%>
+<header class="page-header">
+  <div>
+    <span class="eyebrow">FINANCE</span>
+    <h1>Finance dashboard</h1>
+    <p><%= data.workspaceSettings.companyName %> · <%= finance.label %> (April to March) · <%= finance.rows.length %> business(es). Every invoice, receipt and expense, downloads in Excel or PDF, and bank statement matching.</p>
+  </div>
+</header>
+<section class="card">
+  <form class="finance-filters" method="get" action="<%= helpers.url(data, 'finance') %>">
+    <label class="field">
+      Financial year
+      <select name="year">
+        <% for (let year = thisYear; year >= thisYear - 5; year -= 1) { %>
+          <option value="<%= year %>" <%= finance.year === year ? 'selected' : '' %>>FY <%= year %>-<%= String(year + 1).slice(2) %></option>
+        <% } %>
+      </select>
+    </label>
+    <button class="button" type="submit">Show year</button>
+  </form>
+  <div class="metrics-grid finance-metrics">
+    <% for (const [label, value, hint] of [
+      ['Sales', amount(finance.totals.sales), `${amount(finance.totals.salesWithGst)} with GST`],
+      ['Money received', amount(finance.totals.received), 'Receipts dated in the year'],
+      ['Outstanding today', amount(finance.totals.outstanding), `${amount(finance.totals.overdue)} overdue`],
+      ['Expenses', amount(finance.totals.expenses), 'Before GST'],
+      ['Profit', amount(finance.totals.profit), 'Sales minus expenses, before GST'],
+      ['GST payable (estimate)', amount(gstPayable), 'GST on sales minus input GST on expenses'],
+    ]) { %>
+      <section class="metric">
+        <div class="metric-label"><%= label %></div>
+        <div class="metric-value"><%= value %></div>
+        <div class="metric-hint"><%= hint %></div>
+      </section>
+    <% } %>
+  </div>
+</section>
+<section class="card">
+  <div class="finance-section-heading"><h2>Every business</h2></div>
+  <div tabindex="0" role="region" aria-label="Every business" class="table-wrap">
+    <table class="finance-table">
+      <thead>
+        <tr>
+          <th>Business</th>
+          <th class="text-right">Sales</th>
+          <th class="text-right">GST on sales</th>
+          <th class="text-right">Received</th>
+          <th class="text-right">Outstanding</th>
+          <th class="text-right">Expenses</th>
+          <th class="text-right">Input GST</th>
+          <th class="text-right">Profit</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% for (const row of finance.rows) { %>
+          <tr>
+            <td><% if (data.user.role === 'admin') { %><a href="/workspace/<%= encodeURIComponent(row.id) %>/reports?year=<%= finance.year %>"><%= row.name %></a><% } else { %><%= row.name %><% } %><% if (row.gstin) { %><small><%= row.gstin %></small><% } %></td>
+            <td class="text-right"><%= amount(row.sales) %></td>
+            <td class="text-right"><%= amount(row.gstOnSales) %></td>
+            <td class="text-right"><%= amount(row.received) %></td>
+            <td class="text-right"><%= amount(row.outstanding) %><% if (row.overdue > 0) { %><small><%= amount(row.overdue) %> overdue</small><% } %></td>
+            <td class="text-right"><%= amount(row.expenses) %></td>
+            <td class="text-right"><%= amount(row.gstOnExpenses) %></td>
+            <td class="text-right"><strong><%= amount(row.profit) %></strong></td>
+          </tr>
+        <% } %>
+      </tbody>
+      <tfoot>
+        <tr>
+          <th>Group total</th>
+          <% for (const key of ['sales', 'gstOnSales', 'received', 'outstanding', 'expenses', 'gstOnExpenses', 'profit']) { %><th class="text-right"><%= amount(finance.totals[key]) %></th><% } %>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</section>
+<section class="card">
+  <div class="finance-section-heading"><h2>Registers</h2></div>
+  <% const registers = finance.registers; %>
+  <% for (const [key, title, columns] of [
+    ['invoices', `Invoices and debit notes (${registers.invoices.length})`, ['Date', 'Number', 'Business', 'Party', 'Total', 'Balance', 'Status']],
+    ['receipts', `Money received (${registers.receipts.length})`, ['Date', 'Invoice', 'Business', 'Party', 'Mode', 'Reference', 'Amount']],
+    ['expenses', `Expenses (${registers.expenses.length})`, ['Bill date', 'Bill no.', 'Business', 'Vendor', 'Category', 'Total', 'Paid on']],
+  ]) { %>
+    <details class="finance-register" data-register <%= key === 'invoices' ? 'open' : '' %>>
+      <summary><strong><%= title %></strong></summary>
+      <div class="finance-filters">
+        <label class="field">Search<input type="search" data-register-search placeholder="Number, party, business…" /></label>
+        <% if (key === 'invoices') { %><label class="checkbox"><input type="checkbox" data-register-unpaid /> Only with a balance</label><% } %>
+      </div>
+      <div tabindex="0" role="region" aria-label="<%= title %>" class="table-wrap">
+        <table class="finance-table">
+          <thead><tr><% for (const [index, column] of columns.entries()) { %><th class="<%= ['Total','Balance','Amount'].includes(column) ? 'text-right' : '' %>"><%= column %></th><% } %></tr></thead>
+          <tbody>
+            <% if (key === 'invoices') for (const row of registers.invoices) { %>
+              <tr data-balance="<%= row.balance ? 1 : 0 %>">
+                <td><%= helpers.displayDate(row.date) %></td>
+                <td><a href="/workspace/<%= encodeURIComponent(row.businessId) %>/invoices/preview/<%= encodeURIComponent(row.id) %>"><%= row.number %></a><% if (row.type !== 'Invoice') { %><small><%= row.type %></small><% } %></td>
+                <td><%= row.business %></td>
+                <td><%= row.party %></td>
+                <td class="text-right"><%= amount(row.total) %></td>
+                <td class="text-right"><%= amount(row.balance) %></td>
+                <td><%= row.status %></td>
+              </tr>
+            <% } %>
+            <% if (key === 'receipts') for (const row of registers.receipts) { %>
+              <tr><td><%= helpers.displayDate(row.date) %></td><td><%= row.number %></td><td><%= row.business %></td><td><%= row.party %></td><td><%= row.mode %></td><td><%= row.reference %></td><td class="text-right"><%= amount(row.amount) %></td></tr>
+            <% } %>
+            <% if (key === 'expenses') for (const row of registers.expenses) { %>
+              <tr><td><%= helpers.displayDate(row.date) %></td><td><%= row.billNumber %></td><td><%= row.business %></td><td><%= row.vendor %></td><td><%= row.category %></td><td class="text-right"><%= amount(row.total) %></td><td><%= row.paidOn ? helpers.displayDate(row.paidOn) : 'Unpaid' %></td></tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    </details>
+  <% } %>
+  <p class="finance-basis">Newest first; each register shows up to 500 rows. The Excel download has every row.</p>
+</section>
+<section class="card">
+  <div class="finance-section-heading"><h2>Download</h2></div>
+  <form class="finance-filters" method="get" action="<%= helpers.url(data, 'finance') %>">
+    <input type="hidden" name="year" value="<%= finance.year %>" />
+    <label class="field">
+      Business
+      <select name="business">
+        <option value="">All businesses</option>
+        <% for (const row of finance.rows) { %><option value="<%= row.id %>"><%= row.name %></option><% } %>
+      </select>
+    </label>
+    <button class="button button-primary" type="submit" name="download" value="xlsx">Excel workbook</button>
+    <button class="button" type="submit" name="download" value="pdf">PDF summary</button>
+    <button class="button" type="submit" name="download" value="zip">All invoice PDFs (ZIP)</button>
+  </form>
+  <p class="finance-basis">The Excel workbook has Summary, Invoices, Payment Ledger (date, document, party, GSTIN, mode, bank reference, amount with taxable value and CGST/SGST/IGST), Expenses and GSTR-1 B2B sheets. The ZIP holds every issued invoice as PDF (up to 300) with the workbook.</p>
+</section>
+<section class="card">
+  <div class="finance-section-heading"><h2>Match a bank statement</h2></div>
+  <p class="finance-basis">Choose the statement from your bank as CSV, Excel (.xlsx)<%= finance.ai.configured ? ' or PDF' : '' %>. Credits are matched with receipts and debits with paid expenses of <%= finance.label %> (same amount, up to 3 days apart; a reference in the narration wins). CSV and Excel files are read on this computer<%= finance.ai.configured ? '; PDFs and layouts it cannot read are sent to the AI assistant (OpenAI), which can also suggest matches for what is left' : '' %>.</p>
+  <label class="field">Bank statement<input type="file" accept=".csv,.xlsx,<%= finance.ai.configured ? '.pdf,application/pdf,' : '' %>text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" data-bank-file /></label>
+  <% if (finance.ai.configured) { %><label class="checkbox"><input type="checkbox" data-bank-ai /> Read the statement with AI</label><% } else if (data.user.role === 'admin') { %><p class="finance-basis">Add an OpenAI key in <a href="<%= helpers.url(data, 'integrations') %>#ai-settings">Payments &amp; email</a> to read PDF statements and get AI match suggestions.</p><% } %>
+  <div class="alert alert-error" data-bank-error hidden role="alert"></div>
+  <div data-bank-result aria-live="polite"></div>
+</section>
+<script type="module" src="/js/workspace/finance.js"></script>

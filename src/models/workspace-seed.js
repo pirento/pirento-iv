@@ -58,6 +58,7 @@ export async function initializeWorkspace(database) {
           businessType: id === 'shri-sarraf' ? 'independent' : 'division',
           paymentGateway: id === 'shri-sarraf' ? 'cashfree' : 'razorpay',
           supportEmail: id === 'shri-sarraf' ? 'support@shrisarraf.com' : 'support@pirento.com',
+          ...(id === 'shri-sarraf' ? {} : { financeEmail: 'finance@pirento.com' }),
           gstRegistrations: [],
           invoicePrefix,
           quotationPrefix,
@@ -109,4 +110,23 @@ export async function initializeWorkspace(database) {
       .collection('workspace_metadata')
       .insertOne({ _id: 'schema', version: 1, initializedAt: new Date() }, database.options());
   });
+}
+
+/**
+ * Once per database: every saved document format takes the workspace teal (#0e4d64). Issued
+ * documents keep the format snapshot they were saved with; colours chosen later are kept.
+ */
+export async function migrateFormatsToTeal(context) {
+  const marker = { _id: 'formats-teal-v1' };
+  const metadata = context.collection('workspace_metadata');
+  if (await metadata.findOne(marker)) return 0;
+  const result = await context
+    .collection('formats')
+    .updateMany({ accentColor: { $ne: '#0e4d64' } }, { $set: { accentColor: '#0e4d64' } });
+  await metadata.updateOne(
+    marker,
+    { $setOnInsert: { completedAt: new Date(), formats: result.modifiedCount } },
+    { upsert: true },
+  );
+  return result.modifiedCount;
 }

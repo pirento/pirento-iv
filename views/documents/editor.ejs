@@ -220,6 +220,10 @@ const baseUrl = `/workspace/${encodeURIComponent(org.id)}/${data.route.view}`;
                 </div>
                 <% } %>
               </div>
+              <div id="doc-customer-summary" class="doc-customer-summary" role="status" hidden>
+                <p data-summary-text></p>
+                <button type="button" class="doc-text-button" data-copy-last hidden></button>
+              </div>
             </div>
             <div class="doc-meta-fields">
               <label class="doc-field doc-wide"
@@ -298,6 +302,14 @@ const baseUrl = `/workspace/${encodeURIComponent(org.id)}/${data.route.view}`;
               <% } %>
             </select></label
           >
+          <% const onLetterhead = existing ? Boolean(existing.letterhead) : Boolean(data.letterhead?.defaultOn); %>
+          <label class="doc-field"
+            >Print on<select name="useLetterhead">
+              <option value="false">Plain page (header from the format)</option>
+              <option value="true" <%= onLetterhead?'selected':'' %> <%= data.letterhead||existing?.letterhead?'':'disabled' %>>Business letterhead</option>
+            </select></label
+          >
+          <% if(!data.letterhead&&!existing?.letterhead){ %><p class="doc-help">No letterhead yet. An administrator can upload one in Administration → Letterhead.</p><% } %>
           <p class="doc-help" id="doc-format-details">
             The chosen format is used for preview, print and PDF.
           </p>
@@ -363,10 +375,24 @@ const baseUrl = `/workspace/${encodeURIComponent(org.id)}/${data.route.view}`;
         <section class="doc-section">
           <h2 class="doc-section-heading">2. Items & services</h2>
           <p class="doc-help" id="doc-billing-hint"></p>
+          <datalist id="doc-unit-options">
+            <% t.CATALOG_UNITS.forEach(unit=>{ %>
+            <option value="<%= unit %>"></option>
+            <% }); %>
+          </datalist>
+          <datalist id="doc-gst-options">
+            <% [0, 0.25, 3, 5, 12, 18, 28, 40].forEach(rate=>{ %><option value="<%= rate %>"></option><% }); %>
+          </datalist>
+          <div id="doc-lines"><% (form.items||[{description:'',hsn:'',quantity:1,rate:0,gstRate:0,unit:'Nos'}]).forEach((line,index)=>{ %><%- include('line',{line,index,locked,isDelivery}) %><% }); %></div>
+          <p class="doc-field-error" data-error-for="items" hidden></p>
+          <button type="button" class="doc-add-item" data-action="add-line" <%= locked?'disabled':'' %>>
+            + Add line item
+          </button>
           <% if(!locked){ %>
-          <div class="doc-catalog-picker">
+          <details class="doc-catalog-picker" id="doc-catalog-panel">
+            <summary class="doc-catalog-summary">+ Add from saved products &amp; services</summary>
             <div class="doc-label-row">
-              <strong>Add from <%= org.name %></strong
+              <strong>Catalog of <%= org.name %></strong
               ><a class="doc-text-button" data-manager-link href="/workspace/<%= encodeURIComponent(org.id) %>/catalog"
                 >Manage catalog</a
               >
@@ -405,18 +431,8 @@ const baseUrl = `/workspace/${encodeURIComponent(org.id)}/${data.route.view}`;
             </div>
             <p class="doc-help" id="doc-catalog-status" role="status">Search all available catalog items. Results are shown 20 at a time.</p>
             <p class="doc-help" id="doc-catalog-feedback" role="status"></p>
-          </div>
+          </details>
           <% } %>
-          <datalist id="doc-unit-options">
-            <% t.CATALOG_UNITS.forEach(unit=>{ %>
-            <option value="<%= unit %>"></option>
-            <% }); %>
-          </datalist>
-          <div id="doc-lines"><% (form.items||[{description:'',hsn:'',quantity:1,rate:0,gstRate:0,unit:'Nos'}]).forEach((line,index)=>{ %><%- include('line',{line,index,locked,isDelivery}) %><% }); %></div>
-          <p class="doc-field-error" data-error-for="items" hidden></p>
-          <button type="button" class="doc-add-item" data-action="add-line" <%= locked?'disabled':'' %>>
-            + Add line item
-          </button>
         </section>
         <details class="doc-shipping-section" id="doc-shipping" <%= isDelivery||Object.values(shipping).some(Boolean)?'open':'' %>>
           <summary class="doc-section-heading">Shipping & delivery <small>Optional</small></summary>
@@ -525,9 +541,18 @@ const baseUrl = `/workspace/${encodeURIComponent(org.id)}/${data.route.view}`;
     </section>
     <footer class="doc-page-footer">
       <p id="doc-editor-feedback" class="doc-save-error" role="alert" tabindex="-1"></p>
+      <% if(!isDelivery){ %><span class="doc-footer-total">Total <strong data-footer-total><%= t.money(existing?.totals.total||0) %></strong></span><% } %>
       <div>
         <a href="<%= baseUrl %>" class="doc-button doc-button-secondary">Back</a
-        ><% if(!finalized){ %><button
+        ><% if(!finalized && !existing){ %><button
+          id="doc-issue-button"
+          type="submit"
+          class="doc-button doc-button-secondary"
+          data-issue
+          hidden
+        >
+          Save &amp; issue</button
+        ><% } %><% if(!finalized){ %><button
           id="doc-save-button"
           type="submit"
           class="doc-button doc-button-primary"

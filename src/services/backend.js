@@ -35,6 +35,8 @@ import { createCustomerLedger } from './ledger/customer-ledger.js';
 import { createPaymentReminders } from './integrations/email/payment-reminders.js';
 import { createRecurringInvoices } from './recurring/recurring-invoices.js';
 import { migrateStoredImages } from '../models/image-store.js';
+import { migrateFormatsToTeal } from '../models/workspace-seed.js';
+import { createAiAssistant } from './integrations/ai/openai.js';
 
 /**
  * Builds the API application: returns the Express app with the services on app.locals.services
@@ -213,12 +215,20 @@ async function initializeApplication(options, environment, db) {
   app.locals.initialize = async () => {
     await db.models.email.compactSent();
     await migrateStoredImages(db);
+    await migrateFormatsToTeal(db);
     const owner = await auth?.initializeOwner();
     await backups.initialize();
     readiness.markReady();
     return owner ?? null;
   };
+  const ai = createAiAssistant({
+    db,
+    environment,
+    production: environment.NODE_ENV === 'production',
+    fetcher: options.aiFetch,
+  });
   const pageData = createWorkspacePageData({
+    ai,
     db,
     auth,
     online,
@@ -236,6 +246,7 @@ async function initializeApplication(options, environment, db) {
   app.locals.documentExport = pageData.exportDocuments;
   app.locals.gstr1Export = pageData.exportGstr1;
   app.locals.expenseExport = pageData.exportExpenses;
+  app.locals.financeExport = pageData.exportFinance;
   app.locals.ledgerExport = (user, organizationId, route) =>
     route.id
       ? ledger.exportStatement(user, organizationId, route.id, route.query)
@@ -245,6 +256,7 @@ async function initializeApplication(options, environment, db) {
   const errorHandler = createApiErrorHandler(reportError);
   app.locals.errorHandler = errorHandler;
   const controllerContext = {
+    ai,
     environment,
     db,
     auth,

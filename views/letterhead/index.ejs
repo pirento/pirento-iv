@@ -1,0 +1,40 @@
+<%# Letterhead page /workspace/<id>/letterhead (administrators): upload this business's letterhead and mark the blank area where invoices, quotations and challans are written. Script: /js/workspace/letterhead.js. -%>
+<% const saved = data.letterhead; %>
+<header class="page-header">
+  <div>
+    <span class="eyebrow">MANAGE</span>
+    <h1>Letterhead</h1>
+    <p>Upload the printed letterhead of <%= data.organization.name %> as one full page (A4, PNG or JPEG, up to 1.5 MB). Documents chosen “Print on letterhead” are written inside the blank area you mark below; the letterhead’s own name, logo and footer replace the document’s header.</p>
+  </div>
+</header>
+<div class="letterhead-layout">
+  <form class="card stack" data-letterhead-form>
+    <div class="alert alert-error" data-form-error hidden role="alert"></div>
+    <label class="field">
+      Letterhead image
+      <input type="file" accept="image/png,image/jpeg" data-letterhead-file />
+      <small><%= saved ? 'A letterhead is saved. Choose a new file to replace it.' : 'No letterhead yet.' %></small>
+    </label>
+    <fieldset class="letterhead-margins">
+      <legend>Blank area for the document (mm from the page edge)</legend>
+      <div class="form-grid">
+        <% for (const [key, label, fallback, max] of [['top', 'Top', 45, 150], ['bottom', 'Bottom', 30, 150], ['left', 'Left', 15, 60], ['right', 'Right', 15, 60]]) { %>
+          <label class="field"><%= label %><input type="number" name="<%= key %>" min="0" max="<%= max %>" step="1" inputmode="numeric" value="<%= saved?.[key] ?? fallback %>" required /></label>
+        <% } %>
+      </div>
+    </fieldset>
+    <label class="checkbox"><input type="checkbox" name="defaultOn" <%= saved?.defaultOn ? 'checked' : '' %> /> Print new invoices, quotations and challans on this letterhead by default</label>
+    <div class="form-actions">
+      <% if (saved) { %><button class="button" type="button" data-letterhead-remove>Remove letterhead</button><% } %>
+      <button class="button button-primary" type="submit">Save letterhead</button>
+    </div>
+  </form>
+  <section class="card">
+    <h2>Preview</h2>
+    <p class="muted">The outlined box is where the document is written.</p>
+    <div class="letterhead-page" data-letterhead-preview <% if (saved) { %>style="background-image:url('<%= saved.image %>')"<% } %>>
+      <div class="letterhead-area" data-letterhead-area>Invoice / quotation / challan</div>
+    </div>
+  </section>
+</div>
+<script type="module" src="/js/workspace/letterhead.js"></script>

@@ -163,12 +163,24 @@ function navigation(data) {
       ],
     },
   ];
+  const finance = {
+    label: 'Finance',
+    items: [{ view: 'finance', label: 'Finance dashboard', icon: 'chart' }],
+  };
+  // Finance logins get only the finance dashboard; administrators open it from their menu.
+  if (data.user.role !== 'admin' && data.user.permission === 'accounts')
+    return [
+      finance,
+      { label: 'Account', items: [{ view: 'sessions', label: 'My sessions', icon: 'shield' }] },
+    ];
+  if (data.user.role === 'admin') groups.unshift(finance);
   if (data.user.role === 'admin')
     groups.push({
       label: 'Administration',
       items: [
         { view: 'business_settings', label: 'Business settings', icon: 'settings' },
         { view: 'dashboard_branding', label: 'Workspace branding', icon: 'settings' },
+        { view: 'letterhead', label: 'Letterhead', icon: 'document' },
         { view: 'team', label: 'Team access', icon: 'people' },
         { view: 'security', label: 'Security activity', icon: 'shield' },
         { view: 'integrations', label: 'Payments & email', icon: 'settings' },

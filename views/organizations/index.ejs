@@ -3,7 +3,7 @@
 const isSettings = data.route.view === 'business_settings';
 const source = isSettings ? data.organization : data.organizations.find(org=>org.id===data.route.id);
 const editing = isSettings || Boolean(data.route.action);
-const defaults = {name:'',legalName:'',tradeName:'',businessConstitution:'',businessType:'division',supportEmail:'support@pirento.com',paymentGateway:'razorpay',gstRegistrations:[],gstin:'',email:'',phone:'',address:'',stateCode:'',accentColor:'#26705b',logoUrl:'',invoicePrefix:'INV',quotationPrefix:'QUO',billingProfile:'general',enableProductSelection:false,secondarySignatureLabel:'',secondarySignatureImageUrl:'',stampLabel:'',stampImageUrl:'',pan:'',cin:'',bankBranch:'',accountType:'',signatureImageUrl:'',paymentQrUrl:'',bankName:'',accountName:'',accountNumber:'',ifsc:'',terms:'',signature:'',template:'modern'};
+const defaults = {name:'',legalName:'',tradeName:'',businessConstitution:'',businessType:'division',supportEmail:'support@pirento.com',financeEmail:'finance@pirento.com',emailFrom:'',paymentGateway:'razorpay',gstRegistrations:[],gstin:'',email:'',phone:'',address:'',stateCode:'',accentColor:'#0e4d64',logoUrl:'',invoicePrefix:'INV',quotationPrefix:'QUO',billingProfile:'general',enableProductSelection:false,secondarySignatureLabel:'',secondarySignatureImageUrl:'',stampLabel:'',stampImageUrl:'',pan:'',cin:'',bankBranch:'',accountType:'',signatureImageUrl:'',paymentQrUrl:'',bankName:'',accountName:'',accountNumber:'',ifsc:'',terms:'',signature:'',template:'modern'};
 const form = {...defaults,...source};
 if(source) form.billingProfile=helpers.billingProfileFor(source);
 %>
@@ -77,7 +77,7 @@ if(source) form.billingProfile=helpers.billingProfileFor(source);
         ><input type="checkbox" name="enableProductSelection" <%= form.enableProductSelection?'checked':'' %> />Enable
         business-product selection on documents</label
       >
-      <% for(const [name,label,max,type] of [['gstin','Default GSTIN',15,'text'],['pan','PAN',10,'text'],['cin','CIN',21,'text'],['email','Business email',254,'email'],['phone','Business phone',30,'tel'],['supportEmail','Support email',254,'email']]){ %><label class="field"
+      <% for(const [name,label,max,type] of [['gstin','Default GSTIN',15,'text'],['pan','PAN',10,'text'],['cin','CIN',21,'text'],['email','Business email',254,'email'],['phone','Business phone',30,'tel'],['supportEmail','Support email (quotations, help)',254,'email'],['financeEmail','Finance email (invoices, receipts, reminders)',254,'email'],['emailFrom','Send emails from (verified in Resend; blank = server setting)',254,'email']]){ %><label class="field"
         ><%= label %><input
           type="<%= type %>"
           name="<%= name %>"

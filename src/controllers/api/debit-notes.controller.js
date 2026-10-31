@@ -83,6 +83,8 @@ export function createController(context) {
               .join(' '),
             terms: invoice.terms ?? '',
             branding: invoice.branding,
+            useLetterhead: Boolean(invoice.letterhead),
+            letterhead: invoice.letterhead ?? null,
             businessProductId: invoice.businessProductId,
             businessProductSnapshot: invoice.businessProductSnapshot ?? null,
             customerSnapshot: invoice.customerSnapshot,

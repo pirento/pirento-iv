@@ -10,6 +10,8 @@
     <% } %>
     <title><%= data.pageTitle %> · <%= data.workspaceSettings.companyName %></title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#0e4d64" />
     <link rel="stylesheet" href="/css/app.css" />
     <link rel="stylesheet" href="/css/management.css" />
     <% for (const href of typeof stylesheets === 'undefined' ? [] : stylesheets) { %>

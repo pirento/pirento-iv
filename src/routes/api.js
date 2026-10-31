@@ -102,6 +102,12 @@ export function registerApiRoutes(app, context) {
   app.post('/api/credit-notes/:id/cancel', controllers.creditNotes.cancel);
   app.post('/api/credit-notes/:id/refund', controllers.creditNotes.refund);
   app.post('/api/stock-adjustments', controllers.stockAdjustments.create);
+  app.get('/api/ai-settings', controllers.ai.status);
+  app.put('/api/ai-settings', controllers.ai.save);
+  app.post('/api/finance/ai/statement', controllers.ai.statement);
+  app.post('/api/finance/ai/matches', controllers.ai.matches);
+  app.put('/api/letterheads/:organizationId', controllers.letterheads.save);
+  app.delete('/api/letterheads/:organizationId', controllers.letterheads.remove);
   app.delete('/api/stock-adjustments/:id', controllers.stockAdjustments.remove);
   app.get('/api/catalog/lookup', controllers.catalog.lookup);
   app.get('/api/catalog/export', controllers.catalog.export);
@@ -115,6 +121,7 @@ export function registerApiRoutes(app, context) {
   app.get('/api/customers/lookup', controllers.customers.lookup);
   app.get('/api/customers/export', controllers.customers.export);
   app.get('/api/customers', controllers.customers.list);
+  app.get('/api/customers/:id/billing-summary', controllers.customers.billingSummary);
   app.post('/api/customers', controllers.customers.create);
   app.put('/api/customers/:id', controllers.customers.update);
   app.delete('/api/customers/:id', controllers.customers.remove);

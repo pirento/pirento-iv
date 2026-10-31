@@ -66,9 +66,9 @@
   color: #a53349;
 }
 .messaging-alert-success {
-  background: #edf9f3;
-  border-color: #cdebdc;
-  color: #24774e;
+  background: #fdf1e9;
+  border-color: #f4d7c4;
+  color: #1e627d;
 }
 .messaging-loading {
   display: flex;
@@ -260,8 +260,8 @@
   color: #6d7f98;
 }
 .messaging-status-sent {
-  background: #ebf8f0;
-  color: #277954;
+  background: #fcefe7;
+  color: #21647f;
 }
 .messaging-status-failed {
   background: #fff0f2;

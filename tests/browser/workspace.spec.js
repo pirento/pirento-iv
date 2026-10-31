@@ -1,6 +1,7 @@
 /** Browser tests (`npm run test:browser`): real sign-in, navigation, contacts/catalog, invoices, drafts and payments in Chromium. */
 
 import { readFile } from 'node:fs/promises';
+import { xlsx } from '../../src/services/exports/xlsx.js';
 import {
   test,
   expect,
@@ -293,6 +294,7 @@ test('directory pages, editor search and CSV export keep results complete and pa
     'Directory Customer 121',
   ]);
   await page.locator('#doc-customer').selectOption(customers.at(-1).id);
+  await page.locator('#doc-catalog-panel > summary').click();
   await page.locator('#doc-catalog-search').fill('Product 121');
   await expect(page.locator('#doc-catalog-results [data-catalog-id]')).toHaveCount(1);
   await expect(page.locator('#doc-catalog-results')).toContainText('Directory Product 121');
@@ -478,4 +480,190 @@ test('the IRN and signed QR saved on the e-invoice page print on the invoice', a
   await page.goto(workspace(app, `invoices/preview/${invoice.id}`));
   await expect(page.getByText(`IRN: ${'b'.repeat(64)}`)).toBeVisible();
   await expect(page.getByRole('img', { name: 'E-invoice QR code' })).toBeVisible();
+});
+
+test('on a phone, an invoice copies the last bill, warns about credit and is saved and issued', async ({
+  page,
+  app,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await signIn(page, app);
+  const customer = await api(page, app, '/customers', 'POST', {
+    ...customerInput(app.organizationId, 'Phone Customer'),
+    creditLimit: 150,
+  });
+  const last = await api(
+    page,
+    app,
+    '/documents',
+    'POST',
+    invoiceInput(app.organizationId, customer.id, {
+      status: 'sent',
+      items: [{ description: 'Monthly service', quantity: 2, rate: 50, hsn: '', gstRate: 0 }],
+    }),
+  );
+  await page.goto(workspace(app, 'invoices/new'));
+  await page.locator('#doc-customer').selectOption(customer.id);
+  const summary = page.locator('#doc-customer-summary');
+  await expect(summary).toContainText('Owes ₹100.00 on 1 invoice(s)');
+  await page
+    .getByRole('button', {
+      name: new RegExp('Copy 1 item\\(s\\) from ' + last.number.replaceAll('/', '\\/')),
+    })
+    .click();
+  await expect(page.locator('[data-line="description"]').first()).toHaveValue('Monthly service');
+  await expect(page.locator('.doc-line-pricing summary').first()).toContainText('standard');
+  await page.locator('[name="placeOfSupply"]').selectOption('09');
+  const total = page.locator('.doc-footer-total');
+  await expect(total).toBeInViewport();
+  await expect(total).toContainText('₹100.00');
+  await expect(summary).toContainText('Over the credit limit of ₹150.00');
+  await page.screenshot({
+    path: '/tmp/claude-0/-home-user-pirento-iv/24cb3550-63a0-5ffd-a5e3-0f8bc870052d/scratchpad/shots-now/phone-editor-after.png',
+  });
+  await page.getByRole('button', { name: 'Save & issue' }).click();
+  await expect(page).toHaveURL(/\/invoices\/preview\/[^/]+$/);
+  const saved = await app.backend.db
+    .collection('documents')
+    .findOne({ customerId: customer.id, id: { $ne: last.id } });
+  expect([saved.status, saved.totals.total]).toEqual(['sent', 100]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
+  const manifest = await page.request.get(`${app.base}/manifest.webmanifest`);
+  expect((await manifest.json()).display).toBe('standalone');
+  await page.screenshot({
+    path: '/tmp/claude-0/-home-user-pirento-iv/24cb3550-63a0-5ffd-a5e3-0f8bc870052d/scratchpad/shots-now/phone-preview-after.png',
+    fullPage: true,
+  });
+});
+
+test('a letterhead uploaded for a business is used for new documents and can be switched off', async ({
+  page,
+  app,
+}) => {
+  await signIn(page, app);
+  const customer = await api(page, app, '/customers', 'POST', customerInput(app.organizationId));
+  await page.goto(workspace(app, 'letterhead'));
+  const form = page.locator('[data-letterhead-form]');
+  await form.locator('[data-letterhead-file]').setInputFiles(
+    process.env.LETTERHEAD_IMAGE || {
+      name: 'letterhead.png',
+      mimeType: 'image/png',
+      buffer: Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+        'base64',
+      ),
+    },
+  );
+  await form.locator('[name="top"]').fill('40');
+  await form.locator('[name="defaultOn"]').check();
+  await form.getByRole('button', { name: 'Save letterhead' }).click();
+  await expect(page.getByRole('button', { name: 'Remove letterhead' })).toBeVisible();
+
+  await page.goto(workspace(app, 'invoices/new'));
+  await expect(page.locator('#doc-catalog-panel')).not.toHaveAttribute('open', '');
+  await expect(page.locator('[name="useLetterhead"]')).toHaveValue('true');
+  await page.locator('#doc-customer').selectOption(customer.id);
+  await page.locator('[name="placeOfSupply"]').selectOption('09');
+  await page.locator('[data-line="description"]').first().fill('Annual maintenance');
+  await page.locator('[data-line="rate"]').first().fill('1000');
+  await page.locator('#doc-save-button').click();
+  await expect(page).toHaveURL(/\/invoices\/preview\/[^/]+$/);
+  await expect(page.locator('.doc-paper')).toHaveClass(/doc-on-letterhead/);
+  if (process.env.SHOTS)
+    await page.screenshot({ path: `${process.env.SHOTS}/letterhead-preview.png`, fullPage: true });
+  const saved = await app.backend.db.collection('documents').findOne({ customerId: customer.id });
+  expect(saved.letterhead.top).toBe(40);
+});
+
+test('an administrator creates a login, and the finance dashboard matches a bank statement', async ({
+  page,
+  app,
+}) => {
+  await signIn(page, app);
+  await page.goto(workspace(app, 'team'));
+  const create = page.locator('[data-create-login]');
+  await create.locator('summary').click();
+  const form = create.locator('[data-create-form]');
+  await form.locator('[name="name"]').fill('Group Accountant');
+  await form.locator('[name="email"]').fill('accounts@example.test');
+  await form.getByRole('button', { name: 'Generate' }).click();
+  await expect(form.locator('[name="password"]')).toHaveValue(/^[A-Za-z0-9]{16}$/);
+  await form.locator('[name="permission"]').selectOption('accounts');
+  await form.locator(`[name="organizationIds"][value="${app.organizationId}"]`).check();
+  await form.getByRole('button', { name: 'Create login' }).click();
+  await expect(page.locator('[data-notice]')).toContainText('Login created for Group Accountant');
+  const saved = await app.backend.db.collection('auth_users').findOne({ email: 'accounts@example.test' });
+  expect([saved.status, saved.permission]).toEqual(['active', 'accounts']);
+
+  const customer = await api(page, app, '/customers', 'POST', customerInput(app.organizationId));
+  const invoice = await api(
+    page,
+    app,
+    '/documents',
+    'POST',
+    invoiceInput(app.organizationId, customer.id, { status: 'sent' }),
+  );
+  const today = invoice.issueDate;
+  await api(page, app, `/documents/${invoice.id}/payments`, 'POST', {
+    amount: 100,
+    paidOn: today,
+    method: 'upi',
+    reference: 'UPI123456',
+    notes: '',
+    requestId: 'bank-match',
+  });
+  await page.goto(workspace(app, 'finance'));
+  await expect(page.getByRole('heading', { name: 'Finance dashboard', level: 1 })).toBeVisible();
+  await expect(page.locator('[data-register]').first()).toContainText(invoice.number);
+  const [year, month, day] = today.split('-');
+  await page.locator('[data-bank-file]').setInputFiles({
+    name: 'statement.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from(
+      `Date,Narration,Chq./Ref.No.,Value Dt,Withdrawal Amt.,Deposit Amt.,Closing Balance\n${day}/${month}/${year},UPI-CUSTOMER,UPI123456,${day}/${month}/${year},,100.00,100.00\n${day}/${month}/${year},CHARGES,,${day}/${month}/${year},5.90,,94.10\n`,
+    ),
+  });
+  const result = page.locator('[data-bank-result]');
+  await expect(result).toContainText('1 matched · 1 only in the bank · 0 only in the books');
+  await expect(result.locator('tbody tr').first()).toContainText(invoice.number);
+  await page.locator('[data-bank-file]').setInputFiles({
+    name: 'statement.xlsx',
+    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    buffer: xlsx([
+      {
+        name: 'Statement',
+        rows: [
+          ['Txn Date', 'Description', 'Ref No', 'Debit', 'Credit'],
+          [`${day}-${month}-${year}`, 'UPI CUSTOMER', 'UPI123456', '', 100],
+        ],
+      },
+    ]),
+  });
+  await expect(result).toContainText('1 matched · 0 only in the bank · 0 only in the books');
+
+  // AI assistant: the admin saves the OpenAI key, then a PDF statement is read by AI and the
+  // line it cannot match (a receipt less TDS) gets a suggestion.
+  await page.goto(workspace(app, 'integrations'));
+  const aiForm = page.locator('[data-ai-form]');
+  await aiForm.locator('[name="apiKey"]').fill('sk-test-key-1234');
+  await aiForm.getByRole('button', { name: 'Save AI settings' }).click();
+  await expect(page.locator('[data-ai-state]')).toHaveText('Key ending 1234');
+  await page.goto(workspace(app, 'finance'));
+  app.ai.answer = {
+    lines: [{ date: today, narration: 'NEFT CUSTOMER LESS TDS', reference: '', credit: 98, debit: 0 }],
+  };
+  await page.locator('[data-bank-file]').setInputFiles({
+    name: 'statement.pdf',
+    mimeType: 'application/pdf',
+    buffer: Buffer.from('%PDF-1.4 synthetic statement'),
+  });
+  await expect(result).toContainText('0 matched · 1 only in the bank · 1 only in the books');
+  expect(app.ai.requests.at(-1).input[0].content[0]).toMatchObject({
+    type: 'input_file',
+    filename: 'statement.pdf',
+  });
+  app.ai.answer = { suggestions: [{ line: 0, books: [0], reason: 'Receipt less 2% TDS' }] };
+  await result.getByRole('button', { name: 'Suggest matches with AI' }).click();
+  await expect(result.locator('[data-ai-suggestions]')).toContainText('Receipt less 2% TDS');
+  await expect(result.locator('[data-ai-suggestions]')).toContainText(invoice.number);
 });

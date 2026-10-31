@@ -1,5 +1,5 @@
 /**
- * Team access page (views/team/index.ejs, admin only): approve/disable accounts, set role and
+ * Team access page (views/team/index.ejs, admin only): create logins directly, approve/disable accounts, set role and
  * assigned businesses and staff permission, sign out a member's sessions, set a new password and
  * remove two-step login for someone who lost their phone.
  */
@@ -290,6 +290,48 @@ if (data.user.role === 'admin') {
   container.querySelectorAll('[data-user-card]').forEach((card) => {
     const user = users.find((user) => user.id === card.dataset.userCard);
     if (user) bindCard(card, user);
+  });
+  // Create a login directly: active at once, with a password the administrator shares.
+  const createForm = root.querySelector('[data-create-form]');
+  const createRole = () => createForm.elements.namedItem('role').value;
+  const toggleCreateFields = () => {
+    createForm.querySelector('[data-permission-field]').hidden = createRole() === 'admin';
+    createForm.querySelector('[data-organization-options]').hidden = createRole() === 'admin';
+  };
+  createForm.elements.namedItem('role').addEventListener('change', toggleCreateFields);
+  createForm.querySelector('[data-generate-password]').addEventListener('click', () => {
+    const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+    const bytes = crypto.getRandomValues(new Uint8Array(16));
+    createForm.elements.namedItem('password').value = [...bytes]
+      .map((byte) => letters[byte % letters.length])
+      .join('');
+  });
+  createForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const values = new FormData(createForm);
+    const body = {
+      name: values.get('name'),
+      email: values.get('email'),
+      password: values.get('password'),
+      role: createRole(),
+      organizationIds: createRole() === 'admin' ? [] : values.getAll('organizationIds'),
+      permission: values.get('permission'),
+    };
+    showError('', createForm);
+    await withBusy(createForm, async () => {
+      try {
+        const user = await api('/auth/users', sendJson('POST', body));
+        setMessage(
+          root.querySelector('[data-notice]'),
+          `Login created for ${user.name} (${user.email}). Share the password with them; they can change it in My sessions.`,
+        );
+        createForm.reset();
+        toggleCreateFields();
+        await load();
+      } catch (error) {
+        showError(error.message, createForm);
+      }
+    });
   });
   search.addEventListener('input', filterCards);
   statusFilter.addEventListener('change', filterCards);

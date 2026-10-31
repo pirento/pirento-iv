@@ -36,6 +36,7 @@ export async function renderInvoiceAttachment(doc) {
   const sources = [
     ['logo', documentLogo(doc), format.showLogo],
     ...documentSigningBlocks(doc).map((block) => [block.key, block.imageUrl, true]),
+    ['letterhead', doc.letterhead?.image, Boolean(doc.letterhead)],
     [
       'paymentQr',
       doc.organizationSnapshot.paymentQrUrl,
@@ -52,7 +53,8 @@ export async function renderInvoiceAttachment(doc) {
       continue;
     }
     const buffer = Buffer.from(parsed[2], 'base64');
-    if (buffer.length > 500 * 1024) throw new Error('An uploaded invoice image exceeds the supported size.');
+    if (buffer.length > (key === 'letterhead' ? 1536 : 500) * 1024)
+      throw new Error('An uploaded invoice image exceeds the supported size.');
     const image = sharp(buffer, {
       limitInputPixels: 16_000_000,
       pages: 1,
@@ -79,15 +81,24 @@ export async function renderInvoiceAttachment(doc) {
       color: '#66736a',
       margin: [0, 8, 0, 0],
     });
+  const buffer = await renderPdfBuffer(definition, 'The invoice PDF is too large to email.');
+  return {
+    filename: pdfFileName(doc),
+    content: buffer.toString('base64'),
+  };
+}
+
+/** Renders a pdfmake definition to a Buffer, stopping above 15 MB with `tooLarge` as the error. */
+export async function renderPdfBuffer(definition, tooLarge = 'The PDF is too large.') {
   const stream = await pdfmake.createPdf(definition).getStream();
-  const buffer = await new Promise((resolve, reject) => {
+  return await new Promise((resolve, reject) => {
     try {
       const chunks = [];
       let size = 0;
       stream.on('data', (chunk) => {
         size += chunk.length;
         if (size > 15 * 1024 * 1024) {
-          stream.destroy(new Error('The invoice PDF is too large to email.'));
+          stream.destroy(new Error(tooLarge));
           return;
         }
         chunks.push(Buffer.from(chunk));
@@ -99,8 +110,4 @@ export async function renderInvoiceAttachment(doc) {
       reject(error);
     }
   });
-  return {
-    filename: pdfFileName(doc),
-    content: buffer.toString('base64'),
-  };
 }

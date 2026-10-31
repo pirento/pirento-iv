@@ -15,6 +15,7 @@ import { pipeline } from 'node:stream/promises';
 // Browser tab / page heading for each workspace view.
 const titles = {
   overview: 'Overview',
+  finance: 'Finance dashboard',
   invoices: 'Invoices',
   quotations: 'Quotations',
   proformas: 'Proforma invoices',
@@ -31,6 +32,7 @@ const titles = {
   organizations: 'Businesses',
   catalog: 'Products & services',
   stock: 'Stock',
+  letterhead: 'Letterhead',
   formats: 'Document formats',
   business_products: 'Business products',
   team: 'Team access',
@@ -49,6 +51,7 @@ const adminViews = new Set([
   'backups',
   'business_settings',
   'dashboard_branding',
+  'letterhead',
   'integrations',
 ]);
 // Document screens share one ordered set; the order matches the former single documents.css cascade.
@@ -77,6 +80,8 @@ const pageStylesheets = {
   'einvoice/index': ['receivables'],
   'reports/index': ['receivables'],
   'stock/index': ['receivables'],
+  'letterhead/index': ['receivables'],
+  'finance/index': ['receivables'],
   'ledger/statement': ['receivables'],
   'reminders/index': ['receivables'],
   'recurring/index': ['recurring'],
@@ -106,6 +111,9 @@ function rememberedOrganization(req) {
     return undefined;
   }
 }
+
+// A Finance login (staff with the 'accounts' access level) sees only the finance dashboard.
+const financeOnly = (user) => user.role !== 'admin' && user.permission === 'accounts';
 
 /** Returns the Express handlers used by src/routes/pages.js: home, authentication, workspace, notFound, error. */
 export function createPageController(backend) {
@@ -142,7 +150,8 @@ export function createPageController(backend) {
     const data = await app.locals.workspaceData(user, undefined, { view: 'home' });
     const remembered = rememberedOrganization(req);
     const selected = data.organizations.find((org) => org.id === remembered) || data.organization;
-    return res.redirect(`/workspace/${encodeURIComponent(selected.id)}/overview`);
+    const start = financeOnly(user) ? 'finance' : 'overview';
+    return res.redirect(`/workspace/${encodeURIComponent(selected.id)}/${start}`);
   }
 
   async function authentication(req, res) {
@@ -184,8 +193,26 @@ export function createPageController(backend) {
     ) {
       return renderError(res, 403, 'Administrator access is required for this page.');
     }
+    // Finance logins have their own dashboard: Group finance, document previews and My sessions.
+    if (
+      financeOnly(user) &&
+      !['finance', 'sessions'].includes(route.view) &&
+      !(documentKinds[route.view] && route.action === 'preview')
+    )
+      return res.redirect(`/workspace/${encodeURIComponent(route.organizationId)}/finance`);
     let data;
     try {
+      if (route.view === 'finance' && ['xlsx', 'pdf', 'zip'].includes(req.query.download)) {
+        const file = await app.locals.financeExport(user, route.organizationId, {
+          ...route,
+          query: req.query,
+        });
+        res.set('Cache-Control', 'no-store');
+        res.attachment(file.filename);
+        res.type(file.type);
+        res.send(file.body);
+        return;
+      }
       if (
         ((documentKinds[route.view] && !route.action) ||
           ['ledger', 'gst_returns', 'expenses'].includes(route.view)) &&
@@ -255,6 +282,8 @@ export function createPageController(backend) {
         credit_notes: route.id ? 'credit-notes/print' : 'credit-notes/index',
         reports: 'reports/index',
         stock: 'stock/index',
+        letterhead: 'letterhead/index',
+        finance: 'finance/index',
         e_invoice: 'einvoice/index',
         reminders: 'reminders/index',
         recurring: 'recurring/index',

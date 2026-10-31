@@ -25,6 +25,8 @@ import { createController as creditNotes } from './credit-notes.controller.js';
 import { createController as debitNotes } from './debit-notes.controller.js';
 import { createController as stockAdjustments } from './stock-adjustments.controller.js';
 import { createController as einvoice } from './einvoice.controller.js';
+import { createController as letterheads } from './letterheads.controller.js';
+import { createController as ai } from './ai.controller.js';
 
 /** One controller object per API resource; route paths live in src/routes/api.js. */
 export function createApiControllers(context) {
@@ -43,6 +45,8 @@ export function createApiControllers(context) {
     debitNotes: debitNotes(context),
     stockAdjustments: stockAdjustments(context),
     einvoice: einvoice(context),
+    letterheads: letterheads(context),
+    ai: ai(context),
     catalog: catalog(context),
     formats: formats(context),
     customers: customers(context),

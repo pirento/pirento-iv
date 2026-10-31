@@ -17,6 +17,7 @@ export const SECURITY_ACTIONS = Object.freeze([
   { value: 'other-sessions-revoked', label: 'Other sessions signed out' },
   { value: 'user-sessions-revoked', label: 'Account sessions revoked by administrator' },
   { value: 'signup-requested', label: 'Account approval requested' },
+  { value: 'account-created', label: 'Login created by administrator' },
   { value: 'access-updated', label: 'Account access updated' },
   { value: 'password-reset-requested', label: 'Password reset requested' },
   { value: 'password-reset-delivery-failed', label: 'Password reset delivery failed' },

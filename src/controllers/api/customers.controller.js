@@ -10,10 +10,47 @@ import { normalizeContact } from '../../services/validation/contacts.js';
 import { HttpError } from '../../middleware/errors.js';
 import { transactionForRecord } from '../../services/transaction-ownership.js';
 import { directoryReaders } from './directory-read.js';
+import { z } from 'zod';
+import { indiaBusinessDate } from '../../../shared/business-date.js';
 export function createController(context) {
-  const { db, getOrganization, getCustomer, scopedOrganization } = context;
+  const { db, now, getOrganization, getCustomer, scopedOrganization } = context;
   return {
     ...directoryReaders(context, 'customers'),
+    // GET /api/customers/:id/billing-summary?kind=invoice — for the document editor: what the contact
+    // still owes on issued invoices, their credit limit and the lines of their latest document of `kind`.
+    billingSummary: async (req, res) => {
+      const kind = z
+        .enum(['invoice', 'quotation', 'proforma', 'delivery_note'])
+        .parse(req.query.kind ?? 'invoice');
+      const customer = await getCustomer(req.params.id);
+      const scope = { organizationId: customer.organizationId, customerId: customer.id };
+      const [open, latest] = await Promise.all([
+        db
+          .collection('documents')
+          .find(
+            { ...scope, kind: 'invoice', status: { $in: ['sent', 'partially_paid'] } },
+            { ...db.options(), projection: { _id: 0, balanceDue: 1, dueDate: 1 } },
+          )
+          .toArray(),
+        db
+          .collection('documents')
+          .find(
+            { ...scope, kind, status: { $ne: 'cancelled' }, debitNoteFor: { $exists: false } },
+            { ...db.options(), projection: { _id: 0, id: 1, number: 1, issueDate: 1, items: 1 } },
+          )
+          .sort({ issueDate: -1, _id: -1 })
+          .limit(1)
+          .toArray(),
+      ]);
+      const today = indiaBusinessDate(now());
+      res.json({
+        outstanding: Math.round(open.reduce((sum, row) => sum + (row.balanceDue ?? 0) * 100, 0)) / 100,
+        openInvoices: open.length,
+        overdueInvoices: open.filter((row) => row.dueDate && row.dueDate < today).length,
+        creditLimit: customer.creditLimit ?? 0,
+        lastDocument: latest[0] ?? null,
+      });
+    },
     // GET /api/customers
     list: async (req, res) => {
       const organization = await scopedOrganization(req.query.organizationId);

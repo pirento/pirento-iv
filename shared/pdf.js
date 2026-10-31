@@ -84,7 +84,7 @@ export function documentDate(value) {
 export const stateName = (code) => STATES.find(([value]) => value === code)?.[1] ?? code;
 /** Accent colour of a format plus readable text colours to use on it. */
 export function documentColors(value) {
-  const accent = /^#[\da-f]{6}$/i.test(value) ? value : '#26705b';
+  const accent = /^#[\da-f]{6}$/i.test(value) ? value : '#0e4d64';
   const rgb = [1, 3, 5].map((index) => parseInt(accent.slice(index, index + 2), 16));
   const luminance = (channels) =>
     channels
@@ -339,10 +339,6 @@ export function buildDocumentDefinition(doc, imageInput) {
   const margin = geometry.marginMm * mm;
   const pageWidth = geometry.widthMm * mm;
   const pageHeight = geometry.heightMm * mm;
-  const contentWidth = pageWidth - 2 * margin;
-  const narrow = contentWidth < 390;
-  const gap = narrow ? 10 : 14;
-  const content = [];
   const original = (value) => (value && PNG_JPEG.test(value) ? value : undefined);
   const sourceImages =
     typeof imageInput === 'string'
@@ -352,9 +348,20 @@ export function buildDocumentDefinition(doc, imageInput) {
       : (imageInput ?? {
           logo: original(documentLogo(doc)),
           paymentQr: original(org.paymentQrUrl),
+          letterhead: original(doc.letterhead?.image),
           ...Object.fromEntries(signingBlocks.map((block) => [block.key, original(block.imageUrl)])),
         });
+  // On the business letterhead its image fills every page and content is kept inside its blank area.
+  const letterhead = doc.letterhead && sourceImages.letterhead ? doc.letterhead : null;
+  const pageMargins = letterhead
+    ? [letterhead.left, letterhead.top, letterhead.right, letterhead.bottom].map((value) => value * mm)
+    : [margin, margin, margin, Math.max(margin, 30)];
+  const contentWidth = pageWidth - pageMargins[0] - pageMargins[2];
+  const narrow = contentWidth < 390;
+  const gap = narrow ? 10 : 14;
+  const content = [];
   const images = {};
+  if (letterhead) images.letterhead = sourceImages.letterhead;
   if (format.showLogo && sourceImages.logo) images.brandLogo = sourceImages.logo;
   for (const block of signingBlocks) {
     const data = sourceImages[block.key];
@@ -397,35 +404,37 @@ export function buildDocumentDefinition(doc, imageInput) {
     );
   const logoWidth = geometry.logoWidth * 0.75;
   const logoHeight = Math.min(72, Math.max(32, logoWidth));
-  const brand = images.brandLogo
-    ? narrow
-      ? {
-          stack: [
-            {
-              image: 'brandLogo',
-              fit: [logoWidth, logoHeight],
-              alignment: classic ? 'center' : 'left',
-              margin: [0, 0, 0, 8],
-            },
-            ...brandStack,
-          ],
-        }
+  const brand = letterhead
+    ? { text: '' }
+    : images.brandLogo
+      ? narrow
+        ? {
+            stack: [
+              {
+                image: 'brandLogo',
+                fit: [logoWidth, logoHeight],
+                alignment: classic ? 'center' : 'left',
+                margin: [0, 0, 0, 8],
+              },
+              ...brandStack,
+            ],
+          }
+        : {
+            columns: [
+              {
+                image: 'brandLogo',
+                fit: [logoWidth, logoHeight],
+                width: logoWidth,
+              },
+              {
+                stack: brandStack,
+              },
+            ],
+            columnGap: 10,
+          }
       : {
-          columns: [
-            {
-              image: 'brandLogo',
-              fit: [logoWidth, logoHeight],
-              width: logoWidth,
-            },
-            {
-              stack: brandStack,
-            },
-          ],
-          columnGap: 10,
-        }
-    : {
-        stack: brandStack,
-      };
+          stack: brandStack,
+        };
   if (classic && !narrow && images.brandLogo) {
     Object.assign(brand, {
       columns: [
@@ -1152,7 +1161,7 @@ export function buildDocumentDefinition(doc, imageInput) {
   return {
     pageSize: geometry.pageSize,
     pageOrientation: geometry.orientation,
-    pageMargins: [margin, margin, margin, Math.max(margin, 30)],
+    pageMargins,
     info: {
       title: `${doc.number} — ${org.name}`,
       author: identity.legalName,
@@ -1186,38 +1195,42 @@ export function buildDocumentDefinition(doc, imageInput) {
     },
     images,
     content,
-    ...(sidebar
-      ? {
-          background: {
-            canvas: [
-              {
-                type: 'rect',
-                x: margin - 12,
-                y: margin,
-                w: 4,
-                h: pageHeight - 2 * margin,
-                color: colors.accent,
-              },
-            ],
-          },
-        }
-      : {}),
-    footer: (currentPage, pageCount) => ({
-      columns: [
-        {
-          text: printable(identity.signoffName),
-          width: '*',
-        },
-        {
-          text: `${doc.number} · ${currentPage} / ${pageCount}`,
-          alignment: 'right',
-          width: 'auto',
-        },
-      ],
-      columnGap: 12,
-      fontSize: 7,
-      color: '#647067',
-      margin: [margin, 6, margin, 0],
-    }),
+    ...(letterhead
+      ? { background: () => ({ image: 'letterhead', width: pageWidth, height: pageHeight }) }
+      : sidebar
+        ? {
+            background: {
+              canvas: [
+                {
+                  type: 'rect',
+                  x: margin - 12,
+                  y: margin,
+                  w: 4,
+                  h: pageHeight - 2 * margin,
+                  color: colors.accent,
+                },
+              ],
+            },
+          }
+        : {}),
+    footer: letterhead
+      ? undefined
+      : (currentPage, pageCount) => ({
+          columns: [
+            {
+              text: printable(identity.signoffName),
+              width: '*',
+            },
+            {
+              text: `${doc.number} · ${currentPage} / ${pageCount}`,
+              alignment: 'right',
+              width: 'auto',
+            },
+          ],
+          columnGap: 12,
+          fontSize: 7,
+          color: '#647067',
+          margin: [margin, 6, margin, 0],
+        }),
   };
 }

@@ -9,14 +9,15 @@
   border-radius: 18px;
   box-shadow: 0 20px 90px #0b1b2530;
   outline: none;
-  overflow: hidden;
+  /* clip, not hidden: the phone save bar below stays sticky. */
+  overflow: clip;
 }
 .doc-page-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 24px 30px;
-  border-bottom: 1px solid #e8eeeb;
+  border-bottom: 1px solid #f0eae6;
 }
 .doc-page-heading {
   display: flex;
@@ -32,7 +33,7 @@
 .doc-page-heading p {
   margin: 0;
   font-size: 12px;
-  color: #6a7873;
+  color: #6a7378;
 }
 .doc-page-heading p span {
   margin: 0 5px;
@@ -61,7 +62,7 @@
 .doc-label-row label,
 .doc-field {
   font-size: 11px;
-  color: #4c5f57;
+  color: #4c595f;
   font-weight: 550;
 }
 .doc-label-row label > span {
@@ -76,7 +77,7 @@
   padding: 0;
   font-family: inherit;
   font-size: 11px;
-  color: #26705b;
+  color: #205d76;
   font-weight: 600;
   cursor: pointer;
 }
@@ -105,10 +106,10 @@
 .doc-editor textarea {
   width: 100%;
   background: #fff;
-  border: 1px solid #dfe6e2;
+  border: 1px solid #e8e1dd;
   border-radius: 7px;
   min-height: 39px;
-  color: #243e32;
+  color: #223740;
   font: 400 12px/1.4 inherit;
   font-family: inherit;
   font-size: 12px;
@@ -125,14 +126,14 @@
 }
 .doc-editor input::placeholder,
 .doc-editor textarea::placeholder {
-  color: #a0aaa5;
+  color: #ada39d;
   opacity: 1;
 }
 .doc-editor input:focus,
 .doc-editor select:focus,
 .doc-editor textarea:focus {
-  border-color: #72a18c;
-  box-shadow: 0 0 0 3px #75a98a15;
+  border-color: #af8264;
+  box-shadow: 0 0 0 3px #719cad15;
 }
 .doc-editor input[aria-invalid='true'],
 .doc-editor select[aria-invalid='true'] {
@@ -142,8 +143,8 @@
   display: flex;
   align-items: flex-start;
   gap: 9px;
-  background: #f6f8f5;
-  border: 1px solid #e8ece5;
+  background: #f9f6f4;
+  border: 1px solid #eee7e3;
   border-radius: 8px;
   padding: 12px;
   margin-top: 12px;
@@ -156,16 +157,38 @@
 .doc-customer-card p {
   font-size: 11px;
   line-height: 1.5;
-  color: #67736c;
+  color: #676f73;
   margin: 5px 0;
   white-space: pre-line;
 }
 .doc-customer-card small {
   display: block;
   font-size: 10px;
-  color: #67736c;
+  color: #676f73;
   line-height: 1.6;
   margin-top: 4px;
+}
+/* What the chosen contact owes, and copying their last document's items. */
+.doc-customer-summary {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f9efe9;
+  border: 1px solid #eedacd;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #404b50;
+}
+.doc-customer-summary p {
+  margin: 0 0 4px;
+}
+.doc-customer-summary-warning {
+  background: #fdf3ee;
+  border-color: #f0cdbf;
+  color: #7a3523;
+}
+.doc-footer-total {
+  display: none;
 }
 .doc-field-error {
   display: block;
@@ -190,10 +213,10 @@
   align-items: center;
   gap: 6px;
   background: #fff;
-  border: 1px solid #dce5dc;
+  border: 1px solid #e8dfd9;
   border-radius: 7px;
   padding: 9px 12px;
-  color: #3e6b50;
+  color: #3b606e;
   font: 600 11px inherit;
   font-family: inherit;
   font-size: 11px;
@@ -201,7 +224,7 @@
   margin-top: 12px;
 }
 .doc-add-item:hover {
-  background: #f6f9f2;
+  background: #fbf4f0;
 }
 .doc-tax-note {
   background: #fffaec;
@@ -228,16 +251,16 @@
 .doc-help {
   margin: 0;
   font-size: 10px;
-  color: #8a9690;
+  color: #9a8e86;
   line-height: 1.6;
 }
 .doc-totals-card {
   padding: 19px;
-  background: #f8faf7;
-  border: 1px solid #e5ece1;
+  background: #fbf8f6;
+  border: 1px solid #efe5de;
   border-radius: 9px;
   font-size: 12px;
-  color: #67746c;
+  color: #677074;
   display: grid;
   gap: 15px;
 }
@@ -249,7 +272,7 @@
 }
 .doc-totals-card strong,
 .doc-totals-card > div > span:last-child {
-  color: #384e41;
+  color: #38474e;
   font-weight: 500;
 }
 .doc-discount-row > label {
@@ -259,7 +282,7 @@
 }
 .doc-total-banner {
   margin-top: 24px;
-  border-top: 1px solid #e8eeeb;
+  border-top: 1px solid #f0eae6;
   padding-top: 21px;
   display: flex;
   align-items: center;
@@ -274,7 +297,7 @@
   display: block;
   font-size: 10px;
   font-weight: 400;
-  color: #859289;
+  color: #968981;
   margin-top: 5px;
 }
 .doc-total-banner > strong {
@@ -287,13 +310,13 @@
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  background: #fafbf8;
+  background: #fcf9f7;
   padding: 19px 30px;
-  border-top: 1px solid #e6ece4;
+  border-top: 1px solid #eee7e2;
 }
 .doc-page-footer > p {
   font-size: 10px;
-  color: #8b968c;
+  color: #998f88;
   display: flex;
   gap: 6px;
   align-items: center;
@@ -321,21 +344,21 @@
   white-space: nowrap;
 }
 .doc-button-primary {
-  background: #263e30;
-  border: 1px solid #263e30;
-  color: #f9fff5;
+  background: var(--coral);
+  border: 1px solid var(--coral);
+  color: #fff;
 }
 .doc-button-primary:hover:not(:disabled) {
-  background: #355840;
-  border-color: #355840;
+  background: var(--coral-dark);
+  border-color: #324f5b;
 }
 .doc-button-secondary {
   background: #fff;
-  border: 1px solid #dce4db;
-  color: #52624f;
+  border: 1px solid #e7ded8;
+  color: #4f5c62;
 }
 .doc-button-secondary:hover:not(:disabled) {
-  background: #f1f5ed;
+  background: #f7f0eb;
 }
 .doc-button:disabled,
 .doc-text-button:disabled {
@@ -353,7 +376,7 @@
 }
 .doc-editor-page button:focus-visible,
 .doc-preview-page button:focus-visible {
-  outline: 3px solid #a2bd76;
+  outline: 3px solid #71abc2;
   outline-offset: 3px;
 }
 .doc-preview {
@@ -368,23 +391,23 @@
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  box-shadow: 0 5px 25px #16231d10;
+  box-shadow: 0 5px 25px #161f2310;
 }
 .doc-preview-heading {
   display: flex;
   align-items: center;
   gap: 11px;
-  color: #4e6958;
+  color: #4e6069;
 }
 .doc-preview-heading h1 {
   font-size: 13px;
-  color: #233d2f;
+  color: #21363f;
   margin: 0 0 4px;
   font-weight: 650;
 }
 .doc-preview-heading > div > span {
   font-size: 10px;
-  color: #6c786c;
+  color: #6c7478;
 }
 .doc-preview-actions {
   display: flex;
@@ -394,16 +417,16 @@
 .doc-status {
   padding: 5px 8px;
   border-radius: 5px;
-  background: #f0f3ec;
-  color: #62715b;
+  background: #f5eeea;
+  color: #5b6a71;
   font-size: 9px;
   text-transform: capitalize;
   letter-spacing: 0.2px;
 }
 .doc-status-paid,
 .doc-status-accepted {
-  background: #e5f1df;
-  color: #487f43;
+  background: #f6e5da;
+  color: #3e7084;
 }
 .doc-status-sent {
   background: #eaf0f9;
@@ -417,7 +440,7 @@
   display: flex;
   align-items: center;
   gap: 7px;
-  color: #e0e9df;
+  color: #ece2dc;
   font-size: 10px;
   line-height: 1.5;
   margin: 16px auto;
@@ -425,18 +448,18 @@
 }
 .doc-converted-note {
   margin-left: auto;
-  color: #d4ed8a;
+  color: #83d4f4;
 }
 .doc-paper {
   background: #fff;
   position: relative;
   width: min(850px, 100%);
   margin: 0 auto 32px;
-  box-shadow: 0 12px 45px #0b211d30;
+  box-shadow: 0 12px 45px #0b1a2130;
   padding: 44px 43px 0;
   border-radius: 3px;
   overflow: hidden;
-  color: #33473c;
+  color: #334047;
   min-height: 1000px;
   display: flex;
   flex-direction: column;
@@ -457,7 +480,7 @@
   justify-content: space-between;
   gap: 18px;
   padding-bottom: 31px;
-  border-bottom: 1px solid #e4eae2;
+  border-bottom: 1px solid #ece5e0;
 }
 .doc-brand-block {
   display: flex;
@@ -481,7 +504,7 @@
 }
 .doc-brand-block p {
   margin: 3px 0 0;
-  color: #6f776d;
+  color: #6d7477;
   font-size: 8px;
   letter-spacing: 0.3px;
 }
@@ -490,7 +513,7 @@
   margin: 1px 0 0;
   font-weight: 500;
   line-height: 1.5;
-  color: #65715f;
+  color: #5f6b71;
 }
 .doc-paper-document-label {
   text-align: right;
@@ -511,12 +534,12 @@
   font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.3px;
-  color: #6e7a68;
+  color: #68747a;
 }
 .doc-paper-status {
   margin-top: 6px;
-  background: #f2f5ef;
-  color: #6a7d5e;
+  background: #f7f1ed;
+  color: #5e737d;
   font-size: 8px;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -546,7 +569,7 @@
   display: block;
   text-transform: uppercase;
   letter-spacing: 1.25px;
-  color: #8b9786;
+  color: #9c8c81;
   font-size: 8px;
   font-weight: 600;
   margin-bottom: 9px;
@@ -562,14 +585,14 @@
   font-weight: 600;
   line-height: 1.5;
   margin-bottom: 7px;
-  color: #344a36;
+  color: #34434a;
 }
 .doc-party p {
   margin: 3px 0;
-  color: #7d8876;
+  color: #8d7c71;
 }
 .doc-date-details {
-  border-left: 1px solid #e5ebe0;
+  border-left: 1px solid #eee4dd;
   padding-left: 20px;
   font-size: 10px;
   display: grid;
@@ -582,11 +605,11 @@
 .doc-date-details strong {
   font-size: 10px;
   font-weight: 500;
-  color: #536446;
+  color: #465a64;
 }
 .doc-project-title {
   margin: 0 0 20px;
-  border-top: 1px solid #edf0e8;
+  border-top: 1px solid #f2ebe6;
   padding-top: 15px;
 }
 .doc-project-title .doc-paper-eyebrow {
@@ -626,9 +649,9 @@
 }
 .doc-paper-table td {
   padding: 15px 8px;
-  border-bottom: 1px solid #e8ece4;
+  border-bottom: 1px solid #eee7e2;
   vertical-align: top;
-  color: #6a785e;
+  color: #5e6f78;
   font-size: 9px;
 }
 .doc-paper-table td:first-child {
@@ -638,11 +661,11 @@
   padding-right: 12px;
 }
 .doc-paper-table td.doc-row-number {
-  color: #a0aa97;
+  color: #b09d91;
   font-size: 8px;
 }
 .doc-paper-table td.doc-paper-description {
-  color: #435438;
+  color: #384b54;
   font-size: 10px;
   width: 34%;
   white-space: pre-line;
@@ -651,7 +674,7 @@
 }
 .doc-paper-table td.doc-paper-amount {
   font-weight: 600;
-  color: #3e5033;
+  color: #314952;
 }
 .doc-no-wrap {
   white-space: nowrap;
@@ -664,14 +687,14 @@
 }
 .doc-paper-note {
   font-size: 10px;
-  color: #839076;
+  color: #987f6e;
 }
 .doc-paper-note p {
   margin: 0 0 12px;
 }
 .doc-paper-note .doc-quotation-note {
   font-size: 9px;
-  color: #99a18f;
+  color: #a6958a;
   font-style: italic;
 }
 .doc-preserve-lines {
@@ -682,7 +705,7 @@
   display: grid;
   gap: 9px;
   font-size: 10px;
-  color: #7b8a6d;
+  color: #937764;
   align-content: start;
 }
 .doc-paper-totals > div {
@@ -692,13 +715,13 @@
   gap: 18px;
 }
 .doc-paper-totals > div > span:last-child {
-  color: #425634;
+  color: #314d59;
 }
 .doc-paper-totals > .doc-paper-grand-total {
-  border-top: 1px solid #dfe7d7;
+  border-top: 1px solid #ecdcd2;
   padding: 13px 12px;
   margin-top: 4px;
-  background: #f5f7f1;
+  background: #f9f3ef;
   color: var(--doc-accent-text);
   margin-left: -12px;
   margin-right: -12px;
@@ -711,7 +734,7 @@
   font-size: 8px;
   font-weight: 400;
   margin-left: 4px;
-  color: #91a180;
+  color: #ab8b76;
 }
 .doc-paper-grand-total > strong {
   font-size: 21px;
@@ -722,10 +745,10 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 35px;
-  border-top: 1px solid #e5ebdc;
+  border-top: 1px solid #efe1d8;
   padding: 22px 0;
   font-size: 9px;
-  color: #819174;
+  color: #9a7e6b;
   break-inside: avoid;
 }
 .doc-paper-bottom p {
@@ -739,11 +762,11 @@
   margin: 0;
 }
 .doc-bank-details dt {
-  color: #9aa58e;
+  color: #ac9687;
 }
 .doc-bank-details dd {
   margin: 0;
-  color: #627653;
+  color: #536a76;
   overflow-wrap: anywhere;
 }
 .doc-paper-signoff {
@@ -765,16 +788,16 @@
 }
 .doc-paper-signoff > div:first-child > span {
   font-size: 9px;
-  color: #89997a;
+  color: #a28571;
 }
 .doc-paper-footer {
   display: flex;
   justify-content: space-between;
   gap: 20px;
-  border-top: 1px solid #e5eadd;
+  border-top: 1px solid #eee1d9;
   padding: 15px 0;
   font-size: 8px;
-  color: #a0ab93;
+  color: #b29b8c;
   letter-spacing: 0.2px;
 }
 .doc-template-classic .doc-paper-accent {
@@ -784,7 +807,7 @@
   border-bottom: 2px solid var(--doc-accent);
 }
 .doc-template-classic .doc-paper-table thead {
-  background: #f3f5ef;
+  background: #f7f1ed;
   color: var(--doc-accent-text);
   border-top: 1px solid var(--doc-accent);
   border-bottom: 1px solid var(--doc-accent);
@@ -846,14 +869,35 @@
     grid-template-columns: 1fr;
     gap: 22px;
   }
+  /* On phones the total and save buttons stay at the bottom of the screen. */
   .doc-page-footer {
-    padding: 15px 17px;
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
     flex-direction: column;
     align-items: stretch;
-    gap: 12px;
+    gap: 8px;
+    box-shadow: 0 -8px 20px #0b1b2514;
+  }
+  .doc-footer-total {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #596266;
+  }
+  .doc-footer-total strong {
+    font-size: 19px;
+    color: #171e22;
   }
   .doc-page-footer > div {
     justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+  .doc-page-footer .doc-button {
+    min-height: 44px;
+    flex: 1 1 auto;
   }
   .doc-total-banner > strong {
     font-size: 24px;
@@ -865,14 +909,23 @@
     width: 100%;
     gap: 9px;
   }
+  /* Phones: two even columns of actions, Download PDF first and full width. */
   .doc-preview-actions {
     width: 100%;
-    gap: 5px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
   }
   .doc-preview-actions .doc-button {
-    font-size: 10px;
-    padding: 8px 10px;
+    font-size: 11px;
+    padding: 10px 8px;
     gap: 5px;
+    min-height: 40px;
+    text-align: center;
+  }
+  .doc-preview-actions [data-preview-action='pdf'] {
+    grid-column: 1 / -1;
+    order: -1;
   }
   .doc-preview-actions .doc-button svg {
     width: 12px;
@@ -932,7 +985,7 @@
     gap: 10px;
     padding: 12px 0 0;
     border-left: 0;
-    border-top: 1px solid #e9ece3;
+    border-top: 1px solid #efe6e0;
   }
   .doc-date-details strong {
     font-size: 9px;
@@ -1049,7 +1102,7 @@
     grid-column: auto !important;
     grid-template-columns: 1fr !important;
     border-top: 0 !important;
-    border-left: 1px solid #e5ebe0 !important;
+    border-left: 1px solid #eee4dd !important;
     padding: 0 0 0 20px !important;
   }
   .doc-paper-table-wrap {
@@ -1087,8 +1140,8 @@
 .doc-editor input:disabled,
 .doc-editor select:disabled,
 .doc-editor textarea:disabled {
-  background: #f5f7f3;
-  color: #889582;
+  background: #f8f4f2;
+  color: #9b887c;
   cursor: not-allowed;
   opacity: 1;
 }
@@ -1105,23 +1158,23 @@
 }
 
 .doc-paper .doc-paper-eyebrow {
-  color: #63725c;
+  color: #5c6b72;
 }
 .doc-party p,
 .doc-paper-note,
 .doc-paper-bottom,
 .doc-paper-totals {
-  color: #65735b;
+  color: #5b6b73;
 }
 .doc-paper-footer,
 .doc-bank-details dt,
 .doc-paper-note .doc-quotation-note {
-  color: #6d7a63;
+  color: #63727a;
 }
 .doc-help,
 .doc-total-banner small,
 .doc-page-footer > p {
-  color: #687462;
+  color: #626e74;
 }
 @media print {
   .doc-paper-header {

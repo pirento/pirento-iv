@@ -46,6 +46,8 @@ if (form) {
     'terms',
     'signature',
     'supportEmail',
+    'financeEmail',
+    'emailFrom',
     'paymentGateway',
   ];
   bindImageFields(form, (message) => showError(form, message));

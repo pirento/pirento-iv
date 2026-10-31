@@ -69,3 +69,16 @@ for (const image of document.querySelectorAll('.doc-paper img')) {
       image.closest('.doc-paper').classList.remove('doc-has-logo');
   });
 }
+
+// Phones: show the whole page at the screen width instead of scrolling sideways (pinch to zoom in).
+const viewport = document.querySelector('.doc-paper-viewport');
+const paper = viewport?.querySelector('.doc-paper');
+function fitPaper() {
+  paper.style.removeProperty('--doc-fit');
+  const scale = Math.min(1, viewport.clientWidth / paper.offsetWidth);
+  if (scale < 1) paper.style.setProperty('--doc-fit', scale.toFixed(3));
+}
+if (paper) {
+  fitPaper();
+  addEventListener('resize', fitPaper);
+}

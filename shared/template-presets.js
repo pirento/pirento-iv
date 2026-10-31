@@ -12,7 +12,7 @@ export const TEMPLATE_PRESETS = [
     description: 'A balanced everyday document with all essential details.',
     settings: {
       layout: 'modern',
-      accentColor: '#26705b',
+      accentColor: '#0e4d64',
       tableStyle: 'ruled',
     },
   },
@@ -23,7 +23,7 @@ export const TEMPLATE_PRESETS = [
     description: 'A structured navy identity for established business clients.',
     settings: {
       layout: 'sidebar',
-      accentColor: '#243b64',
+      accentColor: '#0e4d64',
       tableStyle: 'striped',
     },
   },
@@ -34,7 +34,7 @@ export const TEMPLATE_PRESETS = [
     description: 'Centered company identity and a traditional ruled table.',
     settings: {
       layout: 'classic',
-      accentColor: '#334155',
+      accentColor: '#0e4d64',
       tableStyle: 'ruled',
     },
   },
@@ -45,7 +45,7 @@ export const TEMPLATE_PRESETS = [
     description: 'Quiet typography and generous space for concise documents.',
     settings: {
       layout: 'minimal',
-      accentColor: '#475569',
+      accentColor: '#0e4d64',
       tableStyle: 'plain',
       showHsn: false,
       density: 'comfortable',
@@ -58,7 +58,7 @@ export const TEMPLATE_PRESETS = [
     description: 'Detailed classifications and compact columns for tax records.',
     settings: {
       layout: 'ledger',
-      accentColor: '#315244',
+      accentColor: '#0e4d64',
       tableStyle: 'ruled',
       density: 'compact',
       fontSize: 8,
@@ -73,7 +73,7 @@ export const TEMPLATE_PRESETS = [
     description: 'A formal letterhead for legal services and professional fees.',
     settings: {
       layout: 'classic',
-      accentColor: '#3e456b',
+      accentColor: '#0e4d64',
       tableStyle: 'plain',
       showUnit: false,
       showHsn: true,
@@ -87,7 +87,7 @@ export const TEMPLATE_PRESETS = [
     description: 'Clear scope descriptions and a strong consulting identity.',
     settings: {
       layout: 'sidebar',
-      accentColor: '#6d4b96',
+      accentColor: '#0e4d64',
       tableStyle: 'plain',
       showHsn: false,
       showSignature: true,
@@ -100,7 +100,7 @@ export const TEMPLATE_PRESETS = [
     description: 'Organized recurring service lines for facility operations.',
     settings: {
       layout: 'ledger',
-      accentColor: '#17786b',
+      accentColor: '#0e4d64',
       tableStyle: 'striped',
       density: 'compact',
       showUnit: true,
@@ -113,7 +113,7 @@ export const TEMPLATE_PRESETS = [
     description: 'Service visits, replacement parts and maintenance details.',
     settings: {
       layout: 'modern',
-      accentColor: '#b76b28',
+      accentColor: '#0e4d64',
       tableStyle: 'striped',
       showHsn: true,
       showUnit: true,
@@ -126,7 +126,7 @@ export const TEMPLATE_PRESETS = [
     description: 'A contemporary format for interiors and creative projects.',
     settings: {
       layout: 'minimal',
-      accentColor: '#a05475',
+      accentColor: '#0e4d64',
       tableStyle: 'plain',
       showHsn: false,
       fontSize: 10,
@@ -139,7 +139,7 @@ export const TEMPLATE_PRESETS = [
     description: 'Gram-based quantities, item classifications and elegant gold accents.',
     settings: {
       layout: 'classic',
-      accentColor: '#8c6b26',
+      accentColor: '#0e4d64',
       tableStyle: 'ruled',
       showUnit: true,
       showHsn: true,
@@ -152,7 +152,7 @@ export const TEMPLATE_PRESETS = [
     description: 'An A5 layout for shorter itemized retail invoices.',
     settings: {
       layout: 'modern',
-      accentColor: '#2a7585',
+      accentColor: '#0e4d64',
       tableStyle: 'striped',
       pageSize: 'A5',
       density: 'compact',
@@ -169,7 +169,7 @@ export const TEMPLATE_PRESETS = [
     description: 'Wide tables for larger orders and detailed product descriptions.',
     settings: {
       layout: 'ledger',
-      accentColor: '#48617b',
+      accentColor: '#0e4d64',
       tableStyle: 'ruled',
       orientation: 'landscape',
       density: 'compact',
@@ -183,7 +183,7 @@ export const TEMPLATE_PRESETS = [
     description: 'A clean shipping document for dispatch and receiving teams.',
     settings: {
       layout: 'sidebar',
-      accentColor: '#347982',
+      accentColor: '#0e4d64',
       tableStyle: 'ruled',
       showBankDetails: false,
       showAmountInWords: false,
@@ -198,7 +198,7 @@ export const TEMPLATE_PRESETS = [
     description: 'Letter-size documents with space for shipping references.',
     settings: {
       layout: 'modern',
-      accentColor: '#455c94',
+      accentColor: '#0e4d64',
       tableStyle: 'striped',
       pageSize: 'LETTER',
       showUnit: true,

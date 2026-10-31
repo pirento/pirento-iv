@@ -339,6 +339,29 @@ test(
     assert.ok(emails[1].body.from.startsWith('Shri Sarraf'));
     assert.ok(!emails[1].body.html.includes('Venturecore Solutions Private Limited'));
     check('Independent business keeps own email sender and legal identity');
+    // Invoice emails reply to the business's finance email; its own sending address wins over EMAIL_FROM.
+    assert.equal(emails[0].body.reply_to, 'finance@pirento.com');
+    assert.equal(emails[1].body.reply_to, 'support@shrisarraf.com');
+    const legalSaved = await backend.db.models.organizations.findById(legal.id);
+    await backend.db.models.organizations.save({
+      ...legalSaved,
+      financeEmail: 'accounts@pirento.com',
+      emailFrom: 'billing@pirento.com',
+    });
+    await call(
+      '/documents/' + inv.id + '/email',
+      'POST',
+      { requestId: randomUUID(), includePaymentLink: false },
+      202,
+    );
+    await backend.mailer.processQueue();
+    assert.equal(
+      emails.at(-1).body.from,
+      `"${legalSaved.tradeName || legalSaved.name}" <billing@pirento.com>`,
+    );
+    assert.equal(emails.at(-1).body.reply_to, 'finance@pirento.com', 'the saved invoice keeps its reply-to');
+    await backend.db.models.organizations.save(legalSaved);
+    check('Business sending address and finance reply-to');
     const send = await call(
       '/documents/' + inv.id + '/email',
       'POST',
@@ -444,6 +467,6 @@ test(
       1,
     );
     check('Concurrent link reservation sends only one provider create request');
-    assert.equal(passed, 12);
+    assert.equal(passed, 13);
   },
 );

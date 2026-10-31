@@ -202,6 +202,7 @@ export async function createSyntheticPreviewApplication(options = {}) {
       'ledgerExport',
       'gstr1Export',
       'expenseExport',
+      'financeExport',
       'reportError',
       'requestDiagnostics',
     ])

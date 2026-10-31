@@ -178,10 +178,10 @@
   border-radius: 14px;
   padding: 26px;
   color: var(--ink);
-  box-shadow: 0 20px 80px #14271740;
+  box-shadow: 0 20px 80px #14212740;
 }
 .reminder-preview::backdrop {
-  background: #14271770;
+  background: #14212770;
 }
 .reminder-preview h2 {
   margin-top: 0;
@@ -288,7 +288,7 @@ body.reminder-dialog-open {
   }
   .ledger-report .metric {
     padding: 10pt;
-    border: 1px solid #d6ddd6;
+    border: 1px solid #dfd8d4;
   }
   .ledger-report .metric-value {
     font-size: 12pt;
@@ -306,4 +306,54 @@ body.reminder-dialog-open {
   .reminder-preview {
     display: none !important;
   }
+}
+
+/* --- Letterhead page: form beside an A4 preview with the writable area outlined --- */
+.letterhead-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 360px);
+  gap: 18px;
+  align-items: start;
+}
+.letterhead-margins {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+}
+.letterhead-page {
+  position: relative;
+  aspect-ratio: 210 / 297;
+  background: #fff center / 100% 100% no-repeat;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+.letterhead-area {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  border: 2px dashed var(--coral);
+  background: #bb4b2c14;
+  color: var(--coral-dark);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+}
+@media (max-width: 820px) {
+  .letterhead-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Finance dashboard registers (views/finance/index.ejs). */
+.finance-register {
+  border-top: 1px solid var(--line, #efdfd2);
+  padding: 0.75rem 0;
+}
+.finance-register summary {
+  cursor: pointer;
+  padding: 0.25rem 0;
+}
+.finance-register .table-wrap {
+  max-height: 32rem;
+  overflow: auto;
 }

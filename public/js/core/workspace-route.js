@@ -6,6 +6,7 @@
 // Every valid <view> in a workspace URL.
 export const WORKSPACE_VIEWS = [
   'overview',
+  'finance',
   'invoices',
   'quotations',
   'proformas',
@@ -31,6 +32,7 @@ export const WORKSPACE_VIEWS = [
   'backups',
   'business_settings',
   'dashboard_branding',
+  'letterhead',
   'help',
 ];
 // Browser event fired after changeLocation() switches the URL without a page load.

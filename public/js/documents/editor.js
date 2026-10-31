@@ -207,6 +207,7 @@ function syncFields() {
     const element = field(key);
     if (element && ['string', 'number'].includes(typeof value)) element.value = value;
   }
+  if (field('useLetterhead')) field('useLetterhead').value = String(Boolean(form.useLetterhead));
   for (const element of editor.querySelectorAll('[data-shipping]'))
     element.value = form.shipping?.[element.dataset.shipping] || '';
   const branding = currentBranding();
@@ -284,6 +285,82 @@ function chooseCustomer(id) {
   update('customerId', id);
   clearError('placeOfSupply');
   syncFields();
+  void loadCustomerSummary();
+}
+
+// What the chosen contact still owes (with a credit-limit warning) and their last document's lines.
+let customerSummary = null;
+let lastDocument = null;
+let summaryRequest = 0;
+async function loadCustomerSummary() {
+  const request = ++summaryRequest;
+  customerSummary = null;
+  lastDocument = null;
+  renderCustomerSummary();
+  if (!form.customerId) return;
+  try {
+    const summary = await api(
+      `/customers/${encodeURIComponent(form.customerId)}/billing-summary?kind=${encodeURIComponent(form.kind)}`,
+    );
+    if (request !== summaryRequest) return;
+    customerSummary = summary;
+    lastDocument = !existing && !locked && summary.lastDocument?.items?.length ? summary.lastDocument : null;
+  } catch {
+    /* The summary is a hint only; the form works without it. */
+  }
+  renderCustomerSummary();
+}
+function renderCustomerSummary() {
+  const box = document.querySelector('#doc-customer-summary');
+  if (!box) return;
+  box.hidden = !customerSummary;
+  if (!customerSummary) return;
+  const { outstanding, openInvoices, overdueInvoices, creditLimit } = customerSummary;
+  const overLimit = creditLimit > 0 && outstanding + (existing ? 0 : currentTotals().total) > creditLimit;
+  box.querySelector('[data-summary-text]').textContent = [
+    outstanding > 0
+      ? `Owes ${money(outstanding)} on ${openInvoices} invoice(s)${overdueInvoices ? `, ${overdueInvoices} overdue` : ''}.`
+      : 'Nothing outstanding.',
+    creditLimit > 0
+      ? overLimit
+        ? `Over the credit limit of ${money(creditLimit)} with this document.`
+        : `Credit limit ${money(creditLimit)}.`
+      : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+  box.classList.toggle('doc-customer-summary-warning', overLimit || overdueInvoices > 0);
+  const copy = box.querySelector('[data-copy-last]');
+  copy.hidden = !lastDocument;
+  if (lastDocument)
+    copy.textContent = `Copy ${lastDocument.items.length} item(s) from ${lastDocument.number} (${lastDocument.issueDate})`;
+}
+function copyLastDocumentItems() {
+  if (!lastDocument || locked) return;
+  const filled = form.items.some((line) => line.description.trim());
+  if (filled && !confirm('Replace the items on this form with the items of the last document?')) return;
+  const keys = [
+    'description',
+    'hsn',
+    'quantity',
+    'rate',
+    'gstRate',
+    'unit',
+    'catalogItemId',
+    'itemType',
+    'pricing',
+  ];
+  update(
+    'items',
+    lastDocument.items.map((line) => ({
+      ...blankLine(profile, delivery),
+      ...Object.fromEntries(keys.filter((key) => line[key] !== undefined).map((key) => [key, line[key]])),
+      pricing: line.pricing,
+      ...(delivery ? { rate: 0, gstRate: 0 } : {}),
+    })),
+  );
+  renderLines();
+  feedback(`Items copied from ${lastDocument.number}. Check quantities and rates before saving.`, false);
 }
 function incompatibleLines(productId) {
   return form.items.filter((line) => {
@@ -341,7 +418,7 @@ function renderLines() {
       const disabled = locked ? 'disabled' : '';
       const makeInput = (label, key, attrs = '') =>
         `<label class="doc-field">${label}<input data-line="${key}" value="${escape(line[key])}" ${attrs}></label>`;
-      return `<article class="doc-line-card" data-line-index="${index}"><div class="doc-label-row"><strong>Item ${index + 1}</strong><button type="button" class="doc-text-button doc-delete" data-remove-line="${index}" ${disabled || (form.items.length === 1 ? 'disabled' : '')}>Remove</button></div><fieldset class="doc-line-fieldset" ${disabled}><div class="doc-form-grid"><label class="doc-field doc-wide">Description *<textarea data-line="description" rows="2" maxlength="2500" required>${escape(line.description)}</textarea></label>${makeInput('HSN / SAC', 'hsn', 'maxlength="8" inputmode="numeric"')}${makeInput('Quantity *', 'quantity', 'type="number" min="0.001" max="1000000" step="any" required')}${makeInput('Unit', 'unit', 'list="doc-unit-options" maxlength="20"')}${delivery ? '' : `${makeInput(line.pricing?.mode === 'jewellery' ? 'Metal rate (₹/g)' : 'Rate (₹)', 'rate', 'type="number" min="0" max="100000000" step="0.01"')}${makeInput('GST (%)', 'gstRate', 'type="number" min="0" max="40" step="any"')}<label class="doc-field">Amount<output data-line-amount>${money(calculateLineAmount(line, policy))}</output></label>`}</div>${line.catalogItemId ? `<p class="doc-help">Added from the saved ${escape(line.itemType || 'item')} catalog.</p>` : ''}${delivery ? '' : `<details class="doc-line-pricing" ${line.pricing && line.pricing.mode !== 'standard' ? 'open' : ''}><summary>Pricing method · ${escape(line.pricing?.mode || 'standard')}</summary><div data-pricing-fields>${pricingFields(line, index, locked, policy)}</div></details>`}</fieldset></article>`;
+      return `<article class="doc-line-card" data-line-index="${index}"><div class="doc-label-row"><strong>Item ${index + 1}</strong><button type="button" class="doc-text-button doc-delete" data-remove-line="${index}" ${disabled || (form.items.length === 1 ? 'disabled' : '')}>Remove</button></div><fieldset class="doc-line-fieldset" ${disabled}><div class="doc-form-grid"><label class="doc-field doc-wide">Description *<textarea data-line="description" rows="2" maxlength="2500" required>${escape(line.description)}</textarea></label>${makeInput('HSN / SAC', 'hsn', 'maxlength="8" inputmode="numeric"')}${makeInput('Quantity *', 'quantity', 'type="number" inputmode="decimal" min="0.001" max="1000000" step="any" required')}${makeInput('Unit', 'unit', 'list="doc-unit-options" maxlength="20"')}${delivery ? '' : `${makeInput(line.pricing?.mode === 'jewellery' ? 'Metal rate (₹/g)' : 'Rate (₹)', 'rate', 'type="number" inputmode="decimal" min="0" max="100000000" step="0.01"')}${makeInput('GST (%)', 'gstRate', 'type="number" inputmode="decimal" list="doc-gst-options" min="0" max="40" step="any"')}<label class="doc-field">Amount<output data-line-amount>${money(calculateLineAmount(line, policy))}</output></label>`}</div>${line.catalogItemId ? `<p class="doc-help">Added from the saved ${escape(line.itemType || 'item')} catalog.</p>` : ''}${delivery ? '' : `<details class="doc-line-pricing" ${line.pricing && line.pricing.mode !== 'standard' ? 'open' : ''}><summary>Pricing method · ${escape(line.pricing?.mode || 'standard')}</summary><div data-pricing-fields>${pricingFields(line, index, locked, policy)}</div></details>`}</fieldset></article>`;
     })
     .join('');
   document.querySelector('[data-action="add-line"]').disabled = locked || form.items.length >= 200;
@@ -428,6 +505,9 @@ function refreshDerived() {
         .join(' · '),
     )}</small><p>${escape(customer.address)}</p><small>${customer.gstin ? `GSTIN: ${escape(customer.gstin)} · ` : ''}${escape([customer.email, customer.phone].filter(Boolean).join(' · '))}</small></div>`;
   const totals = currentTotals();
+  if (customerSummary) renderCustomerSummary();
+  const footerTotal = editor.querySelector('[data-footer-total]');
+  if (footerTotal) footerTotal.textContent = money(totals.total);
   for (const element of editor.querySelectorAll('[data-total]'))
     element.textContent = `${element.dataset.total === 'discount' ? '− ' : ''}${money(totals[element.dataset.total])}`;
   for (const card of editor.querySelectorAll('.doc-line-card')) {
@@ -587,9 +667,15 @@ editor.addEventListener('input', (event) => {
   }
   if (
     target.name &&
-    !['customerId', 'businessProductId', 'formatId', 'gstRegistrationId', 'status', 'placeOfSupply'].includes(
-      target.name,
-    )
+    ![
+      'customerId',
+      'businessProductId',
+      'formatId',
+      'gstRegistrationId',
+      'status',
+      'placeOfSupply',
+      'useLetterhead',
+    ].includes(target.name)
   )
     update(target.name, target.type === 'number' ? Number(target.value) : target.value);
 });
@@ -597,10 +683,12 @@ editor.addEventListener('change', async (event) => {
   const target = event.target;
   if (target.name === 'customerId') return chooseCustomer(target.value);
   if (target.name === 'businessProductId') return chooseProduct(target.value);
+  if (target.name === 'useLetterhead') return update('useLetterhead', target.value === 'true');
   if (target.id === 'doc-catalog-type') return catalogPicker?.search({ immediate: true });
   if (['formatId', 'gstRegistrationId', 'status', 'placeOfSupply'].includes(target.name)) {
     update(target.name, target.name === 'formatId' ? target.value || undefined : target.value);
     refreshBranding();
+    updateSaveAvailability();
     return;
   }
   if (target.dataset.pricing === 'mode' && !locked) {
@@ -668,6 +756,7 @@ editor.addEventListener('click', (event) => {
     refreshBranding();
     return;
   }
+  if (button.matches('[data-copy-last]')) return copyLastDocumentItems();
   switch (button.dataset.action) {
     case 'add-line':
       if (!locked && form.items.length < 200) {
@@ -762,6 +851,11 @@ function updateSaveAvailability() {
       : existing
         ? 'Unsaved changes stay in this browser tab. Discard reloads the latest saved document.'
         : 'Unsaved entries are kept in this browser tab. Start fresh clears this local draft.';
+  }
+  const issue = document.querySelector('#doc-issue-button');
+  if (issue) {
+    issue.hidden = Boolean(pendingCreate) || form.status !== 'draft';
+    issue.disabled = initializing || initializationFailed || saving || uploadCount > 0 || saveConflict;
   }
   const button = document.querySelector('#doc-save-button');
   if (!button) return;
@@ -904,6 +998,11 @@ document.querySelector('[data-download-unsaved]')?.addEventListener('click', () 
 editor.addEventListener('submit', async (event) => {
   event.preventDefault();
   if (initializing || initializationFailed || saving || finalized || uploadCount || saveConflict) return;
+  // "Save & issue" saves a new draft straight as sent (issued); the server then emails it if set up.
+  if (event.submitter?.matches('[data-issue]') && form.status === 'draft') {
+    update('status', 'sent');
+    syncFields();
+  }
   const errors = pendingCreate ? {} : validate();
   showErrors(errors);
   if (Object.keys(errors).length) {
@@ -1089,6 +1188,7 @@ async function initializeEditor() {
     renderLines();
     renderCatalog();
     refreshDerived();
+    void loadCustomerSummary();
     if (!locked && (form.businessProductId || '') !== (existing?.businessProductId || ''))
       catalogPicker.search({ immediate: true });
     saveDraft();
