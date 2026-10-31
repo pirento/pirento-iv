@@ -206,6 +206,23 @@ test(
     assert.equal(message.replyTo, 'accounts@elevator.example');
     assert.equal(message.to, 'buyer@example.test');
     assert.equal(message.attachments[0].content.subarray(0, 4).toString(), '%PDF');
+    // The email carries the business's look and details, in HTML and text.
+    assert.match(message.html, /background:#0e4d64/);
+    assert.match(message.html, /Balance due.*₹1,180\.00/s);
+    assert.match(message.html, /mailto:accounts@elevator\.example/);
+    assert.match(message.text, /due by 15 Oct 2026|attached/);
+    assert.match(message.text, /Questions\? Reply to this email or write to accounts@elevator\.example\./);
+
+    // Its logo is served for email apps, which do not show images embedded in the message.
+    const pixel =
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    await backend.db.models.organizations.save({
+      ...(await backend.db.models.organizations.findById(organizationId)),
+      logoUrl: pixel,
+    });
+    const logo = await fetch(`${base}/brand/${organizationId}/logo`);
+    assert.equal(logo.headers.get('content-type'), 'image/png');
+    assert.equal((await fetch(`${base}/brand/pipeline2-legal/logo`)).status, 404, 'no logo, no image');
 
     // Removing a secret: SMTP without its password still sends (servers that need no login).
     const cleared = await call(`/integrations/${organizationId}/settings`, {

@@ -147,17 +147,104 @@ function replyAddress(org, kind) {
   return validEmail(finance) ? finance : supportAddress(org);
 }
 // --- Email content (HTML bodies for each message type) ---
-function emailFrame(title, body, company, support = 'support@pirento.com') {
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escaped(title)}</title></head><body style="margin:0;padding:24px 12px;background:#f3f5f9;color:#182339;font-family:Arial,Helvetica,sans-serif"><main style="max-width:700px;margin:auto;background:#fff;padding:28px;border-radius:16px"><p style="font-size:12px;letter-spacing:1px;color:#576783">${escaped(company)}</p><h1 style="font-size:25px;line-height:1.3">${escaped(title)}</h1>${body}<hr style="border:0;border-top:1px solid #e4e9f1;margin-top:28px"><p style="font-size:12px;color:#68758b">This email records the invoice or payment status at the time it was created. Contact the issuing organization for any correction.</p><p style="font-size:12px;color:#68758b">Issued by ${escaped(company)}. Support: <a href="mailto:${escaped(support)}">${escaped(support)}</a></p></main></body></html>`;
+// Every email is laid out in tables with inline styles, which is what email apps render reliably.
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+// 2026-10-15 -> 15 Oct 2026
+const day = (iso) => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso ?? '');
+  return match ? `${Number(match[3])} ${MONTH_NAMES[Number(match[2]) - 1]} ${match[1]}` : (iso ?? '');
+};
+const safeColor = (...colors) => colors.find((color) => /^#[0-9a-f]{6}$/i.test(color ?? '')) ?? '#0e4d64';
+const INK = '#13303b';
+const MUTED = '#5c6b73';
+const LINE = '#e6ddd4';
+const COMPANY = 'Venturecore Solutions Private Limited';
+
+/**
+ * The look of one business's emails: its document colour, name, legal line, logo (served from
+ * /brand/<id>/logo when PUBLIC_APP_URL is set, since email apps block embedded images) and the
+ * address customers write to (finance for invoices and receipts, support otherwise).
+ */
+function brandOf(org, { doc, origin, kind } = {}) {
+  if (!org)
+    return {
+      color: '#0e4d64',
+      name: COMPANY,
+      legal: '',
+      logo: '',
+      footer: [],
+      contact: 'support@pirento.com',
+    };
+  const name = org.tradeName || org.name;
+  return {
+    color: safeColor(doc?.formatSnapshot?.accentColor, org.accentColor),
+    name,
+    legal: org.legalName && org.legalName !== name ? legalIdentity(org) : '',
+    logo: /^https:\/\//.test(org.logoUrl ?? '')
+      ? org.logoUrl
+      : origin && org.id && /^(data:image\/|stored-image:)/.test(org.logoUrl ?? '')
+        ? `${origin}/brand/${encodeURIComponent(org.id)}/logo`
+        : '',
+    footer: [org.address, [org.gstin && `GSTIN ${org.gstin}`, org.phone].filter(Boolean).join(' · ')].filter(
+      Boolean,
+    ),
+    contact: replyAddress(org, kind),
+  };
 }
-function documentContents(doc) {
+function emailFrame({ title, preheader = '', brand, body }) {
+  const { color } = brand;
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><style>@media only screen and (max-width:480px){.m-hide{display:none!important}.m-pad{padding-left:18px!important;padding-right:18px!important}}</style><title>${escaped(title)}</title></head><body style="margin:0;padding:0;background:#f4efe9;color:${INK};font-family:Arial,Helvetica,sans-serif;-webkit-text-size-adjust:100%"><div style="display:none;max-height:0;overflow:hidden;opacity:0">${escaped(preheader)}</div><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4efe9"><tr><td align="center" style="padding:24px 12px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid ${LINE}"><tr><td class="m-pad" style="background:${color};padding:22px 28px;color:#ffffff">${brand.logo ? `<img src="${escaped(brand.logo)}" alt="${escaped(brand.name)}" height="44" style="display:block;height:44px;max-width:200px;background:#ffffff;border-radius:6px;padding:4px;margin:0 0 12px">` : ''}<div style="font-size:20px;font-weight:bold;line-height:1.3">${escaped(brand.name)}</div>${brand.legal ? `<div style="font-size:12px;line-height:1.5;opacity:.85">${escaped(brand.legal)}</div>` : ''}</td></tr><tr><td class="m-pad" style="padding:28px 28px 8px;font-size:15px;line-height:1.6"><h1 style="margin:0 0 16px;font-size:22px;line-height:1.3;color:${color}">${escaped(title)}</h1>${body}</td></tr><tr><td class="m-pad" style="padding:20px 28px;background:#faf6f2;border-top:1px solid ${LINE};font-size:12px;line-height:1.6;color:${MUTED}"><strong style="color:${INK}">${escaped(brand.name)}</strong>${brand.footer.map((line) => `<br>${textLines(line)}`).join('')}<br>Questions? Reply to this email or write to <a href="mailto:${escaped(brand.contact)}" style="color:${color}">${escaped(brand.contact)}</a>.<br><span style="font-size:11px">This email shows the status when it was sent. Contact ${escaped(brand.name)} for any correction.</span></td></tr></table></td></tr></table></body></html>`;
+}
+// The text version's closing lines.
+const textFooter = (brand) =>
+  [brand.name, ...brand.footer, `Questions? Reply to this email or write to ${brand.contact}.`].join('\n');
+
+// Key figures in a row of boxes, e.g. [['Balance due', '₹1,000.00', true], ['Due date', '15 Oct 2026']].
+function facts(color, rows) {
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:18px 0;background:#f6f9fa;border:1px solid #dfe9ec;border-radius:10px"><tr>${rows
+    .map(
+      ([label, value, strong]) =>
+        `<td style="padding:14px 16px;vertical-align:top"><div style="font-size:11px;letter-spacing:.6px;text-transform:uppercase;color:${MUTED}">${escaped(label)}</div><div style="margin-top:4px;font-size:${strong ? 20 : 15}px;font-weight:bold;color:${strong ? color : INK}">${escaped(value)}</div></td>`,
+    )
+    .join('')}</tr></table>`;
+}
+function documentFacts(doc, color) {
+  const due = doc.kind === 'invoice' ? balanceDue(doc) : 0;
+  const rows = [
+    [
+      doc.kind === 'invoice' && due > 0 ? 'Balance due' : 'Total',
+      money(due > 0 ? due : doc.totals.total),
+      true,
+    ],
+    [`${DOCUMENT_LABELS[doc.kind]} date`, day(doc.issueDate)],
+  ];
+  if (doc.dueDate && !(doc.kind === 'invoice' && due <= 0))
+    rows.push([doc.kind === 'quotation' ? 'Valid until' : 'Due date', day(doc.dueDate)]);
+  return facts(color, rows);
+}
+// Bank transfer details of the business, for documents still to be paid.
+function bankDetails(org, color) {
+  const rows = [
+    ['Account name', org.accountName],
+    ['Bank', [org.bankName, org.bankBranch].filter(Boolean).join(', ')],
+    ['Account number', org.accountNumber],
+    ['IFSC', org.ifsc],
+  ].filter(([, value]) => value);
+  if (!org.accountNumber) return { html: '', text: '' };
+  return {
+    html: `<h3 style="margin:24px 0 8px;font-size:15px;color:${color}">Pay by bank transfer</h3><table role="presentation" cellpadding="0" cellspacing="0" style="font-size:14px">${rows.map(([label, value]) => `<tr><td style="padding:3px 16px 3px 0;color:${MUTED}">${escaped(label)}</td><td style="padding:3px 0"><strong>${escaped(value)}</strong></td></tr>`).join('')}</table>`,
+    text: ['Pay by bank transfer:', ...rows.map(([label, value]) => `${label}: ${value}`)].join('\n'),
+  };
+}
+function documentContents(doc, color = '#0e4d64') {
   const roundingPolicy = documentRoundingPolicy(doc);
   const org = doc.organizationSnapshot,
     customer = doc.customerSnapshot;
+  const cell = 'padding:10px 6px;border-bottom:1px solid #eee5dc;vertical-align:top';
   const rows = doc.items
     .map(
       (item) =>
-        `<tr><td style="padding:10px 5px;border-bottom:1px solid #e4e9f1;word-break:break-word">${textLines(item.description)}${pricingDescription(item, roundingPolicy) ? `<br><small>${escaped(pricingDescription(item, roundingPolicy))}</small>` : ''}${item.hsn ? `<br><small>HSN/SAC: ${escaped(item.hsn)}</small>` : ''}</td><td style="padding:10px 5px;text-align:right;vertical-align:top">${escaped(item.quantity)} ${escaped(item.unit || '')}</td><td style="padding:10px 5px;text-align:right;vertical-align:top">${escaped(money(item.rate))}</td><td style="padding:10px 5px;text-align:right;vertical-align:top">${escaped(item.gstRate)}%</td><td style="padding:10px 5px;text-align:right;vertical-align:top">${escaped(money(calculateLineAmount(item, roundingPolicy)))}</td></tr>`,
+        `<tr><td style="${cell};word-break:break-word">${textLines(item.description)}${pricingDescription(item, roundingPolicy) ? `<br><small style="color:${MUTED}">${escaped(pricingDescription(item, roundingPolicy))}</small>` : ''}${item.hsn ? `<br><small style="color:${MUTED}">HSN/SAC ${escaped(item.hsn)}</small>` : ''}</td><td style="${cell};text-align:right;white-space:nowrap">${escaped(item.quantity)} ${escaped(item.unit || '')}</td><td class="m-hide" style="${cell};text-align:right;white-space:nowrap">${escaped(money(item.rate))}</td><td class="m-hide" style="${cell};text-align:right">${escaped(item.gstRate)}%</td><td style="${cell};text-align:right;white-space:nowrap">${escaped(money(calculateLineAmount(item, roundingPolicy)))}</td></tr>`,
     )
     .join('');
   const totals = [
@@ -168,79 +255,96 @@ function documentContents(doc) {
     ['SGST', doc.totals.sgst],
     ['IGST', doc.totals.igst],
     ['Total', doc.totals.total],
-  ];
-  if (doc.kind === 'invoice') totals.push(['Received', paidAmount(doc)], ['Outstanding', balanceDue(doc)]);
+  ].filter(([label, value]) => value || ['Taxable value', 'Total'].includes(label));
+  if (doc.kind === 'invoice') totals.push(['Received', paidAmount(doc)], ['Balance due', balanceDue(doc)]);
   const schedule = installmentBalances(doc);
   const planHtml = schedule.length
-    ? `<h3>Payment schedule · ${escaped(doc.installmentPlan.name)}</h3><table style="width:100%;border-collapse:collapse"><thead><tr><th align="left">Installment</th><th align="left">Due date</th><th align="right">Amount</th><th align="right">Balance</th></tr></thead><tbody>${schedule.map((entry) => `<tr><td style="padding:6px">${escaped(entry.label)}</td><td>${escaped(entry.dueDate)}</td><td align="right">${escaped(money(entry.amount))}</td><td align="right">${escaped(money(entry.balanceDue))}</td></tr>`).join('')}</tbody></table>`
+    ? `<h3 style="margin:24px 0 8px;font-size:15px;color:${color}">Payment schedule · ${escaped(doc.installmentPlan.name)}</h3><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:13px"><tr style="color:${MUTED}"><td style="padding:6px 0">Installment</td><td>Due date</td><td align="right">Amount</td><td align="right">Balance</td></tr>${schedule.map((entry) => `<tr><td style="padding:6px 0;border-top:1px solid #eee5dc">${escaped(entry.label)}</td><td style="border-top:1px solid #eee5dc">${escaped(day(entry.dueDate))}</td><td align="right" style="border-top:1px solid #eee5dc">${escaped(money(entry.amount))}</td><td align="right" style="border-top:1px solid #eee5dc">${escaped(money(entry.balanceDue))}</td></tr>`).join('')}</table>`
     : '';
-  const html = `<h2 style="font-size:18px">${escaped(org.name)}</h2><p>${textLines(org.address)}${org.gstin ? `<br>GSTIN: ${escaped(org.gstin)}` : ''}</p><p><strong>${escaped(DOCUMENT_LABELS[doc.kind])} ${escaped(doc.number)}</strong><br>Issued: ${escaped(doc.issueDate)}${doc.dueDate ? `<br>Due: ${escaped(doc.dueDate)}` : ''}${doc.businessProductSnapshot ? `<br>Product: ${escaped(doc.businessProductSnapshot.name)}` : ''}</p><p><strong>Bill to: ${escaped(customer.name)}</strong><br>${textLines(customer.address)}${customer.gstin ? `<br>GSTIN: ${escaped(customer.gstin)}` : ''}</p><table style="width:100%;border-collapse:collapse;font-size:13px"><thead style="background:#edf2fa"><tr><th align="left" style="padding:9px 5px">Description</th><th align="right">Qty</th><th align="right">Rate</th><th align="right">GST</th><th align="right">Amount</th></tr></thead><tbody>${rows}</tbody></table><table style="width:100%;margin-top:16px;border-collapse:collapse">${totals.map(([label, value]) => `<tr><td style="padding:5px 0">${escaped(label)}</td><td align="right" style="padding:5px 0"><strong>${escaped(money(value))}</strong></td></tr>`).join('')}</table>${planHtml}${doc.notes ? `<h3>Notes</h3><p>${textLines(doc.notes)}</p>` : ''}${doc.terms ? `<h3>Terms</h3><p>${textLines(doc.terms)}</p>` : ''}${org.email || org.phone ? `<p>Contact: ${escaped([org.email, org.phone].filter(Boolean).join(' · '))}</p>` : ''}`;
+  const unpaid = (doc.kind === 'invoice' && balanceDue(doc) > 0) || doc.kind === 'proforma';
+  const bank = unpaid ? bankDetails(org, color) : { html: '', text: '' };
+  const html = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;margin:8px 0 18px"><tr><td style="vertical-align:top;padding-right:12px"><div style="font-size:11px;letter-spacing:.6px;text-transform:uppercase;color:${MUTED}">Bill to</div><strong>${escaped(customer.name)}</strong>${customer.address ? `<br>${textLines(customer.address)}` : ''}${customer.gstin ? `<br>GSTIN ${escaped(customer.gstin)}` : ''}</td><td style="vertical-align:top;text-align:right"><div style="font-size:11px;letter-spacing:.6px;text-transform:uppercase;color:${MUTED}">${escaped(DOCUMENT_LABELS[doc.kind])}</div><strong>${escaped(doc.number)}</strong>${doc.businessProductSnapshot ? `<br>${escaped(doc.businessProductSnapshot.name)}` : ''}${org.gstin ? `<br><span style="color:${MUTED}">GSTIN ${escaped(org.gstin)}</span>` : ''}</td></tr></table><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:13px;border-collapse:collapse"><tr style="background:${color};color:#ffffff"><td style="padding:9px 6px">Description</td><td align="right" style="padding:9px 6px">Qty</td><td class="m-hide" align="right" style="padding:9px 6px">Rate</td><td class="m-hide" align="right" style="padding:9px 6px">GST</td><td align="right" style="padding:9px 6px">Amount</td></tr>${rows}</table><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:12px;font-size:14px">${totals
+    .map(([label, value]) => {
+      const strong = ['Total', 'Balance due'].includes(label);
+      return `<tr><td style="padding:4px 0;${strong ? 'font-weight:bold' : `color:${MUTED}`}">${escaped(label)}</td><td align="right" style="padding:4px 0;${strong ? `font-weight:bold;color:${color}` : ''}">${escaped(money(value))}</td></tr>`;
+    })
+    .join(
+      '',
+    )}</table>${planHtml}${bank.html}${doc.notes ? `<h3 style="margin:24px 0 8px;font-size:15px;color:${color}">Notes</h3><p style="margin:0;color:${INK}">${textLines(doc.notes)}</p>` : ''}${doc.terms ? `<h3 style="margin:24px 0 8px;font-size:15px;color:${color}">Terms</h3><p style="margin:0;font-size:13px;color:${MUTED}">${textLines(doc.terms)}</p>` : ''}`;
   const text = [
-    org.legalName,
-    org.name,
-    org.address,
-    org.gstin ? `GSTIN: ${org.gstin}` : '',
     `${DOCUMENT_LABELS[doc.kind]} ${doc.number}`,
-    `Issued: ${doc.issueDate}`,
-    doc.dueDate ? `Due: ${doc.dueDate}` : '',
+    `Date: ${day(doc.issueDate)}`,
+    doc.dueDate ? `${doc.kind === 'quotation' ? 'Valid until' : 'Due'}: ${day(doc.dueDate)}` : '',
+    '',
     `Bill to: ${customer.name}`,
     customer.address,
     customer.gstin ? `GSTIN: ${customer.gstin}` : '',
+    '',
     ...doc.items.map(
       (item) =>
         `${item.description} | ${item.quantity} ${item.unit || ''} × ${money(item.rate)} | GST ${item.gstRate}% | ${money(calculateLineAmount(item, roundingPolicy))}${pricingDescription(item, roundingPolicy) ? `\n${pricingDescription(item, roundingPolicy)}` : ''}`,
     ),
+    '',
     ...totals.map(([label, value]) => `${label}: ${money(value)}`),
     ...schedule.map(
       (entry) =>
-        `${entry.label}: ${entry.dueDate}, amount ${money(entry.amount)}, balance ${money(entry.balanceDue)}`,
+        `${entry.label}: due ${day(entry.dueDate)}, amount ${money(entry.amount)}, balance ${money(entry.balanceDue)}`,
     ),
-    doc.notes,
-    doc.terms,
+    bank.text ? `\n${bank.text}` : '',
+    doc.notes ? `\nNotes: ${doc.notes}` : '',
+    doc.terms ? `Terms: ${doc.terms}` : '',
   ]
-    .filter(Boolean)
-    .join('\n');
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n');
   return {
     html,
     text,
   };
 }
-function paymentAction(url) {
+function paymentAction(url, color = '#0e4d64') {
   const provider = url && new URL(url).hostname.endsWith('cashfree.com') ? 'Cashfree' : 'Razorpay';
   return url
     ? {
-        html: `<p style="margin:24px 0"><a href="${escaped(url)}" style="display:inline-block;background:#174fda;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px">Pay securely with ${provider}</a></p><p style="font-size:12px;word-break:break-all">Payment link: ${escaped(url)}</p>`,
+        html: `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:22px 0 8px"><tr><td style="background:${color};border-radius:8px"><a href="${escaped(url)}" style="display:inline-block;padding:13px 24px;color:#ffffff;text-decoration:none;font-weight:bold;font-size:15px">Pay securely with ${provider}</a></td></tr></table><p style="margin:0 0 8px;font-size:12px;color:${MUTED};word-break:break-all">Or open: ${escaped(url)}</p>`,
         text: `Pay securely with ${provider}: ${url}`,
       }
-    : {
-        html: '<p>No online payment link is included in this email. Contact the issuing organization for payment instructions.</p>',
-        text: 'No online payment link is included in this email. Contact the issuing organization for payment instructions.',
-      };
+    : { html: '', text: '' };
 }
-function invoicePayload(doc, paymentUrl) {
+// Opening line of a document email.
+function documentIntro(doc) {
+  const label = DOCUMENT_LABELS[doc.kind].toLowerCase();
+  const due = doc.kind === 'invoice' ? balanceDue(doc) : 0;
+  if (doc.kind === 'invoice' && due > 0)
+    return `Please find your ${label} ${doc.number} for ${money(doc.totals.total)} attached.${doc.dueDate ? ` Payment of ${money(due)} is due by ${day(doc.dueDate)}.` : ''}`;
+  if (doc.kind === 'invoice')
+    return `Please find your ${label} ${doc.number} attached. It is fully paid — thank you.`;
+  if (doc.kind === 'quotation')
+    return `Please find our quotation ${doc.number} for ${money(doc.totals.total)} attached${doc.dueDate ? `, valid until ${day(doc.dueDate)}` : ''}. Reply to this email to go ahead or ask a question.`;
+  return `Please find your ${label} ${doc.number} attached.`;
+}
+function invoicePayload(doc, paymentUrl, origin) {
   validatePaymentUrl(paymentUrl, doc.organizationSnapshot);
-  const content = documentContents(doc),
+  const brand = brandOf(doc.organizationSnapshot, { doc, origin, kind: doc.kind });
+  const content = documentContents(doc, brand.color),
     action =
       doc.kind === 'invoice' && balanceDue(doc) > 0
-        ? paymentAction(paymentUrl)
-        : {
-            html: '',
-            text: '',
-          };
+        ? paymentAction(paymentUrl, brand.color)
+        : { html: '', text: '' };
   const title = `${DOCUMENT_LABELS[doc.kind]} ${doc.number}`;
+  const intro = documentIntro(doc);
   return {
     organizationId: doc.organizationId,
-    html: emailFrame(
+    html: emailFrame({
       title,
-      `<p>Hello ${escaped(doc.customerSnapshot.name)},</p>${content.html}${action.html}`,
-      legalIdentity(doc.organizationSnapshot),
-      supportAddress(doc.organizationSnapshot),
-    ),
-    text: `${title}\n\n${content.text}\n\n${action.text}\n\nIssued by ${legalIdentity(doc.organizationSnapshot)}. Support: ${supportAddress(doc.organizationSnapshot)}`,
+      preheader: intro,
+      brand,
+      body: `<p style="margin:0 0 8px">Dear ${escaped(doc.customerSnapshot.name)},</p><p style="margin:0">${escaped(intro)}</p>${documentFacts(doc, brand.color)}${action.html}${content.html}`,
+    }),
+    text: `${title}\n\nDear ${doc.customerSnapshot.name},\n${intro}\n\n${action.text ? `${action.text}\n\n` : ''}${content.text}\n\n${textFooter(brand)}`,
     document: doc,
   };
 }
-function paymentReminderPayload(document, reminder, asOf) {
+function paymentReminderPayload(document, reminder, asOf, origin) {
   const target = reminderTargets(document, asOf).find(
     (item) => item.installmentId === reminder.installmentId,
   );
@@ -252,8 +356,11 @@ function paymentReminderPayload(document, reminder, asOf) {
       : target.status === 'due_today'
         ? 'Payment due today'
         : 'Upcoming payment';
-  const summary = `${target.label}: ${money(target.balanceDue)} remains due on ${target.dueDate}. The invoice balance is ${money(target.invoiceBalance)}.`;
-  const content = documentContents(document);
+  const summary = `${target.label}: ${money(target.balanceDue)} remains due on ${day(target.dueDate)}. The invoice balance is ${money(target.invoiceBalance)}.`;
+  const brand = brandOf(document.organizationSnapshot, { doc: document, origin, kind: document.kind });
+  const content = documentContents(document, brand.color);
+  const request =
+    'Please pay using the details below, or reply to this email if you need anything. If you have just paid, please reply with the payment reference so we can update your balance.';
   return {
     organizationId: document.organizationId,
     document,
@@ -270,13 +377,20 @@ function paymentReminderPayload(document, reminder, asOf) {
       invoiceBalance: target.invoiceBalance,
       documentFingerprint: reminderDocumentFingerprint(document),
     },
-    html: emailFrame(
+    html: emailFrame({
       title,
-      `<p>Hello ${escaped(document.customerSnapshot.name)},</p><p>${escaped(summary)}</p><p>Please use the payment instructions on your invoice or contact the issuing business. If you have just paid, please share the payment reference so the balance can be checked.</p>${content.html}`,
-      legalIdentity(document.organizationSnapshot),
-      supportAddress(document.organizationSnapshot),
-    ),
-    text: `${title}\n\n${summary}\nPlease use the payment instructions on your invoice or contact the issuing business. If you have just paid, please share the payment reference so the balance can be checked.\n\n${content.text}\n\nIssued by ${legalIdentity(document.organizationSnapshot)}. Support: ${supportAddress(document.organizationSnapshot)}`,
+      preheader: summary,
+      brand,
+      body: `<p style="margin:0 0 8px">Dear ${escaped(document.customerSnapshot.name)},</p><p style="margin:0">${escaped(summary)}</p>${facts(
+        brand.color,
+        [
+          ['Amount due', money(target.balanceDue), true],
+          [target.status === 'overdue' ? 'Was due on' : 'Due date', day(target.dueDate)],
+          ['Invoice', document.number],
+        ],
+      )}<p style="margin:0">${escaped(request)}</p>${content.html}`,
+    }),
+    text: `${title}\n\nDear ${document.customerSnapshot.name},\n${summary}\n${request}\n\n${content.text}\n\n${textFooter(brand)}`,
   };
 }
 /**
@@ -302,6 +416,8 @@ export function createMailer(db, options = {}) {
           })
           .sendMail(message)),
     now = options.now ?? (() => new Date());
+  // Address of this app, for business logos in emails (blank when PUBLIC_APP_URL is not set).
+  const publicOrigin = URL.canParse(env.PUBLIC_APP_URL ?? '') ? new URL(env.PUBLIC_APP_URL).origin : '';
   const leaseMs = options.leaseMs ?? LEASE_MS;
   const renewalMs = options.renewalMs ?? Math.floor(leaseMs / 3);
   if (
@@ -774,7 +890,7 @@ export function createMailer(db, options = {}) {
       doc.customerSnapshot.email,
       `${title} · ${doc.organizationSnapshot.name}`,
       {
-        ...invoicePayload(doc, input.paymentUrl),
+        ...invoicePayload(doc, input.paymentUrl, publicOrigin),
         resolvePaymentLink: Boolean(input.resolvePaymentLink),
       },
       input.eventKey,
@@ -788,7 +904,7 @@ export function createMailer(db, options = {}) {
       'payment_reminder',
       document.customerSnapshot.email,
       reminderSubject(document),
-      paymentReminderPayload(document, reminder, indiaBusinessDate(now())),
+      paymentReminderPayload(document, reminder, indiaBusinessDate(now()), publicOrigin),
       eventKey,
       document.id,
       false,
@@ -810,28 +926,31 @@ export function createMailer(db, options = {}) {
       outcome === 'failed'
         ? 'The payment attempt was unsuccessful. No successful payment has been recorded for this attempt. If money was debited, contact your bank or the issuing organization before retrying.'
         : `${input.amount === undefined ? 'Your payment' : `Your payment of ${money(input.amount)}`} has been recorded.${outcome === 'paid' ? ' This invoice is fully paid.' : ` The remaining balance is ${money(balanceDue(doc))}.`}`;
-    const content = documentContents(doc),
-      action =
-        balanceDue(doc) > 0
-          ? paymentAction(input.paymentUrl)
-          : {
-              html: '',
-              text: '',
-            };
+    const brand = brandOf(doc.organizationSnapshot, { doc, origin: publicOrigin, kind: doc.kind });
+    const content = documentContents(doc, brand.color),
+      action = balanceDue(doc) > 0 ? paymentAction(input.paymentUrl, brand.color) : { html: '', text: '' };
     const reference = input.reference ? `Payment reference: ${input.reference}` : '';
+    const figures =
+      outcome === 'failed'
+        ? []
+        : [
+            ...(input.amount === undefined ? [] : [['Amount received', money(input.amount), true]]),
+            ['Balance due', money(balanceDue(doc)), input.amount === undefined || balanceDue(doc) > 0],
+            ['Invoice', doc.number],
+          ];
     return await enqueue(
       outcome === 'failed' ? 'payment_failed' : outcome === 'paid' ? 'payment_paid' : 'payment_received',
       doc.customerSnapshot.email,
       `${title} · ${doc.number}`,
       {
         organizationId: doc.organizationId,
-        html: emailFrame(
+        html: emailFrame({
           title,
-          `<p>Hello ${escaped(doc.customerSnapshot.name)},</p><p>${escaped(summary)}</p>${reference ? `<p>${escaped(reference)}</p>` : ''}${content.html}${action.html}`,
-          legalIdentity(doc.organizationSnapshot),
-          supportAddress(doc.organizationSnapshot),
-        ),
-        text: `${title}\n\n${summary}\n${reference}\n\n${content.text}\n\n${action.text}\n\nIssued by ${legalIdentity(doc.organizationSnapshot)}. Support: ${supportAddress(doc.organizationSnapshot)}`,
+          preheader: summary,
+          brand,
+          body: `<p style="margin:0 0 8px">Dear ${escaped(doc.customerSnapshot.name)},</p><p style="margin:0">${escaped(summary)}</p>${reference ? `<p style="margin:8px 0 0;color:${MUTED}">${escaped(reference)}</p>` : ''}${figures.length ? facts(brand.color, figures) : ''}${outcome === 'failed' ? '' : '<p style="margin:0 0 16px">Thank you for your payment.</p>'}${action.html}${content.html}`,
+        }),
+        text: `${title}\n\nDear ${doc.customerSnapshot.name},\n${summary}\n${reference}\n\n${action.text ? `${action.text}\n\n` : ''}${content.text}\n\n${textFooter(brand)}`,
         document: doc,
       },
       input.eventKey,
@@ -864,11 +983,12 @@ export function createMailer(db, options = {}) {
       input.to,
       title,
       {
-        html: emailFrame(
+        html: emailFrame({
           title,
-          `<p>Hello ${escaped(input.name)},</p><p>Use the link below to choose a new password. This link is valid for 30 minutes and can be used once.</p><p><a href="${escaped(url.href)}" style="display:inline-block;background:#174fda;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px">Reset password</a></p><p>If you did not request this, you can ignore this email.</p>`,
-          'Venturecore Solutions Private Limited',
-        ),
+          preheader: 'Choose a new password within 30 minutes.',
+          brand: brandOf(null),
+          body: `<p style="margin:0 0 8px">Hello ${escaped(input.name)},</p><p style="margin:0">Use the button below to choose a new password. The link is valid for 30 minutes and can be used once.</p><table role="presentation" cellpadding="0" cellspacing="0" style="margin:22px 0"><tr><td style="background:#0e4d64;border-radius:8px"><a href="${escaped(url.href)}" style="display:inline-block;padding:13px 24px;color:#ffffff;text-decoration:none;font-weight:bold">Reset password</a></td></tr></table><p style="margin:0 0 16px;color:${MUTED}">If you did not ask for this, you can ignore this email; your password stays the same.</p>`,
+        }),
         text: `${title}\n\nHello ${input.name},\nUse this single-use link within 30 minutes: ${url.href}\nIf you did not request this, you can ignore this email.\nSupport: support@pirento.com`,
         expiresAt: new Date(now().getTime() + 30 * 60_000).toISOString(),
       },
@@ -963,7 +1083,7 @@ export function createMailer(db, options = {}) {
             row.subject !== heading(reminderSubject(document))
           ) {
             payload = {
-              ...paymentReminderPayload(document, payload.reminder, preparedOn),
+              ...paymentReminderPayload(document, payload.reminder, preparedOn, publicOrigin),
               ...(payload.sender ? { sender: payload.sender } : {}),
               ...(payload.senderProfile ? { senderProfile: payload.senderProfile } : {}),
             };
@@ -990,7 +1110,7 @@ export function createMailer(db, options = {}) {
             !resolved.paymentUrl
           )
             throw new EmailQueueError('The outstanding invoice needs a payment link.');
-          payload = invoicePayload(resolved.document, resolved.paymentUrl);
+          payload = invoicePayload(resolved.document, resolved.paymentUrl, publicOrigin);
           changed = true;
           const saved = await lease.run(() =>
             db.models.email.setPaymentLink(

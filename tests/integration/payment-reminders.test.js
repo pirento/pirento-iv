@@ -231,7 +231,7 @@ test(
         );
         assert.equal(deliveries.length, 1);
         assert.match(deliveries[0].body.subject, /Payment reminder/);
-        assert.match(deliveries[0].body.text, /100\.00 remains due on 2026-10-10/);
+        assert.match(deliveries[0].body.text, /100\.00 remains due on 10 Oct 2026/);
         assert.equal(
           Buffer.from(deliveries[0].body.attachments[0].content, 'base64').subarray(0, 4).toString(),
           '%PDF',
