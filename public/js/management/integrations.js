@@ -232,3 +232,28 @@ if (settingsForm) {
   for (const button of settingsForm.querySelectorAll('[data-clear]'))
     button.addEventListener('click', () => saveSettings({ clear: [button.dataset.clear] }));
 }
+
+// Sends one test email with this business's saved settings and shows the result.
+const testForm = document.querySelector('[data-test-email]');
+if (testForm) {
+  const message = document.querySelector('[data-test-message]');
+  testForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const button = testForm.querySelector('button');
+    button.disabled = true;
+    message.hidden = true;
+    try {
+      const result = await api(
+        `/integrations/${encodeURIComponent(getPageData().organization.id)}/test-email`,
+        sendJson('POST', { to: testForm.to.value.trim() }),
+      );
+      message.className = 'mg-message success';
+      message.textContent = `Test email sent from ${result.from} (${result.provider === 'smtp' ? 'SMTP' : 'Resend'}). Replies go to ${result.replyTo}.`;
+    } catch (error) {
+      message.className = 'mg-message error';
+      message.textContent = error.message;
+    }
+    message.hidden = false;
+    button.disabled = false;
+  });
+}

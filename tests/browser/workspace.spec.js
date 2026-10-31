@@ -687,4 +687,11 @@ test('an administrator sets a business gateway and SMTP email on Payments & emai
   const row = page.locator('#all-businesses tr', { hasText: 'A T Elevator' });
   await expect(row).toContainText('SMTP · ready');
   await expect(row).toContainText('Razorpay · ready');
+  // The test email reports what the SMTP server says (this test server does not exist).
+  const testEmail = page.locator('[data-test-email]');
+  await testEmail.locator('[name="to"]').fill('owner@example.test');
+  await testEmail.getByRole('button', { name: 'Send test email' }).click();
+  await expect(page.locator('[data-test-message]')).toContainText('The test email was not sent', {
+    timeout: 30_000,
+  });
 });

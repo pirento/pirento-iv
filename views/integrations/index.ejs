@@ -307,6 +307,11 @@ const support = helpers.organizationSupportEmail(organization);
         </div>
       </form>
       <div class="mg-message" data-settings-message role="status" hidden></div>
+      <form class="mg-form-grid" data-test-email>
+        <label class="field">Send a test email to<input name="to" type="email" required maxlength="254" value="<%= data.user.email || '' %>" /></label>
+        <div class="mg-actions"><button class="button secondary" type="submit">Send test email</button></div>
+      </form>
+      <div class="mg-message" data-test-message role="status" hidden></div>
     </section>
     <% } %>
     <% if (data.user.role === 'admin') { %>

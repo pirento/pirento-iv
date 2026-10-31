@@ -1383,7 +1383,61 @@ export function createMailer(db, options = {}) {
     })();
     return stopPromise;
   }
+  /**
+   * Sends one test email for a business straight away (not queued), with its saved sender, reply-to,
+   * look and transport, so an administrator can check its email settings. Throws with the reason.
+   */
+  async function sendTest(organizationId, to) {
+    if (!validEmail(String(to ?? ''))) throw new EmailQueueError('Enter a valid email address for the test.');
+    const config = await configuration(organizationId);
+    if (!config.integration.configured) throw new EmailQueueError(config.integration.reason, 409);
+    const org = await options.getOrganization(organizationId);
+    const brand = brandOf(org, { origin: publicOrigin, kind: 'invoice' });
+    const title = 'Your email is ready';
+    const email = compose(brand, {
+      title,
+      name: `${brand.name} team`,
+      lines: [
+        `This is a test email for ${brand.name}. Invoices, quotations, receipts and reminders to your customers will look like this, with the document attached as a PDF.`,
+        `Replies about invoices and payments go to ${brand.contact}.`,
+      ],
+      buttons: [{ label: 'Reply to us', href: mailto(brand, 'Test email'), primary: true }],
+    });
+    const message = {
+      from: config.integration.from,
+      replyTo: brand.contact,
+      to,
+      subject: `Test email from ${brand.name}`,
+      html: emailFrame({ title, preheader: 'Your business email settings work.', brand, body: email.html }),
+      text: email.text,
+    };
+    try {
+      if (config.smtp) await smtpSend(config.smtp, { ...message, attachments: [] });
+      else {
+        const response = await fetcher('https://api.resend.com/emails', {
+          method: 'POST',
+          redirect: 'error',
+          headers: { Authorization: 'Bearer ' + config.apiKey, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...message, reply_to: message.replyTo, to: [to], replyTo: undefined }),
+          signal: AbortSignal.timeout(15_000),
+        });
+        if (!response.ok) throw Object.assign(new Error(`HTTP ${response.status}`), { provider: true });
+      }
+    } catch (error) {
+      throw new EmailQueueError(
+        `The test email was not sent: ${config.smtp ? 'the SMTP server said' : 'Resend said'} “${String(error?.message ?? error).slice(0, 200)}”. Check the settings above.`,
+        502,
+      );
+    }
+    return {
+      sent: true,
+      from: message.from,
+      replyTo: message.replyTo,
+      provider: config.integration.provider,
+    };
+  }
   return {
+    sendTest,
     status,
     get,
     listMessages,
