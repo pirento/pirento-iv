@@ -37,6 +37,7 @@ import { createRecurringInvoices } from './recurring/recurring-invoices.js';
 import { migrateStoredImages } from '../models/image-store.js';
 import { migrateFormatsToTeal } from '../models/workspace-seed.js';
 import { createAiAssistant } from './integrations/ai/openai.js';
+import { createIntegrationSettings } from './integrations/integration-settings.js';
 
 /**
  * Builds the API application: returns the Express app with the services on app.locals.services
@@ -99,6 +100,11 @@ async function initializeApplication(options, environment, db) {
     apiKey: options.gstApiKey,
   });
   let mailer, online;
+  const integrationSettings = createIntegrationSettings({
+    db,
+    environment,
+    production: environment.NODE_ENV === 'production',
+  });
   const workspace = createWorkspaceService({
     db,
     now,
@@ -113,6 +119,8 @@ async function initializeApplication(options, environment, db) {
   mailer = createMailer(db, {
     env: environment,
     fetch: options.emailFetch,
+    smtpSend: options.smtpSend,
+    integrationSettings: integrationSettings.values,
     now,
     renderInvoiceAttachment,
     getOrganization,
@@ -161,6 +169,7 @@ async function initializeApplication(options, environment, db) {
   online = createPaymentGateways({
     db,
     env: environment,
+    integrationSettings: integrationSettings.values,
     fetch: options.paymentFetch,
     now,
     getDocument,
@@ -229,6 +238,7 @@ async function initializeApplication(options, environment, db) {
   });
   const pageData = createWorkspacePageData({
     ai,
+    integrationSettings,
     db,
     auth,
     online,
@@ -257,6 +267,7 @@ async function initializeApplication(options, environment, db) {
   app.locals.errorHandler = errorHandler;
   const controllerContext = {
     ai,
+    integrationSettings,
     environment,
     db,
     auth,

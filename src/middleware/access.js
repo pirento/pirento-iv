@@ -66,7 +66,14 @@ export function createAccessGuard(db) {
       });
       return;
     }
-    if (['organizations', 'workspace-settings'].includes(resource) && !['GET', 'HEAD'].includes(req.method)) {
+    // A Business owner may edit its own business (the id check below); creating businesses stays admin-only.
+    const ownBusinessEdit =
+      user.permission === 'owner' && resource === 'organizations' && req.method === 'PUT';
+    if (
+      ['organizations', 'workspace-settings'].includes(resource) &&
+      !['GET', 'HEAD'].includes(req.method) &&
+      !ownBusinessEdit
+    ) {
       denied();
       return;
     }
@@ -77,6 +84,11 @@ export function createAccessGuard(db) {
       }
     }
     if (['organizations', 'letterheads'].includes(resource) && id && !allowed.has(id)) {
+      denied();
+      return;
+    }
+    // /api/integrations/<businessId>/settings
+    if (resource === 'integrations' && id && id !== 'status' && !allowed.has(id)) {
       denied();
       return;
     }

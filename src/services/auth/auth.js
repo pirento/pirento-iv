@@ -56,7 +56,9 @@ const twoStepInput = z
   .strict();
 // Staff permission levels (administrators always have full access); a missing value means 'full'.
 // 'accounts' is view-only too, and also opens Group finance for the businesses assigned.
-export const STAFF_PERMISSIONS = ['full', 'no-delete', 'view', 'accounts'];
+// 'owner' (Business owner) has full access to its assigned business and also manages its settings,
+// letterhead and Payments & email; it never sees other businesses or the admin pages.
+export const STAFF_PERMISSIONS = ['full', 'no-delete', 'view', 'accounts', 'owner'];
 const access = z
   .object({
     role: z.enum(['admin', 'staff']),

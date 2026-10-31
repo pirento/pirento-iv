@@ -121,7 +121,6 @@ export const organizationSchema = z
     businessType: z.enum(['division', 'independent']).optional(),
     supportEmail: email.optional(),
     financeEmail: email.optional(),
-    emailFrom: email.optional(),
     paymentGateway: z.enum(['razorpay', 'cashfree', 'none']).optional(),
     gstRegistrations: z
       .array(gstRegistrationSchema)

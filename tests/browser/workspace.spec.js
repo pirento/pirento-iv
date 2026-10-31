@@ -667,3 +667,24 @@ test('an administrator creates a login, and the finance dashboard matches a bank
   await expect(result.locator('[data-ai-suggestions]')).toContainText('Receipt less 2% TDS');
   await expect(result.locator('[data-ai-suggestions]')).toContainText(invoice.number);
 });
+
+test('an administrator sets a business gateway and SMTP email on Payments & email', async ({ page, app }) => {
+  await signIn(page, app);
+  await page.goto(workspace(app, 'integrations'));
+  const form = page.locator('[data-settings-form]');
+  await form.locator('[name="paymentGateway"]').selectOption('razorpay');
+  await form.locator('[name="RAZORPAY_KEY_ID"]').fill('rzp_test_browser1');
+  await form.locator('[name="RAZORPAY_KEY_SECRET"]').fill('browser-razor-secret');
+  await form.locator('[name="RAZORPAY_WEBHOOK_SECRET"]').fill('browser-hook-secret');
+  await form.locator('[name="EMAIL_FROM"]').fill('billing@elevator.example');
+  await form.locator('[name="SMTP_HOST"]').fill('smtp.example.test');
+  await form.locator('[name="SMTP_PORT"]').selectOption('465');
+  await form.locator('[name="SMTP_SECURE"]').selectOption('true');
+  await form.locator('[name="SMTP_USER"]').fill('billing@elevator.example');
+  await form.locator('[name="SMTP_PASSWORD"]').fill('browser-smtp-pass');
+  await form.getByRole('button', { name: 'Save settings' }).click();
+  await expect(form.locator('[name="SMTP_PASSWORD"]')).toHaveAttribute('placeholder', /Saved, ending pass/);
+  const row = page.locator('#all-businesses tr', { hasText: 'A T Elevator' });
+  await expect(row).toContainText('SMTP · ready');
+  await expect(row).toContainText('Razorpay · ready');
+});

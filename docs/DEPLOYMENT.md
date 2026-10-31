@@ -86,9 +86,9 @@ For a division, defining any key in an override group disables shared fallback f
 
 ## Email and reset links
 
-The preserved email adapter uses **Resend's HTTP API**, not SMTP. Set `RESEND_API_KEY` and a verified `EMAIL_FROM`. A Hostinger business mailbox can be a contact or reply address, but its mailbox password is not a Resend API key.
+Server-wide email uses **Resend's HTTP API**. Set `RESEND_API_KEY` and a verified `EMAIL_FROM`. A Hostinger business mailbox password is not a Resend API key; use it as the SMTP login on Payments & email instead.
 
-Shri Sarraf uses its own `SHRI_SARRAF_RESEND_API_KEY`, `SHRI_SARRAF_EMAIL_FROM` and `SHRI_SARRAF_EMAIL_AUTOMATION`. Other organizations can use the documented complete prefixed override group. A business can also set its own **Send emails from** address in Business settings (it must be on a domain verified in the Resend account in use); its **Finance email** is the reply-to on invoices and reminders.
+Shri Sarraf uses its own `SHRI_SARRAF_RESEND_API_KEY`, `SHRI_SARRAF_EMAIL_FROM` and `SHRI_SARRAF_EMAIL_AUTOMATION`. Other organizations can use the documented complete prefixed override group. Each business can instead keep its gateway keys and email sending (an SMTP server such as Hostinger's `smtp.hostinger.com` with the mailbox login, or a Resend key) on **Payments & email**; those saved settings win over these variables for that business, and are encrypted with `TWO_STEP_KEY` (keep that key stable, or the saved secrets must be entered again). Its **Finance email** is the reply-to on invoices and reminders.
 
 Set `EMAIL_AUTOMATION=true` only when automatic invoice/payment/failure notifications should send. The manual Email page still requires a configured sender. Messages save a recipient/payload history, use idempotency keys and expose delivery failures/retry controls. Restored held messages do not automatically resume because credentials or automation settings change.
 
