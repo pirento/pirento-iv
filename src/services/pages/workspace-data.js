@@ -333,8 +333,13 @@ export function createWorkspacePageData({
                   result.organizations.map(async (organization) => ({
                     id: organization.id,
                     name: organization.name,
-                    payment: await online.getStatus(organization.id),
-                    email: await mailer.status(organization.id),
+                    // One business with broken settings must not stop the page for the others.
+                    payment: await online
+                      .getStatus(organization.id)
+                      .catch(() => ({ provider: 'unknown', configured: false })),
+                    email: await mailer
+                      .status(organization.id)
+                      .catch(() => ({ provider: 'unknown', configured: false })),
                   })),
                 ),
               }

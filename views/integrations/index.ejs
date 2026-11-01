@@ -234,7 +234,7 @@ const support = helpers.organizationSupportEmail(organization);
             <% for (const row of settings.businesses) { %>
               <tr>
                 <td><%= row.name %></td>
-                <td><%= row.payment.provider === 'none' ? 'Manual payments' : `${row.payment.provider === 'cashfree' ? 'Cashfree' : 'Razorpay'} · ${row.payment.configured ? 'ready' : 'setup needed'}` %></td>
+                <td><%= row.payment.provider === 'none' ? 'Manual payments' : row.payment.provider === 'unknown' ? 'Settings need checking' : `${row.payment.provider === 'cashfree' ? 'Cashfree' : 'Razorpay'} · ${row.payment.configured ? 'ready' : 'setup needed'}` %></td>
                 <td><%= row.email.configured ? `${row.email.provider === 'smtp' ? 'SMTP' : 'Resend'} · ready` : 'Setup needed' %></td>
                 <td><a href="/workspace/<%= encodeURIComponent(row.id) %>/integrations#business-settings">Set up</a></td>
               </tr>

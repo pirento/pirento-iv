@@ -245,3 +245,92 @@ test('emails go out through a real SMTP conversation, with login, PDF and errors
   );
   assert.match(failed.error, /535 5\.7\.8 Authentication credentials invalid/);
 });
+
+test(
+  'an email that failed on a wrong SMTP password is sent after the password is fixed',
+  options,
+  async (t) => {
+    const sent = [];
+    const { base, backend } = await createFixture(t, {
+      auth: false,
+      environment: { EMAIL_AUTOMATION: 'false' },
+      smtpSend: async (smtp, message) => {
+        if (smtp.pass !== 'right')
+          throw Object.assign(new Error('Invalid login: 535 Authentication failed'), { responseCode: 535 });
+        sent.push(message);
+        return { messageId: '<fixed@smtp.test>' };
+      },
+    });
+    const call = async (path, method = 'GET', body, status = 200) => {
+      const response = await fetch(`${base}/api${path}`, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      });
+      const data = await response.json();
+      assert.equal(response.status, status, `${method} ${path}: ${JSON.stringify(data)}`);
+      return data;
+    };
+    const organizationId = 'at-elevators';
+    const settings = (password) =>
+      call(`/integrations/${organizationId}/settings`, 'PUT', {
+        EMAIL_FROM: 'billing@example.test',
+        SMTP_HOST: 'smtp.example.test',
+        SMTP_USER: 'billing@example.test',
+        SMTP_PASSWORD: password,
+      });
+    await settings('wrong');
+    const business = await backend.db.models.organizations.findById(organizationId);
+    await backend.db.models.organizations.save({ ...business, stateCode: '09' });
+    const buyer = await call(
+      '/customers',
+      'POST',
+      {
+        organizationId,
+        name: 'Buyer',
+        email: 'buyer@example.test',
+        phone: '',
+        gstin: '',
+        address: 'Lucknow',
+        stateCode: '09',
+        contactPerson: '',
+      },
+      201,
+    );
+    const invoice = await call(
+      '/documents',
+      'POST',
+      {
+        organizationId,
+        customerId: buyer.id,
+        kind: 'invoice',
+        status: 'sent',
+        issueDate: '2026-10-15',
+        dueDate: '2026-11-14',
+        title: 'Lift',
+        items: [{ description: 'Lift service', hsn: '998718', quantity: 1, rate: 1000, gstRate: 0 }],
+        discountPercent: 0,
+        placeOfSupply: '09',
+        notes: '',
+        terms: '',
+      },
+      201,
+    );
+    const { message } = await call(
+      `/documents/${invoice.id}/email`,
+      'POST',
+      { requestId: '3f0d6f5e-1111-4222-8333-944445555601', includePaymentLink: false },
+      202,
+    );
+    await backend.mailer.processQueue();
+    assert.equal(
+      (await backend.mailer.get(message.id)).status,
+      'failed',
+      'a refused login is not retried by itself',
+    );
+    await settings('right');
+    await call(`/messages/${message.id}/retry`, 'POST', {});
+    assert.equal((await backend.mailer.processQueue()).sent, 1);
+    assert.equal(sent.length, 1);
+  },
+);

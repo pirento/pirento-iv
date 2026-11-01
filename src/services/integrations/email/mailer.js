@@ -598,7 +598,9 @@ export function createMailer(db, options = {}) {
         }
       : null;
     const configured = !missing && Boolean(smtp || apiKey) && !/[\r\n]/.test(from) && validEmail(address);
-    const credentials = smtp ? `smtp:${smtp.host}:${smtp.port}:${smtp.user}:${smtp.pass}` : apiKey;
+    // Which sending account prepared a message. For SMTP that is the server and login name, so fixing a
+    // wrong password or port lets a failed email be retried; a Resend key stays tied to its account.
+    const credentials = smtp ? `smtp:${smtp.host.toLowerCase()}:${smtp.user.toLowerCase()}` : apiKey;
     const integration = {
       configured,
       provider: smtp ? 'smtp' : 'resend',
