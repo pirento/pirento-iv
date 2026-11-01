@@ -61,6 +61,7 @@ export function registerApiRoutes(app, context) {
   app.get('/api/integrations/status', controllers.integrations.status);
   app.get('/api/integrations/:organizationId/settings', controllers.integrationSettings.show);
   app.put('/api/integrations/:organizationId/settings', controllers.integrationSettings.save);
+  app.post('/api/integrations/:organizationId/test-email', controllers.integrationSettings.testEmail);
   app.get('/api/ledger', controllers.ledger.list);
   app.get('/api/ledger/export', controllers.ledger.exportBalances);
   app.get('/api/ledger/:customerId/export', controllers.ledger.exportStatement);

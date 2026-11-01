@@ -496,6 +496,7 @@ export function createController(context) {
               eventKey: `receipt:${recorded.payment.id}`,
               outcome: recorded.details.document.balanceDue === 0 ? 'paid' : 'received',
               amount: recorded.payment.amount,
+              paidOn: recorded.payment.paidOn,
               reference: recorded.payment.reference,
               automatic: true,
             });

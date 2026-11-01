@@ -206,6 +206,34 @@ test(
     assert.equal(message.replyTo, 'accounts@elevator.example');
     assert.equal(message.to, 'buyer@example.test');
     assert.equal(message.attachments[0].content.subarray(0, 4).toString(), '%PDF');
+    // The email carries the business's look and details, in HTML and text.
+    assert.match(message.html, /background:#1e88e5/, 'the A T Elevator stripe');
+    assert.match(message.html, /color:#172b4d/, 'the A T Elevator colour');
+    assert.doesNotMatch(message.html, /Description/, 'items stay in the attached PDF');
+    assert.doesNotMatch(message.html, /₹/, 'amounts and payment details stay in the PDF');
+    assert.match(message.html, /mailto:accounts@elevator\.example/);
+    assert.match(message.text, /Please find your tax invoice ATEI\/2627\/0001 attached\./);
+    assert.match(message.text, /Attached: Tax invoice ATEI\/2627\/0001 \(PDF\)/);
+    assert.match(
+      message.text,
+      /Questions\? Write to accounts@elevator\.example or simply reply to this email\./,
+    );
+
+    // Its logo is served for email apps, which do not show images embedded in the message.
+    const pixel =
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    await backend.db.models.organizations.save({
+      ...(await backend.db.models.organizations.findById(organizationId)),
+      logoUrl: pixel,
+    });
+    const logo = await fetch(`${base}/brand/${organizationId}/logo`);
+    assert.equal(logo.headers.get('content-type'), 'image/png');
+    assert.equal(logo.headers.get('cross-origin-resource-policy'), 'cross-origin', 'email apps may load it');
+    assert.equal(
+      (await fetch(`${base}/brand/pipeline2-legal/logo`)).headers.get('content-type'),
+      'image/png',
+    );
+    assert.equal((await fetch(`${base}/brand/no-such-business/logo`)).status, 404);
 
     // Removing a secret: SMTP without its password still sends (servers that need no login).
     const cleared = await call(`/integrations/${organizationId}/settings`, {

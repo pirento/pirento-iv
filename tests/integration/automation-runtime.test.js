@@ -186,7 +186,7 @@ test(
       assert.equal(deliveries[0].headers['Idempotency-Key'], `venturecore-email/${reminder.id}`);
       assert.deepEqual(deliveries[0].body.to, [buyer.email]);
       assert.match(deliveries[0].body.subject, /Payment reminder/);
-      assert.match(deliveries[0].body.text, /100\.00 remains due on 2026-10-10/);
+      assert.match(deliveries[0].body.text, /payment for (tax )?invoice \S+ is due today/);
       assert.equal(
         Buffer.from(deliveries[0].body.attachments[0].content, 'base64').subarray(0, 4).toString(),
         '%PDF',

@@ -173,5 +173,6 @@ export function reminderDocumentFingerprint(document) {
 
 // Email subject line for a payment reminder.
 export function reminderSubject(document) {
-  return `Payment reminder · ${document.number} · ${document.organizationSnapshot.name}`;
+  const business = document.organizationSnapshot;
+  return `Payment reminder · Invoice ${document.number} · ${business.tradeName || business.name}`;
 }

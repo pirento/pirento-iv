@@ -113,9 +113,8 @@ test(
     assert.equal(fresh.totals.roundingPolicy, DECIMAL_ROUNDING_POLICY);
     await assertRenderedAmount(fresh, 10.08, 10.07);
     const freshEmail = await backend.db.collection('email_outbox').findOne({ document_id: fresh.id });
-    assert.ok(freshEmail.payload.html.includes(money(10.08)));
-    assert.ok(!freshEmail.payload.html.includes(money(10.07)));
-    assert.ok(freshEmail.payload.text.includes(` | ${money(10.08)}`));
+    // Amounts travel in the attached PDF, rendered from the email's saved document.
+    assert.equal(freshEmail.payload.document.totals.total, 10.08);
 
     async function legacyDocument(extra = {}) {
       const document = await api('/documents', 'POST', input(extra), 201);
@@ -143,9 +142,7 @@ test(
     assert.equal(issued.balanceDue, 10.07);
     await assertRenderedAmount(issued, 10.07, 10.08);
     const oldEmail = await backend.db.collection('email_outbox').findOne({ document_id: issued.id });
-    assert.ok(oldEmail.payload.html.includes(money(10.07)));
-    assert.ok(!oldEmail.payload.html.includes(money(10.08)));
-    assert.ok(oldEmail.payload.text.includes(` | ${money(10.07)}`));
+    assert.equal(oldEmail.payload.document.totals.total, 10.07);
     const updatedNotes = await api(`/documents/${issued.id}`, 'PUT', { ...issued, notes: 'A later note' });
     assert.deepEqual(updatedNotes.totals, legacyTotals);
     await api(

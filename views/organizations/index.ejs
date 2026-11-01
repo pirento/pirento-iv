@@ -117,6 +117,8 @@ if(source) form.billingProfile=helpers.billingProfileFor(source);
         <label class="field"
           >Accent colour<input type="color" name="accentColor" value="<%= form.accentColor %>" /></label
         ><label class="field"
+          >Email stripe colour<input type="color" name="brandAccent" value="<%= form.brandAccent || form.accentColor %>" /></label
+        ><label class="field"
           >Legacy document style<select name="template">
             <option value="modern" <%= form.template==='modern'?'selected':'' %>>Modern</option>
             <option value="classic" <%= form.template==='classic'?'selected':'' %>>Classic</option>

@@ -35,7 +35,7 @@ import { createCustomerLedger } from './ledger/customer-ledger.js';
 import { createPaymentReminders } from './integrations/email/payment-reminders.js';
 import { createRecurringInvoices } from './recurring/recurring-invoices.js';
 import { migrateStoredImages } from '../models/image-store.js';
-import { migrateFormatsToTeal } from '../models/workspace-seed.js';
+import { applyBrandLogos, migrateFormatsToTeal } from '../models/workspace-seed.js';
 import { createAiAssistant } from './integrations/ai/openai.js';
 import { createIntegrationSettings } from './integrations/integration-settings.js';
 
@@ -197,6 +197,7 @@ async function initializeApplication(options, environment, db) {
               ? 'paid'
               : 'received',
         amount: notification.payment?.amount,
+        paidOn: notification.payment?.paidOn,
         reference: notification.payment?.reference,
         paymentUrl: notification.paymentUrl,
         automatic: true,
@@ -225,6 +226,7 @@ async function initializeApplication(options, environment, db) {
     await db.models.email.compactSent();
     await migrateStoredImages(db);
     await migrateFormatsToTeal(db);
+    await applyBrandLogos(db);
     const owner = await auth?.initializeOwner();
     await backups.initialize();
     readiness.markReady();

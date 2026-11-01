@@ -68,6 +68,21 @@ export function createController({ db, online, mailer, integrationSettings, getO
       const organization = await getOrganization(req.params.organizationId);
       res.json(await current(organization.id));
     },
+    // POST /api/integrations/:organizationId/test-email { to }: sends one test email now.
+    testEmail: async (req, res) => {
+      allowed(res);
+      const organization = await getOrganization(req.params.organizationId);
+      res.json(
+        await mailer.sendTest(
+          organization.id,
+          z
+            .string()
+            .trim()
+            .max(254)
+            .parse(req.body?.to ?? ''),
+        ),
+      );
+    },
     // PUT /api/integrations/:organizationId/settings
     save: async (req, res) => {
       allowed(res);

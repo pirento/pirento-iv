@@ -51,6 +51,21 @@ export function attachPageRoutes(backend) {
     '/vendor',
     express.static(resolve(root, 'node_modules/pdfmake/build'), { dotfiles: 'deny', index: false }),
   );
+  // A business's logo for the emails it sends (email apps do not show images embedded in the message).
+  app.get('/brand/:organizationId/logo', async (req, res, next) => {
+    try {
+      const organization = await backend.db.models.organizations.findById(req.params.organizationId);
+      const image = /^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=]+)$/.exec(
+        organization?.logoUrl ?? '',
+      );
+      if (!image) return next();
+      // Email apps load the logo from their own pages, so it must be loadable cross-origin.
+      res.set({ 'Cache-Control': 'public, max-age=86400', 'Cross-Origin-Resource-Policy': 'cross-origin' });
+      res.type(image[1]).send(Buffer.from(image[2], 'base64'));
+    } catch (error) {
+      next(error);
+    }
+  });
   const controller = createPageController(backend);
   app.get('/', controller.home);
   app.get(['/login', '/signup', '/forgot-password', '/reset-password'], controller.authentication);
