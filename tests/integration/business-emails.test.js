@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { BRANDS } from '../../src/models/workspace-seed.js';
 import { createFixture, integrationEnabled } from './fixture.js';
+import { startSmtpServer } from './smtp-server.js';
 
 const options = {
   skip: !integrationEnabled && 'Set MONGODB_TEST_URI to run against a test replica set.',
@@ -147,4 +148,100 @@ test('each business sends its own branded invoice email and test email', options
   );
   assert.match(failed.error, /535 Authentication failed/);
   await call(`/integrations/${businesses[0].id}/test-email`, 'POST', { to: 'not-an-email' }, 400);
+});
+
+test('emails go out through a real SMTP conversation, with login, PDF and errors', options, async (t) => {
+  const smtp = await startSmtpServer();
+  t.after(() => smtp.close());
+  const { base, backend } = await createFixture(t, {
+    auth: false,
+    environment: {
+      EMAIL_AUTOMATION: 'false',
+      EMAIL_FROM: 'billing@pirento.example',
+      SMTP_HOST: '127.0.0.1',
+      SMTP_PORT: String(smtp.port),
+      SMTP_USER: 'billing@pirento.example',
+      SMTP_PASSWORD: 'secret',
+    },
+  });
+  const call = async (path, method = 'GET', body, status = 200) => {
+    const response = await fetch(`${base}/api${path}`, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    });
+    const data = await response.json();
+    assert.equal(response.status, status, `${method} ${path}: ${JSON.stringify(data)}`);
+    return data;
+  };
+  const organizationId = 'at-elevators';
+  const buyer = await call(
+    '/customers',
+    'POST',
+    {
+      organizationId,
+      name: 'Spark Developers',
+      email: 'buyer@example.test',
+      phone: '',
+      gstin: '',
+      address: 'Lucknow',
+      stateCode: '09',
+      contactPerson: '',
+    },
+    201,
+  );
+  const business = await backend.db.models.organizations.findById(organizationId);
+  await backend.db.models.organizations.save({ ...business, stateCode: '09' });
+  const invoice = await call(
+    '/documents',
+    'POST',
+    {
+      organizationId,
+      customerId: buyer.id,
+      kind: 'invoice',
+      status: 'sent',
+      issueDate: '2026-10-15',
+      dueDate: '2026-11-14',
+      title: 'Lift',
+      items: [{ description: 'Lift service', hsn: '998718', quantity: 1, rate: 1000, gstRate: 0 }],
+      discountPercent: 0,
+      placeOfSupply: '09',
+      notes: '',
+      terms: '',
+    },
+    201,
+  );
+  await call(
+    `/documents/${invoice.id}/email`,
+    'POST',
+    { requestId: '2f0d6f5e-1111-4222-8333-944445555601', includePaymentLink: false },
+    202,
+  );
+  assert.equal((await backend.mailer.processQueue()).sent, 1);
+  const [raw] = smtp.messages;
+  assert.match(raw, /^From: A T Elevator <billing@pirento\.example>$/m);
+  assert.match(raw, /^To: buyer@example\.test$/m);
+  assert.match(raw, /^Subject: Invoice ATEI\/2627\/0001 from A T Elevator$/m);
+  assert.match(raw, /^Reply-To: finance@pirento\.com$/m);
+  assert.match(raw, /Content-Type: application\/pdf; name=/, 'the invoice PDF is attached');
+  assert.match(raw, /^JVBERi0/m, 'the attachment is a PDF (%PDF- in base64)');
+
+  assert.deepEqual(
+    await call(`/integrations/${organizationId}/test-email`, 'POST', { to: 'owner@example.test' }),
+    {
+      sent: true,
+      from: '"A T Elevator" <billing@pirento.example>',
+      replyTo: 'finance@pirento.com',
+      provider: 'smtp',
+    },
+  );
+  assert.match(smtp.messages.at(-1), /^Subject: Test email from A T Elevator$/m);
+  smtp.rejectLogins = true;
+  const failed = await call(
+    `/integrations/${organizationId}/test-email`,
+    'POST',
+    { to: 'owner@example.test' },
+    502,
+  );
+  assert.match(failed.error, /535 5\.7\.8 Authentication credentials invalid/);
 });

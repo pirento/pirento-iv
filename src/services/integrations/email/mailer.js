@@ -131,9 +131,10 @@ function supportAddress(org) {
       ? 'support@shrisarraf.com'
       : 'support@pirento.com';
 }
-// Reply-to: the finance email for invoices (and their receipts and reminders), else support.
+// Reply-to: the finance email for invoices and proforma invoices (and their receipts and
+// reminders), else support (quotations, password resets).
 function replyAddress(org, kind) {
-  if (kind !== 'invoice' || !org) return supportAddress(org);
+  if (!['invoice', 'proforma'].includes(kind) || !org) return supportAddress(org);
   const finance = organizationFinanceEmail(org).trim();
   return validEmail(finance) ? finance : supportAddress(org);
 }
@@ -144,7 +145,6 @@ function replyAddress(org, kind) {
 const safeColor = (...colors) => colors.find((color) => /^#[0-9a-f]{6}$/i.test(color ?? '')) ?? '#0e4d64';
 const INK = '#13303b';
 const MUTED = '#5c6b73';
-const LINE = '#e6ddd4';
 const COMPANY = 'Venturecore Solutions Private Limited';
 
 /**
@@ -194,12 +194,26 @@ function logoSize(dataUrl = '') {
   return { width: Math.round(width * scale), height: Math.round(height * scale) };
 }
 
-function emailFrame({ title, preheader = '', brand, body }) {
+// A pale tint of a colour for the email background, e.g. #172b4d -> #f3f4f6 (mixed with white).
+const tint = (hex, white = 0.93) =>
+  `#${[1, 3, 5]
+    .map((at) => Math.round(parseInt(hex.slice(at, at + 2), 16) * (1 - white) + 255 * white))
+    .map((value) => value.toString(16).padStart(2, '0'))
+    .join('')}`;
+const FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
+
+/**
+ * The email page: logo on white, a hero band in the business colour (a small label, a large heading
+ * and a line under it), an accent stripe, the message, a signature and a footer with the business
+ * details, on a background tinted with the business colour.
+ */
+function emailFrame({ title, preheader = '', brand, body, hero = {} }) {
   const { color } = brand;
+  const kickerColor = brand.accent !== color ? brand.accent : 'rgba(255,255,255,0.75)';
   const header = brand.logo
     ? `<img src="${escaped(brand.logo)}" alt="${escaped(brand.name)}"${brand.logoSize.width ? ` width="${brand.logoSize.width}"` : ''} height="${brand.logoSize.height}" style="display:block;margin:0 auto;${brand.logoSize.width ? `width:${brand.logoSize.width}px;` : ''}height:${brand.logoSize.height}px;max-width:100%;border:0">`
-    : `<div style="font-size:22px;font-weight:bold;line-height:1.3;color:${color}">${escaped(brand.name)}</div>`;
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><style>@media only screen and (max-width:480px){.m-pad{padding-left:20px!important;padding-right:20px!important}.m-btn{display:block!important;padding:6px 0!important}}</style><title>${escaped(title)}</title></head><body style="margin:0;padding:0;background:#f4efe9;color:${INK};font-family:Arial,Helvetica,sans-serif;-webkit-text-size-adjust:100%"><div style="display:none;max-height:0;overflow:hidden;opacity:0">${escaped(preheader)}</div><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4efe9"><tr><td align="center" style="padding:28px 12px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid ${LINE}"><tr><td style="height:6px;line-height:6px;font-size:0;background:${brand.accent}">&nbsp;</td></tr><tr><td class="m-pad" align="center" style="padding:30px 36px 0;text-align:center">${header}${brand.legal ? `<div style="margin-top:8px;font-size:12px;line-height:1.5;color:${MUTED}">${escaped(brand.legal)}</div>` : ''}</td></tr><tr><td class="m-pad" align="center" style="padding:26px 36px 32px;text-align:center;font-size:15px;line-height:1.65"><h1 style="margin:0 0 18px;font-size:23px;line-height:1.3;color:${color}">${escaped(title)}</h1>${body}<p style="margin:26px 0 0;color:${MUTED}">Warm regards,<br><strong style="color:${INK}">${escaped(brand.name)}</strong></p></td></tr><tr><td class="m-pad" align="center" style="padding:18px 36px 22px;background:#faf6f2;border-top:1px solid ${LINE};text-align:center;font-size:12px;line-height:1.6;color:${MUTED}">${brand.footer.map((line) => textLines(line)).join('<br>')}${brand.footer.length ? '<br>' : ''}Questions? Write to <a href="mailto:${escaped(brand.contact)}" style="color:${color}">${escaped(brand.contact)}</a> or simply reply to this email.</td></tr></table></td></tr></table></body></html>`;
+    : `<div style="font-size:24px;font-weight:800;letter-spacing:-0.3px;color:${color}">${escaped(brand.name)}</div>`;
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light"><style>@media only screen and (max-width:520px){.m-pad{padding-left:22px!important;padding-right:22px!important}.m-hero{padding:28px 22px!important}.m-h{font-size:26px!important}.m-btns{width:100%!important}.m-btn{display:block!important;width:100%!important;padding:0 0 10px!important}.m-btn a{display:block!important;text-align:center!important}}</style><title>${escaped(title)}</title></head><body style="margin:0;padding:0;background:${tint(color)};color:${INK};font-family:${FONT};-webkit-text-size-adjust:100%"><div style="display:none;max-height:0;overflow:hidden;opacity:0">${escaped(preheader)}</div><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${tint(color)}"><tr><td align="center" style="padding:32px 12px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 6px 24px rgba(16,24,40,0.08)"><tr><td class="m-pad" align="center" style="padding:28px 40px 24px;text-align:center">${header}</td></tr><tr><td class="m-hero" align="center" style="background:${color};padding:36px 40px;text-align:center;color:#ffffff">${hero.kicker ? `<div style="font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${kickerColor}">${escaped(hero.kicker)}</div>` : ''}<div class="m-h" style="margin-top:8px;font-size:30px;font-weight:800;line-height:1.2;letter-spacing:-0.4px;color:#ffffff">${escaped(hero.heading ?? title)}</div>${hero.subtitle ? `<div style="margin-top:8px;font-size:15px;line-height:1.5;color:rgba(255,255,255,0.85)">${escaped(hero.subtitle)}</div>` : ''}</td></tr><tr><td style="height:5px;line-height:5px;font-size:0;background:${brand.accent}">&nbsp;</td></tr><tr><td class="m-pad" style="padding:34px 40px 8px;font-size:16px;line-height:1.65;color:${INK}">${body}</td></tr><tr><td class="m-pad" style="padding:20px 40px 34px;font-size:15px;line-height:1.6;color:${MUTED}">Warm regards,<br><strong style="font-size:16px;color:${INK}">${escaped(brand.name)}</strong>${brand.legal ? `<br><span style="font-size:13px">${escaped(brand.legal)}</span>` : ''}</td></tr><tr><td class="m-pad" align="center" style="padding:22px 40px 26px;background:#f7f8fa;border-top:1px solid #eceef2;text-align:center;font-size:12px;line-height:1.7;color:${MUTED}">${brand.footer.map((line) => textLines(line)).join('<br>')}${brand.footer.length ? '<br>' : ''}Questions? Write to <a href="mailto:${escaped(brand.contact)}" style="color:${color};font-weight:600;text-decoration:none">${escaped(brand.contact)}</a> or reply to this email.</td></tr></table></td></tr></table></body></html>`;
 }
 const textFooter = (brand) =>
   [
@@ -214,28 +228,45 @@ const textFooter = (brand) =>
 const mailto = (brand, subject) => `mailto:${brand.contact}?subject=${encodeURIComponent(subject)}`;
 
 /**
- * One email body, HTML and text: a greeting, a few friendly lines, buttons and the attached-PDF
- * note. Amounts, dates and payment details stay in the attached PDF.
+ * One email, HTML body and text: the hero (kicker, heading, subtitle), a greeting, a few friendly
+ * lines, the attached PDF as a card, and buttons. Amounts, dates and payment details stay in the PDF.
  */
-function compose(brand, { title, name, lines = [], buttons = [], attached }) {
-  const para = (line) => `<p style="margin:0 0 12px">${escaped(line)}</p>`;
-  const button = ({ label, href, primary }) =>
-    `<td class="m-btn" style="padding:6px"><a href="${escaped(href)}" style="display:inline-block;padding:13px 26px;border-radius:999px;font-weight:bold;font-size:15px;text-decoration:none;${primary ? `background:${brand.color};color:#ffffff;border:2px solid ${brand.color}` : `background:#ffffff;color:${brand.color};border:2px solid ${brand.color}`}">${escaped(label)}</a></td>`;
-  const html = `<p style="margin:0 0 12px">Dear ${escaped(name)},</p>${lines.map(para).join('')}${attached ? `<table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:18px auto 6px"><tr><td style="padding:10px 18px;border-radius:999px;background:#f4f1ec;font-size:14px;color:${INK}">&#128206;&nbsp; ${escaped(attached)}</td></tr></table>` : ''}${buttons.length ? `<table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:14px auto 0"><tr>${buttons.map(button).join('')}</tr></table>` : ''}`;
-  const text = [
+function compose(
+  brand,
+  {
     title,
+    kicker,
+    heading,
+    subtitle,
+    name,
+    lines = [],
+    buttons = [],
+    attached,
+    inside = 'amount and payment details inside',
+  },
+) {
+  const para = (line) => `<p style="margin:0 0 14px">${escaped(line)}</p>`;
+  const button = ({ label, href, primary }) =>
+    `<td class="m-btn" style="padding:0 10px 10px 0"><a href="${escaped(href)}" style="display:inline-block;padding:14px 26px;border-radius:10px;font-weight:700;font-size:15px;line-height:1;text-decoration:none;${primary ? `background:${brand.color};color:#ffffff;border:1px solid ${brand.color}` : `background:#ffffff;color:${brand.color};border:1px solid #d5d9e0`}">${escaped(label)}</a></td>`;
+  const file = attached?.replace(/ \(PDF\)$/, '');
+  const card = file
+    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:22px 0 24px;border:1px solid #e4e7ec;border-radius:12px"><tr><td width="56" style="padding:16px 0 16px 18px;vertical-align:middle"><div style="width:38px;height:46px;border-radius:6px;background:#e5484d;color:#ffffff;font-size:11px;font-weight:800;line-height:46px;text-align:center;letter-spacing:0.5px">PDF</div></td><td style="padding:16px 18px 16px 4px;vertical-align:middle"><div style="font-size:15px;font-weight:700;color:${INK}">${escaped(file)}</div><div style="margin-top:2px;font-size:13px;color:${MUTED}">Attached to this email &middot; ${escaped(inside)}</div></td></tr></table>`
+    : '';
+  const html = `<p style="margin:0 0 14px">Dear ${escaped(name)},</p>${lines.map(para).join('')}${card}${buttons.length ? `<table role="presentation" class="m-btns" cellpadding="0" cellspacing="0" style="margin:${file ? 0 : 10}px 0 6px"><tr>${buttons.map(button).join('')}</tr></table>` : ''}`;
+  const text = [
+    [kicker, heading ?? title].filter(Boolean).join(': '),
     '',
     `Dear ${name},`,
     ...lines,
     '',
-    attached ? `Attached: ${attached}` : '',
+    file ? `Attached: ${file} (PDF)` : '',
     ...buttons.map(({ label, href }) => `${label}: ${href.replace(/^mailto:([^?]+).*/, '$1')}`),
     '',
     textFooter(brand),
   ]
     .join('\n')
     .replace(/\n{3,}/g, '\n\n');
-  return { html, text };
+  return { html, text, hero: { kicker, heading: heading ?? title, subtitle } };
 }
 
 // What the document is called in emails: Tax invoice (with the seller's GSTIN), Invoice, Debit note, ...
@@ -262,9 +293,13 @@ function documentEmail(doc, paymentUrl, brand) {
   const customer = doc.customerSnapshot.name;
   const attached = `${name} ${doc.number} (PDF)`;
   const reply = (text, subject = title) => ({ label: text, href: mailto(brand, subject) });
+  const hero = { kicker: name, heading: doc.number };
   if (doc.kind === 'quotation')
     return compose(brand, {
       title,
+      ...hero,
+      subtitle: `Prepared for you by ${brand.name}`,
+      inside: 'scope, prices and terms inside',
       name: customer,
       lines: [
         `Thank you for your interest in ${brand.name}. Please find our quotation ${doc.number} attached — it has the full scope, prices and terms.`,
@@ -279,6 +314,8 @@ function documentEmail(doc, paymentUrl, brand) {
   if (doc.kind === 'proforma')
     return compose(brand, {
       title,
+      ...hero,
+      subtitle: 'Payment in advance',
       name: customer,
       lines: [
         `Please find your proforma invoice ${doc.number} attached. The amount and payment details are in the PDF.`,
@@ -292,6 +329,8 @@ function documentEmail(doc, paymentUrl, brand) {
   if (due <= 0)
     return compose(brand, {
       title,
+      ...hero,
+      subtitle: 'Paid in full — thank you',
       name: customer,
       lines: [
         `Thank you! Your ${label} ${doc.number} is fully paid.`,
@@ -303,6 +342,8 @@ function documentEmail(doc, paymentUrl, brand) {
   const paidSome = doc.totals.total - due > 0;
   return compose(brand, {
     title,
+    ...hero,
+    subtitle: doc.debitNoteFor ? `Against invoice ${doc.debitNoteFor.number}` : `from ${brand.name}`,
     name: customer,
     lines: [
       doc.debitNoteFor
@@ -328,7 +369,7 @@ function invoicePayload(doc, paymentUrl, origin) {
   );
   return {
     organizationId: doc.organizationId,
-    html: emailFrame({ title, preheader: documentSubject(doc), brand, body: email.html }),
+    html: emailFrame({ title, preheader: documentSubject(doc), brand, body: email.html, hero: email.hero }),
     text: email.text,
     document: doc,
   };
@@ -359,6 +400,8 @@ function paymentReminderPayload(document, reminder, asOf, origin) {
   const brand = brandOf(document.organizationSnapshot, { origin, kind: document.kind });
   const email = compose(brand, {
     title,
+    kicker: 'Payment reminder',
+    subtitle: `${documentName(document)} ${document.number}`,
     name: document.customerSnapshot.name,
     lines: [
       line,
@@ -390,7 +433,7 @@ function paymentReminderPayload(document, reminder, asOf, origin) {
       invoiceBalance: target.invoiceBalance,
       documentFingerprint: reminderDocumentFingerprint(document),
     },
-    html: emailFrame({ title, preheader: line, brand, body: email.html }),
+    html: emailFrame({ title, preheader: line, brand, body: email.html, hero: email.hero }),
     text: email.text,
   };
 }
@@ -954,14 +997,23 @@ export function createMailer(db, options = {}) {
               [...payOnline(url), { ...reply, primary: !url }],
               `Updated ${lower(name)} ${doc.number} (PDF)`,
             ];
-    const email = compose(brand, { title, name: doc.customerSnapshot.name, lines, buttons, attached });
+    const email = compose(brand, {
+      title,
+      kicker: outcome === 'failed' ? 'Payment' : 'Payment received',
+      heading: outcome === 'failed' ? 'Not completed' : 'Thank you',
+      subtitle: `${name} ${doc.number}`,
+      name: doc.customerSnapshot.name,
+      lines,
+      buttons,
+      attached,
+    });
     return await enqueue(
       outcome === 'failed' ? 'payment_failed' : outcome === 'paid' ? 'payment_paid' : 'payment_received',
       doc.customerSnapshot.email,
       subject,
       {
         organizationId: doc.organizationId,
-        html: emailFrame({ title, preheader: subject, brand, body: email.html }),
+        html: emailFrame({ title, preheader: subject, brand, body: email.html, hero: email.hero }),
         text: email.text,
         document: doc,
       },
@@ -993,6 +1045,8 @@ export function createMailer(db, options = {}) {
     const brand = brandOf(null);
     const email = compose(brand, {
       title,
+      kicker: 'Your account',
+      subtitle: 'The link works for 30 minutes',
       name: input.name,
       lines: [
         'We received a request to reset your password. The button below is valid for 30 minutes and can be used once.',
@@ -1010,6 +1064,7 @@ export function createMailer(db, options = {}) {
           preheader: 'Choose a new password within 30 minutes.',
           brand,
           body: email.html,
+          hero: email.hero,
         }),
         text: email.text,
         expiresAt: new Date(now().getTime() + 30 * 60_000).toISOString(),
@@ -1396,6 +1451,8 @@ export function createMailer(db, options = {}) {
     const title = 'Your email is ready';
     const email = compose(brand, {
       title,
+      kicker: 'Email settings',
+      subtitle: `Test email for ${brand.name}`,
       name: `${brand.name} team`,
       lines: [
         `This is a test email for ${brand.name}. Invoices, quotations, receipts and reminders to your customers will look like this, with the document attached as a PDF.`,
@@ -1408,7 +1465,13 @@ export function createMailer(db, options = {}) {
       replyTo: brand.contact,
       to,
       subject: `Test email from ${brand.name}`,
-      html: emailFrame({ title, preheader: 'Your business email settings work.', brand, body: email.html }),
+      html: emailFrame({
+        title,
+        preheader: 'Your business email settings work.',
+        brand,
+        body: email.html,
+        hero: email.hero,
+      }),
       text: email.text,
     };
     try {
