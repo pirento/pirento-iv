@@ -33,11 +33,7 @@
           value="<%= line.quantity %>"
           required /></label
       ><label class="doc-field"
-        >Unit<input
-          data-line="unit"
-          list="doc-unit-options"
-          value="<%= line.unit || '' %>"
-          maxlength="20" /></label
+        >Unit<select data-line="unit"><% for (const unit of [...new Set([line.unit, ...helpers.CATALOG_UNITS].filter(Boolean))]) { %><option value="<%= unit %>" <%= unit === line.unit ? 'selected' : '' %>><%= unit %></option><% } %></select></label
       ><% if(!isDelivery){ %><label class="doc-field"
         >Rate (₹)<input
           data-line="rate"
@@ -47,13 +43,7 @@
           step="0.01"
           value="<%= line.rate %>" /></label
       ><label class="doc-field"
-        >GST (%)<input
-          data-line="gstRate"
-          type="number"
-          min="0"
-          max="40"
-          step="any"
-          value="<%= line.gstRate %>" /></label
+        >GST<select data-line="gstRate"><% for (const [rate, hint] of helpers.GST_RATES.some(([rate]) => rate === Number(line.gstRate)) ? helpers.GST_RATES : [[Number(line.gstRate), ''], ...helpers.GST_RATES]) { %><option value="<%= rate %>" <%= rate === Number(line.gstRate) ? 'selected' : '' %>><%= rate %>%<%= hint ? ` · ${hint}` : '' %></option><% } %></select></label
       ><label class="doc-field">Amount<output data-line-amount><%= helpers.types.money(helpers.types.calculateLineAmount(line, lineRoundingPolicy)) %></output></label
       ><% } %>
     </div>

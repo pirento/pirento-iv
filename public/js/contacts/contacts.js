@@ -90,7 +90,12 @@ if (form) {
     form.elements.shippingStateCode.value = form.elements.stateCode.value;
   });
   form.elements.gstin.addEventListener('input', () => {
-    form.elements.gstin.value = form.elements.gstin.value.toUpperCase();
+    const gstin = (form.elements.gstin.value = form.elements.gstin.value.toUpperCase().trim());
+    // A GSTIN holds the state code (first two digits) and the PAN (next ten): fill them when empty.
+    const state = [...form.elements.stateCode.options].some((option) => option.value === gstin.slice(0, 2));
+    if (/^\d{2}/.test(gstin) && state && !form.elements.stateCode.value)
+      form.elements.stateCode.value = gstin.slice(0, 2);
+    if (gstin.length === 15 && !form.elements.pan.value) form.elements.pan.value = gstin.slice(2, 12);
   });
   let challenge;
   let health;

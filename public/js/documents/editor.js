@@ -23,6 +23,8 @@ import {
   linePriceBreakdown,
   defaultFormatFor,
   DOCUMENT_LABELS,
+  CATALOG_UNITS,
+  GST_RATES,
   money,
   STATES,
 } from '/shared/types.js';
@@ -411,6 +413,60 @@ function renderCatalog() {
         .join('')
     : '<p class="doc-help">No matching active catalog items. Change your search or add a manual line.</p>';
 }
+// Dropdown options: the business's usual units first, then all others; GST rates with a hint.
+// A saved value that is not in the list stays selectable so old documents keep their unit and rate.
+const unitChoices = [...new Set([...(BILLING_PROFILES[profile]?.units ?? []), ...CATALOG_UNITS])];
+function selectOptions(values, current, label = (value) => value) {
+  const all =
+    values.some((value) => String(value) === String(current)) || current === '' || current == null
+      ? values
+      : [current, ...values];
+  return all
+    .map(
+      (value) =>
+        `<option value="${escape(value)}" ${String(value) === String(current) ? 'selected' : ''}>${escape(label(value))}</option>`,
+    )
+    .join('');
+}
+const gstLabel = (rate) => {
+  const hint = GST_RATES.find(([value]) => value === Number(rate))?.[1];
+  return hint ? `${rate}% · ${hint}` : `${rate}%`;
+};
+// HSN-based GST hints per line object: { text, rate } shown under the line.
+const gstHints = new WeakMap();
+// Lines whose GST rate was filled from a suggestion (so a later suggestion may replace it).
+const autoGst = new WeakSet();
+/**
+ * GST for a line's HSN/SAC, from this business's saved items, its earlier invoices or the AI
+ * assistant (GET /api/hsn-gst). Fills the rate when the line still has the default 0% or an earlier
+ * suggestion; otherwise only shows the hint with a "Use" button.
+ */
+async function suggestGst(line) {
+  const hsn = String(line?.hsn ?? '').trim();
+  gstHints.delete(line);
+  if (!hsn) return renderLines();
+  if (!/^\d{4}(\d{2}){0,2}$/.test(hsn)) {
+    gstHints.set(line, { text: 'HSN / SAC has 4, 6 or 8 digits.', rate: Number(line.gstRate) });
+    return renderLines();
+  }
+  let found;
+  try {
+    found = await api(
+      `/hsn-gst?organizationId=${encodeURIComponent(organization.id)}&hsn=${hsn}&description=${encodeURIComponent(line.description.slice(0, 200))}`,
+    );
+  } catch {
+    return;
+  }
+  if (line.hsn.trim() !== hsn || !form.items.includes(line) || found.rate === null) return;
+  if (!Number(line.gstRate) || autoGst.has(line)) {
+    line.gstRate = found.rate;
+    autoGst.add(line);
+    saveDraft();
+  }
+  gstHints.set(line, { text: `GST ${found.rate}% — ${found.note}`, rate: found.rate });
+  renderLines();
+  refreshDerived();
+}
 function renderLines() {
   const policy = linePolicy();
   document.querySelector('#doc-lines').innerHTML = form.items
@@ -418,7 +474,15 @@ function renderLines() {
       const disabled = locked ? 'disabled' : '';
       const makeInput = (label, key, attrs = '') =>
         `<label class="doc-field">${label}<input data-line="${key}" value="${escape(line[key])}" ${attrs}></label>`;
-      return `<article class="doc-line-card" data-line-index="${index}"><div class="doc-label-row"><strong>Item ${index + 1}</strong><button type="button" class="doc-text-button doc-delete" data-remove-line="${index}" ${disabled || (form.items.length === 1 ? 'disabled' : '')}>Remove</button></div><fieldset class="doc-line-fieldset" ${disabled}><div class="doc-form-grid"><label class="doc-field doc-wide">Description *<textarea data-line="description" rows="2" maxlength="2500" required>${escape(line.description)}</textarea></label>${makeInput('HSN / SAC', 'hsn', 'maxlength="8" inputmode="numeric"')}${makeInput('Quantity *', 'quantity', 'type="number" inputmode="decimal" min="0.001" max="1000000" step="any" required')}${makeInput('Unit', 'unit', 'list="doc-unit-options" maxlength="20"')}${delivery ? '' : `${makeInput(line.pricing?.mode === 'jewellery' ? 'Metal rate (₹/g)' : 'Rate (₹)', 'rate', 'type="number" inputmode="decimal" min="0" max="100000000" step="0.01"')}${makeInput('GST (%)', 'gstRate', 'type="number" inputmode="decimal" list="doc-gst-options" min="0" max="40" step="any"')}<label class="doc-field">Amount<output data-line-amount>${money(calculateLineAmount(line, policy))}</output></label>`}</div>${line.catalogItemId ? `<p class="doc-help">Added from the saved ${escape(line.itemType || 'item')} catalog.</p>` : ''}${delivery ? '' : `<details class="doc-line-pricing" ${line.pricing && line.pricing.mode !== 'standard' ? 'open' : ''}><summary>Pricing method · ${escape(line.pricing?.mode || 'standard')}</summary><div data-pricing-fields>${pricingFields(line, index, locked, policy)}</div></details>`}</fieldset></article>`;
+      return `<article class="doc-line-card" data-line-index="${index}"><div class="doc-label-row"><strong>Item ${index + 1}</strong><button type="button" class="doc-text-button doc-delete" data-remove-line="${index}" ${disabled || (form.items.length === 1 ? 'disabled' : '')}>Remove</button></div><fieldset class="doc-line-fieldset" ${disabled}><div class="doc-form-grid"><label class="doc-field doc-wide">Description *<textarea data-line="description" rows="2" maxlength="2500" required>${escape(line.description)}</textarea></label>${makeInput('HSN / SAC', 'hsn', 'maxlength="8" inputmode="numeric"')}${makeInput('Quantity *', 'quantity', 'type="number" inputmode="decimal" min="0.001" max="1000000" step="any" required')}<label class="doc-field">Unit<select data-line="unit">${selectOptions(unitChoices, line.unit)}</select></label>${
+        delivery
+          ? ''
+          : `${makeInput(line.pricing?.mode === 'jewellery' ? 'Metal rate (₹/g)' : 'Rate (₹)', 'rate', 'type="number" inputmode="decimal" min="0" max="100000000" step="0.01"')}<label class="doc-field">GST<select data-line="gstRate">${selectOptions(
+              GST_RATES.map(([rate]) => rate),
+              line.gstRate ?? 0,
+              gstLabel,
+            )}</select></label><label class="doc-field">Amount<output data-line-amount>${money(calculateLineAmount(line, policy))}</output></label>`
+      }</div>${gstHints.get(line) ? `<p class="doc-help doc-gst-hint" data-gst-hint>${escape(gstHints.get(line).text)}${!delivery && gstHints.get(line).rate !== Number(line.gstRate) ? ` <button type="button" class="doc-text-button" data-use-gst="${index}">Use ${gstHints.get(line).rate}%</button>` : ''}</p>` : ''}${line.catalogItemId ? `<p class="doc-help">Added from the saved ${escape(line.itemType || 'item')} catalog.</p>` : ''}${delivery ? '' : `<details class="doc-line-pricing" ${line.pricing && line.pricing.mode !== 'standard' ? 'open' : ''}><summary>Pricing method · ${escape(line.pricing?.mode || 'standard')}</summary><div data-pricing-fields>${pricingFields(line, index, locked, policy)}</div></details>`}</fieldset></article>`;
     })
     .join('');
   document.querySelector('[data-action="add-line"]').disabled = locked || form.items.length >= 200;
@@ -638,7 +702,11 @@ editor.addEventListener('input', (event) => {
   if (target.id === 'doc-catalog-search') return catalogPicker?.search();
   if (target.matches('[data-line]') && !locked) {
     const index = Number(target.closest('.doc-line-card').dataset.lineIndex);
-    form.items[index][target.dataset.line] = target.type === 'number' ? Number(target.value) : target.value;
+    const key = target.dataset.line;
+    form.items[index][key] =
+      target.type === 'number' || key === 'gstRate' ? Number(target.value) : target.value;
+    // A rate the user picks is theirs: later HSN suggestions only show a hint.
+    if (key === 'gstRate') autoGst.delete(form.items[index]);
     clearError('items');
     saveDraft();
     refreshDerived();
@@ -681,6 +749,8 @@ editor.addEventListener('input', (event) => {
 });
 editor.addEventListener('change', async (event) => {
   const target = event.target;
+  if (target.matches('[data-line="hsn"]') && !locked && !delivery)
+    return suggestGst(form.items[Number(target.closest('.doc-line-card').dataset.lineIndex)]);
   if (target.name === 'customerId') return chooseCustomer(target.value);
   if (target.name === 'businessProductId') return chooseProduct(target.value);
   if (target.name === 'useLetterhead') return update('useLetterhead', target.value === 'true');
@@ -732,7 +802,74 @@ editor.addEventListener('change', async (event) => {
     }
   }
 });
+// Quick "+ New customer" in the editor: saves a contact with the few details typed and selects it.
+const quickPanel = editor.querySelector('[data-quick-contact]');
+const quickField = (name) => quickPanel.querySelector(`[data-quick="${name}"]`);
+async function saveQuickContact(button) {
+  const error = quickPanel.querySelector('[data-quick-error]');
+  const value = (name) => quickField(name).value.trim();
+  const gstin = value('gstin').toUpperCase();
+  error.hidden = true;
+  if (!value('name')) {
+    error.textContent = 'Enter the customer name.';
+    error.hidden = false;
+    return quickField('name').focus();
+  }
+  button.disabled = true;
+  try {
+    const created = await api(
+      '/customers',
+      sendJson('POST', {
+        organizationId: organization.id,
+        name: value('name'),
+        phone: value('phone'),
+        email: value('email'),
+        gstin,
+        pan: gstin.length === 15 ? gstin.slice(2, 12) : '',
+        address: value('address'),
+        stateCode: value('stateCode'),
+        contactPerson: '',
+        roles: [gstin ? 'b2b_buyer' : 'customer'],
+      }),
+    );
+    customers.unshift(created);
+    contactPageIds.add(created.id);
+    renderContacts();
+    chooseCustomer(created.id);
+    for (const input of quickPanel.querySelectorAll('[data-quick]')) input.value = '';
+    quickPanel.hidden = true;
+  } catch (failure) {
+    error.textContent = failure.message;
+    error.hidden = false;
+  } finally {
+    button.disabled = false;
+  }
+}
+quickPanel?.addEventListener('input', (event) => {
+  // A GSTIN starts with the state code: fill the state when it is still empty.
+  if (event.target.dataset.quick !== 'gstin') return;
+  const code = event.target.value.trim().slice(0, 2);
+  if (/^\d{2}$/.test(code) && !quickField('stateCode').value && STATES.some(([state]) => state === code))
+    quickField('stateCode').value = code;
+});
 editor.addEventListener('click', (event) => {
+  const quickToggle = event.target.closest('[data-quick-contact-toggle]');
+  if (quickToggle && quickPanel && !locked) {
+    quickPanel.hidden = !quickPanel.hidden;
+    if (!quickPanel.hidden) quickField('name').focus();
+    return;
+  }
+  const quickSave = event.target.closest('[data-quick-save]');
+  if (quickSave && !locked) return void saveQuickContact(quickSave);
+  const useGst = event.target.closest('[data-use-gst]');
+  if (useGst && !locked) {
+    const line = form.items[Number(useGst.dataset.useGst)];
+    line.gstRate = gstHints.get(line).rate;
+    saveDraft();
+    renderLines();
+    refreshDerived();
+    return;
+  }
   const button = event.target.closest('button');
   if (!button || initializing || saving || finalized || pendingCreate) return;
   if (button.dataset.contactRole) {

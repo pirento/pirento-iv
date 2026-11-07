@@ -10,6 +10,7 @@ import { createTwoStepVault } from '../../auth/two-step.js';
 import { readProviderJson } from '../provider-http.js';
 import { statementDate } from '../../../../shared/bank-match.js';
 import { HttpError } from '../../../middleware/errors.js';
+import { GST_RATE_VALUES } from '../../../../shared/types.js';
 
 export const DEFAULT_AI_MODEL = 'gpt-4o-mini';
 const SETTINGS = { _id: 'openai-settings' };
@@ -54,6 +55,17 @@ const MATCH_SCHEMA = {
         },
       },
     },
+  },
+};
+
+const GST_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['known', 'rate', 'covers'],
+  properties: {
+    known: { type: 'boolean' },
+    rate: { type: 'number', enum: GST_RATE_VALUES },
+    covers: { type: 'string', description: 'What the code covers, in a few words' },
   },
 };
 
@@ -168,5 +180,24 @@ export function createAiAssistant({ db, environment, production, fetcher = fetch
     );
   }
 
-  return { status, save, readStatement, suggestMatches };
+  // shortcut: suggestions are cached in this process only; a restart asks OpenAI again.
+  const gstCache = new Map();
+  /** The usual GST rate for an HSN/SAC code, or null when the assistant is not set up or unsure. */
+  async function suggestGst({ hsn, description = '' }) {
+    if (!(await settings()).apiKey) return null;
+    const key = `${hsn}|${description.trim().toLowerCase()}`;
+    if (!gstCache.has(key)) {
+      const answer = await ask(
+        'gst_rate',
+        GST_SCHEMA,
+        'You know Indian GST rates by HSN/SAC code. Since 22 September 2025 (GST 2.0) most goods and services are 5% or 18%, luxury and sin goods 40%, gold, silver and jewellery 3%, rough diamonds 0.25% and cut diamonds 1.5%; 12% and 28% apply only to the few items still at them. Give the rate that applies today for the code (and description, if given). If the code is unknown or the rate depends on details you do not have, set known to false.',
+        [{ type: 'input_text', text: JSON.stringify({ hsn, description }) }],
+      );
+      gstCache.set(key, answer?.known && GST_RATE_VALUES.includes(answer.rate) ? answer : null);
+    }
+    const found = gstCache.get(key);
+    return found ? { rate: found.rate, covers: String(found.covers ?? '').slice(0, 80) } : null;
+  }
+
+  return { status, save, readStatement, suggestMatches, suggestGst };
 }

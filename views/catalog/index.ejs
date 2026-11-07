@@ -115,24 +115,10 @@ const invalid = route.action && (route.action === 'delete' || (route.action === 
           /></label>
           <label class="mg-field"
             >Unit <span aria-hidden="true">*</span
-            ><input
-              name="unit"
-              list="catalog-units"
-              required
-              maxlength="20"
-              value="<%= form.unit %>"
-            /><datalist id="catalog-units"><% for (const unit of [...new Set([...billingProfile.units, ...helpers.CATALOG_UNITS])]) { %><option value="<%= unit %>"><% } %></datalist></label
+            ><select name="unit" required><% for (const unit of [...new Set([form.unit, ...billingProfile.units, ...helpers.CATALOG_UNITS].filter(Boolean))]) { %><option value="<%= unit %>" <%= unit === form.unit ? 'selected' : '' %>><%= unit %></option><% } %></select></label
           >
           <label class="mg-field"
-            >GST rate (%)<input
-              name="gstRate"
-              type="number"
-              required
-              min="0"
-              max="40"
-              step="0.01"
-              value="<%= form.gstRate %>"
-            /><small>Enter the applicable rate, including 0 for an exempt item.</small></label
+            >GST rate<select name="gstRate" required><option value="" <%= form.gstRate === '' ? 'selected' : '' %>>Choose GST</option><% for (const [rate, hint] of helpers.GST_RATES.some(([rate]) => String(rate) === String(form.gstRate)) || form.gstRate === '' ? helpers.GST_RATES : [[Number(form.gstRate), ''], ...helpers.GST_RATES]) { %><option value="<%= rate %>" <%= String(rate) === String(form.gstRate) ? 'selected' : '' %>><%= rate %>%<%= hint ? ` · ${hint}` : '' %></option><% } %></select><small>Choose 0% for an exempt item. The invoice editor fills this rate when the HSN matches.</small></label
           >
           <p class="mg-hint">Prices are before GST. You can adjust the price on each draft document.</p>
         </div>

@@ -1197,3 +1197,18 @@
     padding: 11px 0 !important;
   }
 }
+
+/* Quick "+ New customer" panel in the document editor. */
+.doc-quick-contact {
+  margin: 0.75rem 0;
+  padding: 1rem;
+  border: 1px solid var(--line, #efdfd2);
+  border-radius: 12px;
+  background: var(--surface, #fff);
+}
+.doc-quick-contact .doc-form-grid {
+  margin-bottom: 0.75rem;
+}
+.doc-gst-hint {
+  margin: 0.25rem 0 0;
+}

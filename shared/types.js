@@ -58,7 +58,39 @@ export const CATALOG_UNITS = [
   'Milligram',
   'License',
   'User',
+  'Litre',
+  'Box',
+  'Pack',
+  'Pair',
+  'Dozen',
+  'Bag',
+  'Roll',
+  'Ton',
+  'Quintal',
+  'Sq yd',
+  'Cubic m',
+  'Km',
+  'Trip',
+  'Job',
+  'Lump sum',
 ];
+/**
+ * GST rates offered on items, with a hint. Since 22 September 2025 most goods and services are 5% or
+ * 18% and luxury / sin goods 40%; 12% and 28% stay for older bills and the few items still at them.
+ */
+export const GST_RATES = [
+  [0, 'Nil / exempt'],
+  [0.1, 'Supplies to merchant exporters'],
+  [0.25, 'Rough diamonds, precious stones'],
+  [1.5, 'Cut and polished diamonds'],
+  [3, 'Gold, silver, jewellery'],
+  [5, 'Essentials and some services'],
+  [12, 'Older rate'],
+  [18, 'Standard: most goods and services'],
+  [28, 'Older rate'],
+  [40, 'Luxury and sin goods'],
+];
+export const GST_RATE_VALUES = GST_RATES.map(([rate]) => rate);
 // Empty shipping details for a new document.
 export const blankShipping = () => ({
   recipientName: '',

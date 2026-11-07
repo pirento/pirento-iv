@@ -10,7 +10,7 @@
 import { contactFieldSchemas, validateContactFields } from './contacts.js';
 import { z } from 'zod';
 import './messages.js';
-import { COMPANY_NAME, STATES, calculateLineAmount } from '../../../shared/types.js';
+import { COMPANY_NAME, GST_RATE_VALUES, STATES, calculateLineAmount } from '../../../shared/types.js';
 import { wholePaise } from '../../../shared/money.js';
 // Group company legal name (same as COMPANY_NAME).
 export const LEGAL_NAME = COMPANY_NAME;
@@ -460,7 +460,7 @@ export const expenseSchema = z
     category: z.enum(EXPENSE_CATEGORIES),
     description: text(500).default(''),
     taxable: moneyAmount,
-    gstRate: z.union([0, 0.25, 3, 5, 12, 18, 28].map((value) => z.literal(value))),
+    gstRate: z.union(GST_RATE_VALUES.map((value) => z.literal(value))),
     interstate: z.boolean().default(false),
     paidOn: optionalDate.default(''),
     paymentMethod: z.enum(['', 'bank_transfer', 'upi', 'cash', 'card', 'cheque', 'other']).default(''),
@@ -560,7 +560,7 @@ export const creditNoteSchema = z
     noteDate: date,
     reason: z.enum(CREDIT_NOTE_REASONS),
     taxable: moneyAmount,
-    gstRate: z.union([0, 0.25, 3, 5, 12, 18, 28].map((value) => z.literal(value))),
+    gstRate: z.union(GST_RATE_VALUES.map((value) => z.literal(value))),
     notes: text(500).default(''),
     requestId: z.guid(),
   })
@@ -574,7 +574,7 @@ export const debitNoteSchema = z
     dueDate: optionalDate.default(''),
     reason: z.enum(DEBIT_NOTE_REASONS),
     taxable: moneyAmount,
-    gstRate: z.union([0, 0.25, 3, 5, 12, 18, 28].map((value) => z.literal(value))),
+    gstRate: z.union(GST_RATE_VALUES.map((value) => z.literal(value))),
     notes: text(500).default(''),
     requestId: z.guid(),
   })

@@ -105,6 +105,7 @@ export function registerApiRoutes(app, context) {
   app.post('/api/credit-notes/:id/cancel', controllers.creditNotes.cancel);
   app.post('/api/credit-notes/:id/refund', controllers.creditNotes.refund);
   app.post('/api/stock-adjustments', controllers.stockAdjustments.create);
+  app.get('/api/hsn-gst', controllers.hsn.lookup);
   app.get('/api/ai-settings', controllers.ai.status);
   app.put('/api/ai-settings', controllers.ai.save);
   app.post('/api/finance/ai/statement', controllers.ai.statement);

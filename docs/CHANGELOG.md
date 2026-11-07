@@ -4,6 +4,10 @@ Release notes, API contract changes and upgrade instructions for each version, n
 
 ## Unreleased
 
+- **Easier invoice lines.** Unit and GST are now dropdowns on every line (and in Products & services). Units include the business's usual ones first, then Litre, Box, Pack, Pair, Dozen, Bag, Roll, Ton, Quintal, Sq yd, Cubic m, Km, Trip, Job and Lump sum (new units map to their GST UQC codes in GSTR-1). GST lists every rate with a hint: 0, 0.1, 0.25, 1.5, 3, 5, 12 (older), 18 (standard), 28 (older) and 40%. Debit notes and expenses accept the same rates.
+- **GST from the HSN.** Typing an HSN/SAC on a line fills its GST rate: from the business's saved item with that code, else the code's rate on its latest issued invoice, else an AI suggestion (when the OpenAI key is set; marked “please check before issuing”). A rate chosen by hand is kept and the hint offers “Use N%”; a code that is not 4, 6 or 8 digits is pointed out. API: `GET /api/hsn-gst?organizationId=&hsn=&description=`.
+- **New customer without leaving the invoice.** “+ New customer” in the editor saves a contact from name, phone, email, GSTIN, state and address and selects it at once; a GSTIN fills the state and PAN. The Contacts form shows the essentials first (name, phone, email, GSTIN, address, state) and folds contact person, PAN, roles, shipping, payment terms and notes under “More details”; a GSTIN fills the state and PAN there too.
+
 - The TypeScript/React/SQLite source tree is replaced by this Express MVC, EJS, JavaScript and MongoDB application. Existing SQLite workspaces migrate with `npm run db:import-sqlite`.
 - Synthetic preview restores the full original notice: a "TEST PREVIEW — NOT A VALID INVOICE" watermark on every printed page, the warning not to enter real data or credentials, and a guard that blocks links leaving the preview origin.
 - Backup-location checks now cover the actual application folders (`public`, `shared`, `src`, `views`, `scripts`).

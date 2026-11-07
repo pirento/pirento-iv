@@ -164,13 +164,38 @@ const baseUrl = `/workspace/${encodeURIComponent(org.id)}/${data.route.view}`;
             <div class="doc-customer-picker">
               <div class="doc-label-row">
                 <label for="doc-customer"><%= isDelivery ? 'Deliver to' : 'Bill to' %> *</label
-                ><a
-                  class="doc-text-button"
-                  href="/workspace/<%= encodeURIComponent(org.id) %>/customers/new"
-                  data-manager-link
-                  >New contact</a
+                ><span
+                  ><button type="button" class="doc-text-button" data-quick-contact-toggle <%= locked?'disabled':'' %>>+ New customer</button>
+                  ·
+                  <a
+                    class="doc-text-button"
+                    href="/workspace/<%= encodeURIComponent(org.id) %>/customers/new"
+                    data-manager-link
+                    >Full form</a
+                  ></span
                 >
               </div>
+              <% if (!locked) { %>
+              <div class="doc-quick-contact" data-quick-contact hidden>
+                <p class="doc-help">Only the name is needed; a GSTIN fills the state for you. Add more later in Contacts.</p>
+                <div class="doc-form-grid">
+                  <label class="doc-field doc-wide">Name *<input data-quick="name" maxlength="200" autocomplete="off" /></label>
+                  <label class="doc-field">Phone<input data-quick="phone" type="tel" maxlength="30" /></label>
+                  <label class="doc-field">Email<input data-quick="email" type="email" maxlength="254" /></label>
+                  <label class="doc-field">GSTIN<input data-quick="gstin" maxlength="15" placeholder="Optional" autocomplete="off" /></label>
+                  <label class="doc-field"
+                    >State<select data-quick="stateCode">
+                      <option value="">Select state</option>
+                      <% for (const [code, name] of t.STATES) { %><option value="<%= code %>"><%= name %> (<%= code %>)</option><% } %>
+                    </select></label
+                  >
+                  <label class="doc-field doc-wide">Address<textarea data-quick="address" rows="2" maxlength="2000"></textarea></label>
+                </div>
+                <p class="doc-field-error" data-quick-error hidden></p>
+                <button type="button" class="button button-primary" data-quick-save>Save and select</button>
+                <button type="button" class="doc-text-button" data-quick-contact-toggle>Cancel</button>
+              </div>
+              <% } %>
               <div class="doc-contact-role-filters" role="group" aria-label="Contact roles">
                 <% [['all','All'],['customer','Customers'],['b2b_buyer','B2B buyers'],['vendor','Vendors']].forEach(([role,text])=>{ %><button
                   type="button"
@@ -375,14 +400,6 @@ const baseUrl = `/workspace/${encodeURIComponent(org.id)}/${data.route.view}`;
         <section class="doc-section">
           <h2 class="doc-section-heading">2. Items & services</h2>
           <p class="doc-help" id="doc-billing-hint"></p>
-          <datalist id="doc-unit-options">
-            <% t.CATALOG_UNITS.forEach(unit=>{ %>
-            <option value="<%= unit %>"></option>
-            <% }); %>
-          </datalist>
-          <datalist id="doc-gst-options">
-            <% [0, 0.25, 3, 5, 12, 18, 28, 40].forEach(rate=>{ %><option value="<%= rate %>"></option><% }); %>
-          </datalist>
           <div id="doc-lines"><% (form.items||[{description:'',hsn:'',quantity:1,rate:0,gstRate:0,unit:'Nos'}]).forEach((line,index)=>{ %><%- include('line',{line,index,locked,isDelivery}) %><% }); %></div>
           <p class="doc-field-error" data-error-for="items" hidden></p>
           <button type="button" class="doc-add-item" data-action="add-line" <%= locked?'disabled':'' %>>

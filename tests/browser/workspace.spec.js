@@ -73,7 +73,7 @@ test('contact and catalog saves, then logout, succeed when optional browser stor
   await page.goto(workspace(app, 'catalog/new'));
   await page.locator('#catalog-form [name="name"]').fill('Storage-safe catalog item');
   await page.locator('#catalog-form [name="rate"]').fill('20');
-  await page.locator('#catalog-form [name="gstRate"]').fill('0');
+  await page.locator('#catalog-form [name="gstRate"]').selectOption('0');
   await page.locator('#catalog-form button[type="submit"]').click();
   await expect(page).toHaveURL(/\/catalog(?:\?.*)?$/);
   expect(
@@ -694,4 +694,54 @@ test('an administrator sets a business gateway and SMTP email on Payments & emai
   await expect(page.locator('[data-test-message]')).toContainText('The test email was not sent', {
     timeout: 30_000,
   });
+});
+
+test('an invoice line picks unit and GST from lists, takes GST from the HSN, and a customer is added in place', async ({
+  page,
+  app,
+}) => {
+  await signIn(page, app);
+  const organization = await app.backend.db.models.organizations.findById(app.organizationId);
+  await app.backend.db.models.organizations.save({ ...organization, gstin: '09AAJCV6240P1ZL' });
+  await api(page, app, '/catalog', 'POST', {
+    ...catalogInput(app.organizationId, 'Passenger lift'),
+    hsn: '8428',
+    gstRate: 18,
+  });
+  await page.goto(workspace(app, 'invoices/new'));
+
+  // A new customer without leaving the invoice: the GSTIN fills the state and PAN.
+  await page.getByRole('button', { name: '+ New customer' }).click();
+  const quick = page.locator('[data-quick-contact]');
+  await quick.locator('[data-quick="name"]').fill('Quick Buyer Private Limited');
+  await quick.locator('[data-quick="gstin"]').fill('09ADAFS7767B1ZW');
+  await expect(quick.locator('[data-quick="stateCode"]')).toHaveValue('09');
+  await quick.getByRole('button', { name: 'Save and select' }).click();
+  await expect(quick).toBeHidden();
+  const buyer = await app.backend.db.collection('customers').findOne({ name: 'Quick Buyer Private Limited' });
+  expect([buyer.pan, buyer.stateCode, buyer.roles]).toEqual(['ADAFS7767B', '09', ['b2b_buyer']]);
+  await expect(page.locator('#doc-customer')).toHaveValue(buyer.id);
+
+  // Unit and GST are lists; the HSN brings the GST rate from the saved item.
+  const line = page.locator('.doc-line-card').first();
+  await expect(line.locator('[data-line="gstRate"] option')).toHaveCount(10);
+  await line.locator('[data-line="unit"]').selectOption('Box');
+  await line.locator('[data-line="description"]').fill('Passenger lift, 8 persons');
+  await line.locator('[data-line="hsn"]').fill('8428');
+  await line.locator('[data-line="hsn"]').press('Tab');
+  await expect(line.locator('[data-line="gstRate"]')).toHaveValue('18');
+  await expect(line.locator('[data-gst-hint]')).toContainText(
+    'GST 18% — from your saved item “Passenger lift”',
+  );
+  await expect(line.locator('[data-line="unit"]')).toHaveValue('Box');
+  // A rate chosen by hand stays; the hint offers the suggested one.
+  await line.locator('[data-line="gstRate"]').selectOption('5');
+  await line.locator('[data-line="hsn"]').fill('84281');
+  await line.locator('[data-line="hsn"]').press('Tab');
+  await expect(line.locator('[data-gst-hint]')).toContainText('HSN / SAC has 4, 6 or 8 digits.');
+  await line.locator('[data-line="hsn"]').fill('8428');
+  await line.locator('[data-line="hsn"]').press('Tab');
+  await expect(line.locator('[data-line="gstRate"]')).toHaveValue('5');
+  await line.getByRole('button', { name: 'Use 18%' }).click();
+  await expect(line.locator('[data-line="gstRate"]')).toHaveValue('18');
 });
