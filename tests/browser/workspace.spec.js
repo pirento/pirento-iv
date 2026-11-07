@@ -745,3 +745,50 @@ test('an invoice line picks unit and GST from lists, takes GST from the HSN, and
   await line.getByRole('button', { name: 'Use 18%' }).click();
   await expect(line.locator('[data-line="gstRate"]')).toHaveValue('18');
 });
+
+test('on a phone every page fits the screen and every button is at least 40px tall', async ({
+  page,
+  app,
+}) => {
+  await signIn(page, app);
+  const organization = await app.backend.db.models.organizations.findById(app.organizationId);
+  await app.backend.db.models.organizations.save({ ...organization, gstin: '09AAJCV6240P1ZL' });
+  const customer = await api(page, app, '/customers', 'POST', customerInput(app.organizationId));
+  const invoice = await api(
+    page,
+    app,
+    '/documents',
+    'POST',
+    invoiceInput(app.organizationId, customer.id, { status: 'sent' }),
+  );
+  await page.setViewportSize({ width: 390, height: 860 });
+  for (const path of [
+    'overview',
+    'invoices',
+    'invoices/new',
+    `invoices/preview/${invoice.id}`,
+    `invoices/payments/${invoice.id}`,
+    'customers/new',
+    'catalog/new',
+    'team',
+    'integrations',
+    'finance',
+  ]) {
+    await page.goto(workspace(app, path));
+    await page.waitForLoadState('networkidle');
+    const problems = await page.evaluate(() => {
+      const found = [];
+      if (document.documentElement.scrollWidth > window.innerWidth) found.push('scrolls sideways');
+      for (const el of document.querySelectorAll(
+        'button, a.button, .text-button, .doc-text-button, summary, select',
+      )) {
+        const box = el.getBoundingClientRect();
+        if (!box.width || el.closest('[hidden]')) continue;
+        if (box.height < 40)
+          found.push(`${el.textContent.trim().slice(0, 30)} is ${Math.round(box.height)}px`);
+      }
+      return found;
+    });
+    expect(problems, path).toEqual([]);
+  }
+});
