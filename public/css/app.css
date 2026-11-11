@@ -1489,3 +1489,15 @@ tbody tr:hover {
     pointer-events: none;
   }
 }
+
+/* Contact form: the details beyond the essentials, folded. */
+.contact-more {
+  margin-top: 1rem;
+  border-top: 1px solid var(--line, #efdfd2);
+  padding-top: 0.75rem;
+}
+.contact-more > summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 0.5rem 0;
+}

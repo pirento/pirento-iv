@@ -74,6 +74,21 @@ test(
       body: { ...editable, gstRegistrations: latest.gstRegistrations ?? [], phone: '9876543210' },
     });
     assert.equal((await backend.db.models.organizations.findById(organizationId)).phone, '9876543210');
+    // Division or independent is the administrator's decision: an owner's change is ignored.
+    await call(`/organizations/${organizationId}`, {
+      method: 'PUT',
+      cookie: ownerCookie,
+      body: { ...editable, gstRegistrations: latest.gstRegistrations ?? [], businessType: 'independent' },
+    });
+    assert.equal((await backend.db.models.organizations.findById(organizationId)).businessType, 'division');
+    // The SMTP server must be a public mail server name, never a machine inside the network.
+    for (const host of ['127.0.0.1', 'localhost', 'mail.internal', 'db'])
+      await call(`/integrations/${organizationId}/settings`, {
+        method: 'PUT',
+        cookie: ownerCookie,
+        status: 400,
+        body: { SMTP_HOST: host },
+      });
     const other = await backend.db.models.organizations.findById('pipeline2-legal');
     await call('/organizations/pipeline2-legal', {
       method: 'PUT',

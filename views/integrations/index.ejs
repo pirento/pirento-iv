@@ -44,7 +44,7 @@ const support = helpers.organizationSupportEmail(organization);
       <section class="mg-card">
         <header class="mg-card-heading">
           <div>
-            <h3 data-provider-name><%= provider %></h3>
+            <h2 class="mg-h3" data-provider-name><%= provider %></h2>
             <small data-provider-subtitle><%= manual ? 'Bank, QR and recorded receipts' : 'Hosted payment links' %></small>
           </div>
           <span class="mg-badge" data-payment-state><%= manual ? 'Manual only' : payment.configured ? 'Configured' : 'Setup needed' %></span>
@@ -102,7 +102,7 @@ const support = helpers.organizationSupportEmail(organization);
       <section class="mg-card">
         <header class="mg-card-heading">
           <div>
-            <h3>Invoice emails</h3>
+            <h2 class="mg-h3">Invoice emails</h2>
             <small>Sender for <%= organization.name %></small>
           </div>
           <span class="mg-badge" data-email-state><%= email.configured ? 'Configured' : 'Setup needed' %></span>
@@ -129,7 +129,7 @@ const support = helpers.organizationSupportEmail(organization);
             <dd>Resend</dd>
           </div>
         </dl>
-        <p class="mg-note" data-email-guidance><%= email.configured ? email.automationEnabled ? 'Automatic emails cover issued invoices and recorded payment outcomes. Check document email history to see whether the provider accepted each message.' : 'Manual document emails are available. Enable automation in the server settings to send invoice and payment updates automatically.' : email.reason || 'Add a verified sender address and an email provider API key to begin sending.' %></p>
+        <p class="mg-note" data-email-guidance><%= email.configured ? email.automationEnabled ? 'Automatic emails cover issued invoices and recorded payment outcomes. Check document email history to see whether the provider accepted each message.' : 'Manual document emails are available. Turn on automatic emails in the settings below to send invoice and payment updates automatically.' : email.reason || 'Add a sender address and an SMTP server or Resend key in the settings below to begin sending.' %></p>
         <details>
           <summary>Connection instructions</summary>
           <p>
@@ -157,7 +157,7 @@ const support = helpers.organizationSupportEmail(organization);
       <section class="mg-card" data-gst-card <%= gst ? '' : 'hidden' %>>
         <header class="mg-card-heading">
           <div>
-            <h3>GST lookup</h3>
+            <h2 class="mg-h3">GST lookup</h2>
             <small>Customer, vendor and B2B buyer auto-fill</small>
           </div>
           <span class="mg-badge" data-gst-state><%= gst?.provider === 'portal' ? 'CAPTCHA required' : gst?.configured ? 'Settings added' : 'Setup needed' %></span>
@@ -226,15 +226,15 @@ const support = helpers.organizationSupportEmail(organization);
     </div>
     <% if (settings?.businesses) { %>
     <section class="mg-card" id="all-businesses">
-      <h3>Every business</h3>
+      <h2 class="mg-h3">Every business</h2>
       <div tabindex="0" role="region" aria-label="Payment gateway and email of every business" class="table-wrap">
         <table class="finance-table">
-          <thead><tr><th>Business</th><th>Payment gateway</th><th>Email sending</th><th></th></tr></thead>
+          <thead><tr><th>Business</th><th>Payment gateway</th><th>Email sending</th><th>Action</th></tr></thead>
           <tbody>
             <% for (const row of settings.businesses) { %>
               <tr>
                 <td><%= row.name %></td>
-                <td><%= row.payment.provider === 'none' ? 'Manual payments' : `${row.payment.provider === 'cashfree' ? 'Cashfree' : 'Razorpay'} · ${row.payment.configured ? 'ready' : 'setup needed'}` %></td>
+                <td><%= row.payment.provider === 'none' ? 'Manual payments' : row.payment.provider === 'unknown' ? 'Settings need checking' : `${row.payment.provider === 'cashfree' ? 'Cashfree' : 'Razorpay'} · ${row.payment.configured ? 'ready' : 'setup needed'}` %></td>
                 <td><%= row.email.configured ? `${row.email.provider === 'smtp' ? 'SMTP' : 'Resend'} · ready` : 'Setup needed' %></td>
                 <td><a href="/workspace/<%= encodeURIComponent(row.id) %>/integrations#business-settings">Set up</a></td>
               </tr>
@@ -246,7 +246,7 @@ const support = helpers.organizationSupportEmail(organization);
     <% } %>
     <% if (settings?.settings) { const saved = settings.settings; const secret = (name) => saved[name].set ? `Saved, ending ${saved[name].end} — leave blank to keep` : ''; %>
     <section class="mg-card" id="business-settings">
-      <h3>Settings for <%= organization.name %></h3>
+      <h2 class="mg-h3">Settings for <%= organization.name %></h2>
       <p>Saved here, these win over the server settings for this business only. Keys and passwords are stored encrypted and are never shown again.</p>
       <form data-settings-form>
         <fieldset class="mg-form-grid">
@@ -272,7 +272,8 @@ const support = helpers.organizationSupportEmail(organization);
           </label>
         </fieldset>
         <fieldset class="mg-form-grid">
-          <legend><strong>Sending email</strong> — an SMTP server (Hostinger, Gmail, Zoho, Outlook…) or a Resend API key</legend>
+          <legend><strong>Sending email</strong></legend>
+          <p class="mg-hint mg-wide">Use an SMTP server (Hostinger, Gmail, Zoho, Outlook…) or a Resend API key.</p>
           <label class="field">Send from address<input name="EMAIL_FROM" type="email" maxlength="254" value="<%= saved.EMAIL_FROM %>" placeholder="billing@yourdomain.com" /></label>
           <label class="field">Automatic emails
             <select name="EMAIL_AUTOMATION">
@@ -295,12 +296,13 @@ const support = helpers.organizationSupportEmail(organization);
           <label class="field">Resend API key (if no SMTP)<input name="RESEND_API_KEY" type="password" autocomplete="off" maxlength="500" placeholder="<%= secret('RESEND_API_KEY') %>" /></label>
         </fieldset>
         <fieldset class="mg-form-grid">
-          <legend><strong>Receiving email</strong> — customers' replies go to these inboxes</legend>
+          <legend><strong>Receiving email</strong></legend>
+          <p class="mg-hint mg-wide">Customers' replies go to these inboxes.</p>
           <label class="field">Support email (quotations, help)<input name="supportEmail" type="email" maxlength="254" value="<%= organization.supportEmail || helpers.organizationSupportEmail(organization) %>" /></label>
           <label class="field">Finance email (invoices, receipts, reminders)<input name="financeEmail" type="email" maxlength="254" value="<%= organization.financeEmail || '' %>" placeholder="finance@pirento.com" /></label>
         </fieldset>
         <div class="mg-actions">
-          <button class="button" type="submit">Save settings</button>
+          <button class="button button-primary" type="submit">Save settings</button>
           <% for (const [name, label] of [['RAZORPAY_KEY_SECRET', 'Razorpay secret'], ['CASHFREE_CLIENT_SECRET', 'Cashfree secret'], ['SMTP_PASSWORD', 'SMTP password'], ['RESEND_API_KEY', 'Resend key']]) { if (saved[name].set) { %>
             <button class="button secondary" type="button" data-clear="<%= name %>">Remove <%= label %></button>
           <% } } %>
@@ -318,7 +320,7 @@ const support = helpers.organizationSupportEmail(organization);
     <section class="mg-card" id="ai-settings">
       <header class="mg-card-heading">
         <div>
-          <h3>AI assistant (OpenAI)</h3>
+          <h2 class="mg-h3">AI assistant (OpenAI)</h2>
           <small>One key for the whole company</small>
         </div>
         <span class="mg-badge" data-ai-state><%= settings?.ai?.configured ? `Key ending ${settings.ai.keyEnd}` : 'Not set' %></span>
@@ -340,11 +342,11 @@ const support = helpers.organizationSupportEmail(organization);
     </section>
     <% } %>
     <section class="mg-card">
-      <h3>A clear path from sent to settled</h3>
+      <h2 class="mg-h3">A clear path from sent to settled</h2>
       <div class="mg-grid">
         <article>
           <span class="mg-eyebrow">01</span>
-          <h4>Issue your invoice</h4>
+          <h3 class="mg-h4">Issue your invoice</h3>
           <p>
             Select a saved customer, vendor or B2B buyer, check the business GST details and issue the
             document.
@@ -352,12 +354,12 @@ const support = helpers.organizationSupportEmail(organization);
         </article>
         <article>
           <span class="mg-eyebrow">02</span>
-          <h4>Share payment details</h4>
+          <h3 class="mg-h4">Share payment details</h3>
           <p data-workflow-share><%= manual ? 'Include your saved bank or QR details in the invoice email.' : `Create a ${provider} link in Payments and include it in the invoice email.` %></p>
         </article>
         <article>
           <span class="mg-eyebrow">03</span>
-          <h4>Follow every update</h4>
+          <h3 class="mg-h4">Follow every update</h3>
           <p>
             Check payment history and email attempts. A fully paid invoice keeps its number and becomes final.
           </p>

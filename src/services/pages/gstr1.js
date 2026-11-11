@@ -28,6 +28,18 @@ export const UQC = {
   'Sq ft': 'SQF-SQUARE FEET',
   'Sq m': 'SQM-SQUARE METERS',
   Set: 'SET-SETS',
+  Litre: 'LTR-LITRES',
+  Box: 'BOX-BOX',
+  Pack: 'PAC-PACKS',
+  Pair: 'PRS-PAIRS',
+  Dozen: 'DOZ-DOZENS',
+  Bag: 'BAG-BAGS',
+  Roll: 'ROL-ROLLS',
+  Ton: 'TON-TONNES',
+  Quintal: 'QTL-QUINTAL',
+  'Sq yd': 'SQY-SQUARE YARDS',
+  'Cubic m': 'CBM-CUBIC METERS',
+  Km: 'KME-KILOMETRE',
 };
 
 const HSN_COLUMNS = [

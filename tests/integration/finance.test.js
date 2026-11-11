@@ -249,6 +249,14 @@ test(
     assert.deepEqual(saved.data, { configured: true, model: 'gpt-4o-mini', keyEnd: '9876' });
     const stored = await backend.db.collection('workspace_metadata').findOne({ _id: 'openai-settings' });
     assert.ok(!JSON.stringify(stored).includes('sk-test-secret'), 'the key is encrypted at rest');
+    // A Finance login's page knows the assistant is set up, not the key's last characters or model.
+    const financePage = await (
+      await fetch(`${base}/workspace/${organizationId}/finance?year=2026`, {
+        headers: { Cookie: accountant },
+      })
+    ).text();
+    assert.match(financePage, /"ai":\{"configured":true\}/);
+    assert.ok(!financePage.includes('9876'), 'no part of the key reaches a Finance login');
     aiAnswer = {
       lines: [
         { date: '15-10-2026', narration: 'NEFT SPARK', reference: 'N123', credit: 63000, debit: 0 },

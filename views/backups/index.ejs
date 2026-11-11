@@ -36,20 +36,20 @@ const unavailable = status?.available === false;
     <div class="mg-grid mg-backup-summary">
       <section class="mg-card">
         <header class="mg-card-heading">
-          <h3>Automatic schedule</h3>
+          <h2 class="mg-h3">Automatic schedule</h2>
           <span class="mg-badge" data-schedule-badge><%= status?.enabled ? 'On' : 'Off' %></span>
         </header>
         <strong data-schedule><%= status?.enabled ? interval(status.intervalMinutes) : 'Not enabled' %></strong>
         <p data-retention><%= status?.enabled ? `Keeps the latest ${status.retention} completed database snapshots on this server.` : 'You can create a manual backup. Enable the schedule in the hosting server configuration.' %></p>
       </section>
       <section class="mg-card">
-        <h3>Last successful backup</h3>
+        <h2 class="mg-h3">Last successful backup</h2>
         <strong data-last-success><%= date(status?.lastSuccessfulAt) %></strong>
         <p>Backup dates and times are shown in India Standard Time.</p>
       </section>
       <section class="mg-card">
         <header class="mg-card-heading">
-          <h3>Backup storage</h3>
+          <h2 class="mg-h3">Backup storage</h2>
           <span class="mg-badge" data-storage-badge><%= unavailable ? 'Needs setup' : 'Server' %></span>
         </header>
         <strong data-storage><%= unavailable ? 'Storage unavailable' : 'Private server storage' %></strong>
@@ -62,7 +62,7 @@ const unavailable = status?.available === false;
     <section class="mg-card">
       <header class="mg-card-heading">
         <div>
-          <h3>Completed snapshots</h3>
+          <h2 class="mg-h3">Completed snapshots</h2>
           <p><span data-backup-count><%= backups.length %></span> available · Administrators only</p>
           <p>Snapshot contents and checksums are verified before each download. Refresh reads the backup inventory.</p>
         </div>
@@ -83,13 +83,13 @@ const unavailable = status?.available === false;
         </table>
       </div>
       <div class="mg-empty" data-empty <%= backups.length ? 'hidden' : '' %>>
-        <h3>No completed backups</h3>
+        <h2 class="mg-h3">No completed backups</h2>
         <p>Create your first snapshot to save a copy of the current database.</p>
       </div>
     </section>
     <template id="backup-row-template"><%- include('row', { backup: {id:'',createdAt:null,byteLength:0} }) %></template>
     <section class="mg-note">
-      <h3>Restoring a backup</h3>
+      <h2 class="mg-h3">Restoring a backup</h2>
       <p>
         On the private server, keep the MongoDB snapshot and its manifest together as
         <code>database.ejson</code> and <code>manifest.json</code> inside the snapshot-ID folder. Restore

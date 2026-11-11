@@ -3,7 +3,7 @@
   "version": "2.5.0",
   "private": true,
   "type": "module",
-  "description": "Venturecore workspace — Express MVC, EJS, JavaScript and MongoDB",
+  "description": "Venturecore workspace \u2014 Express MVC, EJS, JavaScript and MongoDB",
   "engines": {
     "node": ">=24.5.0 <27"
   },
@@ -43,7 +43,7 @@
     "nodemailer": "10.1.7",
     "pdfmake": "^0.3.11",
     "sharp": "^0.35.5",
-    "zod": "^4.6.5"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@eslint/js": "9.39.1",
@@ -51,5 +51,9 @@
     "eslint": "9.39.1",
     "globals": "16.5.0",
     "prettier": "3.9.9"
+  },
+  "overrides": {
+    "body-parser": "2.4.0",
+    "qs": "6.16.1"
   }
 }

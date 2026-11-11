@@ -151,7 +151,7 @@ const invalid = route.action && (route.action === 'delete' || (route.action === 
         </div>
         <span class="mg-badge" data-product-status><%= product.active ? 'Active' : 'Archived' %></span>
       </div>
-      <h3><%= product.name %></h3>
+      <h2 class="mg-h3"><%= product.name %></h2>
       <small><%= product.code || 'No reference code' %></small>
       <p><%= product.description || 'Add a description to help your team identify this product line.' %></p>
       <footer class="mg-row-actions">
@@ -173,7 +173,7 @@ const invalid = route.action && (route.action === 'delete' || (route.action === 
     <% } %>
   </div>
   <div class="mg-empty" data-empty <%= products.some(product => product.active) ? 'hidden' : '' %>>
-    <h3>No matching business products</h3>
+    <h2 class="mg-h3">No matching business products</h2>
     <p>Try another product name, reference code or filter, or add a business product.</p>
     <a class="button primary" href="<%= base %>/new" data-manager-link>Add business product</a>
   </div>

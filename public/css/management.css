@@ -24,13 +24,18 @@
   line-height: 1.25;
   letter-spacing: -0.5px;
 }
-.mg-page h3 {
+/* Section headings are h2 and h3 in the document outline (.mg-h3, .mg-h4 keep their size). */
+.mg-page h3,
+.mg-page .mg-h3 {
   font-size: 18px;
   line-height: 1.35;
   margin-bottom: 9px;
+  letter-spacing: normal;
 }
-.mg-page h4 {
+.mg-page h4,
+.mg-page .mg-h4 {
   font-size: 15px;
+  line-height: inherit;
   margin-bottom: 8px;
 }
 .mg-page p {
@@ -357,7 +362,7 @@
   border: 1px dashed #cbdae0;
   border-radius: 10px;
 }
-.mg-empty h3 {
+.mg-empty :is(h3, .mg-h3) {
   margin-bottom: 7px;
 }
 .mg-empty p {
@@ -521,10 +526,10 @@
   border: 1px solid #ecdfd7;
   border-radius: 10px;
 }
-.mg-pricing h3 {
+.mg-pricing :is(h3, .mg-h3) {
   font-size: 15px;
 }
-.mg-pricing h4 {
+.mg-pricing :is(h4, .mg-h4) {
   margin-top: 20px;
 }
 .mg-pricing .mg-field > span[data-making-unit] {
@@ -623,7 +628,7 @@
   display: grid;
   gap: 18px;
 }
-.mg-design-controls h3 {
+.mg-design-controls :is(h3, .mg-h3) {
   margin: 5px 0 -8px;
 }
 .mg-design-controls .mg-fieldset {
@@ -763,7 +768,7 @@
   gap: 14px;
   min-width: 0;
 }
-.mg-user-identity h3 {
+.mg-user-identity :is(h3, .mg-h3) {
   margin-bottom: 4px;
   font-size: 16px;
 }
@@ -827,7 +832,7 @@
   font-size: 12px;
   color: #63737b;
 }
-.mg-backup-summary h3 {
+.mg-backup-summary :is(h3, .mg-h3) {
   font-size: 14px;
 }
 .mg-backup-summary .mg-card-heading {
@@ -869,7 +874,7 @@
   font-size: 12px;
   color: #5c6c74;
 }
-.mg-integration-cards h3 {
+.mg-integration-cards :is(h3, .mg-h3) {
   font-size: 17px;
 }
 .mg-integration-cards .mg-card-heading {
@@ -1104,12 +1109,12 @@
 .fmt-sample-brand > div > span {
   display: block;
   font-size: 5px;
-  color: #a6958a;
+  color: #766a62;
   margin-top: 4px;
 }
 .fmt-sample-brand p {
   font-size: 6px;
-  color: #857469;
+  color: #796a60;
   line-height: 1.6;
   overflow-wrap: anywhere;
   margin-top: 1px;
@@ -1129,7 +1134,7 @@
 }
 .fmt-sample-title > span {
   font-size: 6px;
-  color: #9a8679;
+  color: #7a6a60;
 }
 .fmt-sample-customer {
   display: flex;
@@ -1149,7 +1154,7 @@
 .fmt-sample-bank small {
   font-size: 5px;
   letter-spacing: 1px;
-  color: #a79182;
+  color: #7a6a5f;
   font-weight: 500;
 }
 .fmt-sample-customer strong {
@@ -1159,7 +1164,7 @@
 }
 .fmt-sample-customer span {
   font-size: 6px;
-  color: #9b8475;
+  color: #7a685c;
 }
 .fmt-sample-table {
   border-collapse: collapse;
@@ -1179,7 +1184,7 @@
 .fmt-sample-table td {
   padding: 12px 4px;
   border-bottom: 1px solid #f2ebe6;
-  color: #8a7364;
+  color: #7e695b;
   white-space: nowrap;
 }
 .fmt-sample-table td:first-child {
@@ -1199,7 +1204,7 @@
   justify-content: space-between;
   gap: 10px;
   font-size: 6px;
-  color: #9e8879;
+  color: #7b6a5e;
   padding: 5px 0;
 }
 .fmt-sample-summary > div.fmt-sample-total {
@@ -1215,7 +1220,7 @@
 }
 .fmt-sample-words {
   font-size: 6px;
-  color: #a08979;
+  color: #7b695d;
   line-height: 1.7;
   margin-top: 17px;
 }
@@ -1225,7 +1230,7 @@
   letter-spacing: 0.5px;
   text-transform: uppercase;
   font-weight: 500;
-  color: #93735d;
+  color: #846754;
   margin-bottom: 3px;
 }
 .fmt-sample-bottom {
@@ -1245,7 +1250,7 @@
 }
 .fmt-sample-bank > span {
   font-size: 6px;
-  color: #a28a7a;
+  color: #7b695d;
   overflow-wrap: anywhere;
 }
 .fmt-sample-signature {
@@ -1256,13 +1261,13 @@
   max-width: 45%;
   min-width: 80px;
   font-size: 5px;
-  color: #a38774;
+  color: #7f695a;
   overflow-wrap: anywhere;
 }
 .fmt-sample-footer {
   text-align: center;
   font-size: 6px;
-  color: #b09888;
+  color: #7b6a5f;
   border-top: 1px solid #f4e6dc;
   margin-top: 25px;
   padding-top: 11px;
@@ -1583,7 +1588,7 @@
 .fmt-sample-qr {
   margin: 0;
   text-align: center;
-  color: #a2806a;
+  color: #826655;
   flex-shrink: 0;
   width: calc(var(--fmt-qr-size) * var(--fmt-preview-scale));
   max-width: 33%;
@@ -1604,7 +1609,7 @@
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  color: #b79a87;
+  color: #7c695c;
   padding: 7px 5px;
   border: 1px dashed #cadee6;
   border-radius: 3px;
@@ -1615,7 +1620,7 @@
   flex-shrink: 0;
 }
 .fmt-sample-qr-placeholder > svg {
-  color: #bca08d;
+  color: #7c6a5d;
 }
 .fmt-table-striped .fmt-sample-table tbody tr:nth-child(even) {
   background: #f8f1ed;
@@ -1831,4 +1836,23 @@
   border: 0;
   padding: 0;
   margin: 0;
+}
+
+/* Grouped settings (Payments & email): each group in its own soft box. */
+.mg-card fieldset {
+  margin: 0 0 16px;
+  padding: 16px;
+  border: 1px solid var(--line, #efdfd2);
+  border-radius: 12px;
+  min-width: 0;
+}
+.mg-card fieldset > legend {
+  padding: 0 8px;
+  font-size: 14px;
+}
+
+/* Payments & email: the cards under the status row keep the page's spacing. */
+#integrations-page [data-status-loaded]:not([hidden]) {
+  display: grid;
+  gap: 22px;
 }

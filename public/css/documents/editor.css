@@ -297,7 +297,7 @@
   display: block;
   font-size: 10px;
   font-weight: 400;
-  color: #968981;
+  color: #756b65;
   margin-top: 5px;
 }
 .doc-total-banner > strong {
@@ -539,7 +539,7 @@
 .doc-paper-status {
   margin-top: 6px;
   background: #f7f1ed;
-  color: #5e737d;
+  color: #5b7079;
   font-size: 8px;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -569,7 +569,7 @@
   display: block;
   text-transform: uppercase;
   letter-spacing: 1.25px;
-  color: #9c8c81;
+  color: #776a62;
   font-size: 8px;
   font-weight: 600;
   margin-bottom: 9px;
@@ -589,7 +589,7 @@
 }
 .doc-party p {
   margin: 3px 0;
-  color: #8d7c71;
+  color: #786960;
 }
 .doc-date-details {
   border-left: 1px solid #eee4dd;
@@ -661,7 +661,7 @@
   padding-right: 12px;
 }
 .doc-paper-table td.doc-row-number {
-  color: #b09d91;
+  color: #766961;
   font-size: 8px;
 }
 .doc-paper-table td.doc-paper-description {
@@ -687,14 +687,14 @@
 }
 .doc-paper-note {
   font-size: 10px;
-  color: #987f6e;
+  color: #7e695b;
 }
 .doc-paper-note p {
   margin: 0 0 12px;
 }
 .doc-paper-note .doc-quotation-note {
   font-size: 9px;
-  color: #a6958a;
+  color: #766a62;
   font-style: italic;
 }
 .doc-preserve-lines {
@@ -705,7 +705,7 @@
   display: grid;
   gap: 9px;
   font-size: 10px;
-  color: #937764;
+  color: #806857;
   align-content: start;
 }
 .doc-paper-totals > div {
@@ -734,7 +734,7 @@
   font-size: 8px;
   font-weight: 400;
   margin-left: 4px;
-  color: #ab8b76;
+  color: #806858;
 }
 .doc-paper-grand-total > strong {
   font-size: 21px;
@@ -748,7 +748,7 @@
   border-top: 1px solid #efe1d8;
   padding: 22px 0;
   font-size: 9px;
-  color: #9a7e6b;
+  color: #7e6758;
   break-inside: avoid;
 }
 .doc-paper-bottom p {
@@ -762,7 +762,7 @@
   margin: 0;
 }
 .doc-bank-details dt {
-  color: #ac9687;
+  color: #7a6a60;
 }
 .doc-bank-details dd {
   margin: 0;
@@ -788,7 +788,7 @@
 }
 .doc-paper-signoff > div:first-child > span {
   font-size: 9px;
-  color: #a28571;
+  color: #7e6858;
 }
 .doc-paper-footer {
   display: flex;
@@ -797,7 +797,7 @@
   border-top: 1px solid #eee1d9;
   padding: 15px 0;
   font-size: 8px;
-  color: #b29b8c;
+  color: #79695f;
   letter-spacing: 0.2px;
 }
 .doc-template-classic .doc-paper-accent {
@@ -1196,4 +1196,19 @@
   .doc-paper-footer {
     padding: 11px 0 !important;
   }
+}
+
+/* Quick "+ New customer" panel in the document editor. */
+.doc-quick-contact {
+  margin: 0.75rem 0;
+  padding: 1rem;
+  border: 1px solid var(--line, #efdfd2);
+  border-radius: 12px;
+  background: var(--surface, #fff);
+}
+.doc-quick-contact .doc-form-grid {
+  margin-bottom: 0.75rem;
+}
+.doc-gst-hint {
+  margin: 0.25rem 0 0;
 }

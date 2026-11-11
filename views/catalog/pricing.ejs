@@ -4,7 +4,7 @@ const mode = pricing?.mode || 'standard';
 const jewellery = pricing?.jewellery || { grossWeight: 0, stoneWeight: 0, purity: '', makingChargeType: 'per_gram', makingCharge: 0, stoneAmount: 0, otherCharges: 0, wastagePercent: 0 };
 %>
 <section class="mg-pricing" data-pricing>
-  <h3>Pricing method</h3>
+  <h2 class="mg-h3">Pricing method</h2>
   <label class="mg-field"
     >How this item is priced
     <select name="pricingMode">
@@ -17,7 +17,7 @@ const jewellery = pricing?.jewellery || { grossWeight: 0, stoneWeight: 0, purity
     The item quantity is multiplied by its rate per unit.
   </p>
   <div data-pricing-mode="recurring" <%= mode !== 'recurring' ? 'hidden' : '' %>>
-    <h4>Billing periods</h4>
+    <h3 class="mg-h4">Billing periods</h3>
     <div class="mg-form-grid">
       <label class="mg-field"
         >Number of periods<input
@@ -39,7 +39,7 @@ const jewellery = pricing?.jewellery || { grossWeight: 0, stoneWeight: 0, purity
     <output class="mg-formula" data-price-formula></output>
   </div>
   <div data-pricing-mode="jewellery" <%= mode !== 'jewellery' ? 'hidden' : '' %>>
-    <h4>Jewellery details per item</h4>
+    <h3 class="mg-h4">Jewellery details per item</h3>
     <p class="mg-hint">The item rate is the metal price per gram.</p>
     <div class="mg-form-grid">
       <label class="mg-field"

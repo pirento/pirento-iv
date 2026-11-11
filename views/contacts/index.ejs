@@ -43,25 +43,24 @@ const directory = data.directory;
 <form id="contact-form" class="card" data-id="<%= source?.id || '' %>">
   <div class="alert alert-error" data-form-error hidden role="alert"></div>
   <section>
-    <h2 class="section-heading">Contact roles</h2>
-    <div class="check-group">
-      <% for (const role of helpers.CONTACT_ROLES) { %><label class="checkbox"
-        ><input
-          type="checkbox"
-          name="roles"
-          value="<%= role %>"
-          <%= form.roles.includes(role) ? 'checked' : '' %>
-        /><%= helpers.CONTACT_ROLE_LABELS[role] %></label
-      ><% } %><label class="checkbox"
-        ><input type="checkbox" name="active" <%= form.active ? 'checked' : '' %> />Active contact</label
-      >
-    </div>
-  </section>
-  <hr />
-  <section>
-    <h2 class="section-heading">Business details</h2>
+    <h2 class="section-heading">Customer details</h2>
     <div class="form-grid">
       <label class="field"
+        >Business / contact name *<input
+          name="name"
+          maxlength="200"
+          required
+          value="<%= form.name %>" /></label
+      >      <label class="field"
+        >Phone<input type="tel" name="phone" maxlength="30" value="<%= form.phone %>"
+      /></label>
+      <label class="field"
+        >Email address<input
+          type="email"
+          name="email"
+          maxlength="254"
+          value="<%= form.email %>" /></label
+      >      <label class="field"
         >GSTIN
         <div class="input-action">
           <input name="gstin" maxlength="15" value="<%= form.gstin %>" autocomplete="off" /><button
@@ -74,7 +73,6 @@ const directory = data.directory;
         </div>
         <small>Optional for unregistered contacts. Review fetched details before saving.</small></label
       >
-      <label class="field">PAN<input name="pan" maxlength="10" value="<%= form.pan %>" /></label>
       <div class="full-width" data-gst-captcha hidden>
         <div class="input-action">
           <img data-captcha-image alt="GST portal CAPTCHA" width="180" /><input
@@ -88,24 +86,6 @@ const directory = data.directory;
         </div>
       </div>
       <div class="full-width alert alert-info" data-gst-message hidden role="status"></div>
-      <label class="field"
-        >Business / contact name<input
-          name="name"
-          maxlength="200"
-          required
-          value="<%= form.name %>" /></label
-      ><label class="field"
-        >Contact person<input name="contactPerson" maxlength="200" value="<%= form.contactPerson %>"
-      /></label>
-      <label class="field"
-        >Email address<input
-          type="email"
-          name="email"
-          maxlength="254"
-          value="<%= form.email %>" /></label
-      ><label class="field"
-        >Phone<input type="tel" name="phone" maxlength="30" value="<%= form.phone %>"
-      /></label>
       <label class="field full"
         >Billing address<textarea name="address" maxlength="2000"><%= form.address %></textarea>
       </label>
@@ -121,7 +101,29 @@ const directory = data.directory;
       >
     </div>
   </section>
-  <hr />
+  <details class="contact-more" <%= source ? 'open' : '' %>>
+    <summary>More details · contact person, PAN, roles, shipping, payment terms, notes</summary>
+    <section>
+      <div class="form-grid">
+        <label class="field"
+        >Contact person<input name="contactPerson" maxlength="200" value="<%= form.contactPerson %>"
+      /></label>
+      <label class="field">PAN<input name="pan" maxlength="10" value="<%= form.pan %>" /></label>
+      </div>
+      <h2 class="section-heading">Contact roles</h2>
+    <div class="check-group">
+      <% for (const role of helpers.CONTACT_ROLES) { %><label class="checkbox"
+        ><input
+          type="checkbox"
+          name="roles"
+          value="<%= role %>"
+          <%= form.roles.includes(role) ? 'checked' : '' %>
+        /><%= helpers.CONTACT_ROLE_LABELS[role] %></label
+      ><% } %><label class="checkbox"
+        ><input type="checkbox" name="active" <%= form.active ? 'checked' : '' %> />Active contact</label
+      >
+    </div>
+    </section>
   <section>
     <h2 class="section-heading">
       Shipping details
@@ -142,7 +144,6 @@ const directory = data.directory;
       >
     </div>
   </section>
-  <hr />
   <section>
     <h2 class="section-heading">Payment terms &amp; notes</h2>
     <div class="form-grid">
@@ -166,6 +167,7 @@ const directory = data.directory;
       </label>
     </div>
   </section>
+  </details>
   <div class="form-actions">
     <a class="button" href="<%= helpers.url(data, 'customers') %>">Cancel</a
     ><button class="button button-primary" type="submit">Save contact</button>

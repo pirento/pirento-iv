@@ -71,6 +71,11 @@ export function createWorkspacePageData({
     };
   }
 
+  // Whether the AI assistant is set up; the model and the key's last characters are for administrators.
+  const aiStatus = async (user) => {
+    const status = ai ? await ai.status() : { configured: false };
+    return !auth || user.role === 'admin' ? status : { configured: status.configured };
+  };
   // Group finance is for administrators and Accounts logins, across the businesses they can open.
   const financeAllowed = (user) => !auth || user.role === 'admin' || user.permission === 'accounts';
   async function financeData(organizations, query, businessDate) {
@@ -281,7 +286,7 @@ export function createWorkspacePageData({
           totals: groupTotals(rows),
           bank,
           registers,
-          ai: ai ? await ai.status() : { configured: false },
+          ai: await aiStatus(user),
         };
       });
     }
@@ -322,7 +327,7 @@ export function createWorkspacePageData({
           payment,
           razorpay: payment,
           gst: gstStatus(),
-          ai: ai ? await ai.status() : { configured: false },
+          ai: await aiStatus(user),
           ...(!auth || user.role === 'admin' || user.permission === 'owner'
             ? { settings: await integrationSettings.view(organizationId) }
             : {}),
@@ -333,8 +338,13 @@ export function createWorkspacePageData({
                   result.organizations.map(async (organization) => ({
                     id: organization.id,
                     name: organization.name,
-                    payment: await online.getStatus(organization.id),
-                    email: await mailer.status(organization.id),
+                    // One business with broken settings must not stop the page for the others.
+                    payment: await online
+                      .getStatus(organization.id)
+                      .catch(() => ({ provider: 'unknown', configured: false })),
+                    email: await mailer
+                      .status(organization.id)
+                      .catch(() => ({ provider: 'unknown', configured: false })),
                   })),
                 ),
               }

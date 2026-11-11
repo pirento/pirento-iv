@@ -1,0 +1,288 @@
+/*
+ * Buttons, links that act as buttons, and form fields: loaded last on every page so that every
+ * control is easy to read and to tap. Desktop: 14px text and at least 36–40px tall. Phones and
+ * tablets (820px and narrower): at least 44px tall (a finger-sized target) and 16px fields, which
+ * also stops iOS from zooming in on a field.
+ */
+
+/* Filled and outlined buttons */
+.button,
+.doc-button,
+.doc-add-item,
+.payment-primary,
+.payment-secondary,
+.messaging-primary,
+.messaging-refresh {
+  min-height: 40px;
+  padding: 9px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+}
+.button-small,
+.button.small {
+  min-height: 34px;
+  padding: 7px 12px;
+  font-size: 13px;
+}
+
+/* Text buttons and small action links: still look like links, but readable and easy to hit */
+.text-button,
+.doc-text-button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 6px 6px;
+  font-size: 13.5px;
+  font-weight: 600;
+  border-radius: 8px;
+  text-underline-offset: 3px;
+}
+.text-button:hover,
+.doc-text-button:hover,
+.text-button:focus-visible,
+.doc-text-button:focus-visible {
+  text-decoration: underline;
+  background: rgba(14, 77, 100, 0.06);
+}
+
+/* The same for controls that pages style more specifically (tabs, chips, row actions, menus) */
+.mg-page .button,
+.mg-page .button.small,
+.doc-preview-actions .doc-button,
+.online-payment-link-actions .payment-secondary,
+.payment-error button,
+.action-menu a,
+.action-menu button,
+.quick-action,
+.tabs a,
+.tabs button,
+.mg-tabs button,
+.doc-contact-role-filters button {
+  min-height: 36px;
+  font-size: 14px;
+}
+.row-actions a,
+.row-actions button,
+.payment-text-button,
+.payment-panel .payment-plan-edit-row .payment-icon-button,
+.summary-line a,
+.mg-page details a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 4px 6px;
+  font-size: 13.5px;
+}
+.mg-tabs button span {
+  font-size: 12px;
+}
+
+/* "Show" inside the password field: as tall as the field, at its right edge */
+.password-field input {
+  padding-right: 76px !important;
+}
+.password-field button {
+  top: 0;
+  bottom: 0;
+  right: 4px;
+  min-height: 0;
+  padding: 0 12px;
+  font-size: 13.5px;
+}
+
+/* Links inside sentences and table cells are underlined, so they do not rely on colour alone */
+main p a:not(.button):not(.text-button):not(.doc-text-button),
+main td a:not(.button):not(.text-button):not(.doc-text-button),
+main small a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Icon-only buttons (menu, sign out, close): at least 36px, 44px on phones */
+.icon-button {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+}
+
+/* Fields */
+input:not([type='checkbox']):not([type='radio']):not([type='color']):not([type='file']):not([type='hidden']),
+select {
+  min-height: 40px;
+  font-size: 14px;
+}
+textarea {
+  font-size: 14px;
+}
+:is(
+    .doc-editor,
+    .payment-field,
+    .pricing-fields,
+    .pricing-fields-grid,
+    .payment-plan-generator-grid,
+    .payment-plan-edit-row,
+    .mg-field,
+    .organization-switch,
+    .filters,
+    form,
+    main
+  )
+  :is(
+    select,
+    textarea,
+    input:not([type='checkbox']):not([type='radio']):not([type='color']):not([type='file']):not(
+        [type='hidden']
+      ):not([type='range'])
+  ) {
+  font-size: 14px;
+}
+
+/* Folded sections open from a comfortable row, with readable headings */
+.mg-page summary,
+.document-actions summary,
+.recurring-policy summary,
+.doc-editor-page .doc-line-pricing summary,
+.doc-catalog-summary {
+  font-size: 14px;
+}
+input[type='file'] {
+  min-height: 40px;
+  padding: 8px 0;
+  font-size: 14px;
+}
+summary {
+  min-height: 36px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  cursor: pointer;
+}
+
+@media (max-width: 820px) {
+  .button,
+  .doc-button,
+  .doc-add-item,
+  .payment-primary,
+  .payment-secondary,
+  .messaging-primary,
+  .messaging-refresh,
+  .button-small,
+  .button.small {
+    min-height: 44px;
+    padding: 11px 18px;
+    font-size: 15px;
+  }
+  .text-button,
+  .doc-text-button {
+    min-height: 44px;
+    padding: 10px 8px;
+    font-size: 15px;
+  }
+  input:not([type='checkbox']):not([type='radio']):not([type='color']):not([type='file']):not(
+      [type='hidden']
+    ),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+  input:not([type='checkbox']):not([type='radio']):not([type='color']):not([type='file']):not(
+      [type='hidden']
+    ),
+  select {
+    min-height: 44px;
+  }
+  .mg-page .button,
+  .mg-page .button.small,
+  .doc-preview-actions .doc-button,
+  .online-payment-link-actions .payment-secondary,
+  .payment-error button,
+  .action-menu a,
+  .action-menu button,
+  .quick-action,
+  .tabs a,
+  .tabs button,
+  .mg-tabs button,
+  .doc-contact-role-filters button,
+  .row-actions a,
+  .row-actions button,
+  .payment-text-button,
+  .payment-panel .payment-plan-edit-row .payment-icon-button,
+  .summary-line a,
+  .mg-page details a {
+    min-height: 44px;
+    font-size: 15px;
+  }
+  :is(
+      .doc-editor,
+      .payment-field,
+      .pricing-fields,
+      .pricing-fields-grid,
+      .payment-plan-generator-grid,
+      .payment-plan-edit-row,
+      .mg-field,
+      .organization-switch,
+      .filters,
+      form,
+      main
+    )
+    :is(
+      select,
+      textarea,
+      input:not([type='checkbox']):not([type='radio']):not([type='color']):not([type='file']):not(
+          [type='hidden']
+        ):not([type='range'])
+    ) {
+    font-size: 16px;
+  }
+  :is(
+      .doc-editor,
+      .payment-field,
+      .pricing-fields,
+      .pricing-fields-grid,
+      .payment-plan-generator-grid,
+      .payment-plan-edit-row,
+      .mg-field,
+      .organization-switch,
+      .filters,
+      form,
+      main
+    )
+    :is(
+      select,
+      input:not([type='checkbox']):not([type='radio']):not([type='color']):not([type='file']):not(
+          [type='hidden']
+        ):not([type='range'])
+    ) {
+    min-height: 44px;
+  }
+  summary {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+  input[type='checkbox'],
+  input[type='radio'] {
+    width: 20px;
+    height: 20px;
+  }
+  .icon-button {
+    width: 44px;
+    height: 44px;
+  }
+  /* The GST choice carries a hint ("18% · Standard: most goods"), so it takes the full row. */
+  .doc-line-card .doc-field:has(> [data-line='gstRate']) {
+    grid-column: 1 / -1;
+  }
+  /* Two buttons a row on the document page: long labels wrap instead of touching the edges. */
+  .doc-preview-actions .doc-button {
+    white-space: normal;
+    padding: 10px 8px;
+    font-size: 14px;
+    line-height: 1.25;
+  }
+}
