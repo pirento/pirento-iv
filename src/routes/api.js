@@ -66,7 +66,7 @@ export function registerApiRoutes(app, context) {
   app.put('/api/integrations/:organizationId/settings', controllers.integrationSettings.save);
   app.post(
     '/api/integrations/:organizationId/test-email',
-    createUsageLimit({ maximum: 20, windowMs: tenMinutes }),
+    createUsageLimit({ db, scope: 'test-email', maximum: 20, windowMs: tenMinutes }),
     controllers.integrationSettings.testEmail,
   );
   app.get('/api/ledger', controllers.ledger.list);
@@ -113,8 +113,8 @@ export function registerApiRoutes(app, context) {
   app.post('/api/credit-notes/:id/refund', controllers.creditNotes.refund);
   app.post('/api/stock-adjustments', controllers.stockAdjustments.create);
   // Limits per login for the endpoints that call OpenAI.
-  app.use('/api/finance/ai', createUsageLimit({ maximum: 30, windowMs: tenMinutes }));
-  app.use('/api/hsn-gst', createUsageLimit({ maximum: 200, windowMs: tenMinutes }));
+  app.use('/api/finance/ai', createUsageLimit({ db, scope: 'ai', maximum: 30, windowMs: tenMinutes }));
+  app.use('/api/hsn-gst', createUsageLimit({ db, scope: 'hsn-gst', maximum: 200, windowMs: tenMinutes }));
   app.get('/api/hsn-gst', controllers.hsn.lookup);
   app.get('/api/ai-settings', controllers.ai.status);
   app.put('/api/ai-settings', controllers.ai.save);
