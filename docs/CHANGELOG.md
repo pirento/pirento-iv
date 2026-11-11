@@ -4,6 +4,15 @@ Release notes, API contract changes and upgrade instructions for each version, n
 
 ## Unreleased
 
+- **Security review.**
+  - A Business owner can no longer change a business between division and independent (that decides whether the company's shared gateway and email keys apply); only administrators can.
+  - The OpenAI key's last characters and model are shown to administrators only, not to Finance logins or Business owners; OpenAI's own error text is no longer passed to users.
+  - The SMTP server setting accepts only a public mail server name (no IP address, localhost or internal name).
+  - Per-login request limits on the endpoints that cost money or send email: AI statement reading and match suggestions (30 per 10 minutes), HSN GST lookup (200) and test email (20).
+  - A new test checks 20 endpoints and pages as five kinds of login (signed out, staff, view-only, Finance, Business owner): another business's data and the administrator pages are refused every time.
+- **Fixes found in the review.** A line saved without a unit showed the first unit in the new list although none was saved; the list now keeps an empty choice. The password “Show” button fits its field again. On phones the GST choice takes the full row so its hint is readable.
+- **Accessibility and polish.** Links inside sentences and table cells are underlined (not colour alone). On Payments & email the settings are grouped in soft boxes with spacing between cards, Save is the primary button, and messages point to this page instead of “server settings”.
+
 - **Clear, finger-sized buttons everywhere.** A new stylesheet loaded last on every page (`public/css/controls.css`) gives buttons 14px text and at least 36–40px height on desktop, and 44px targets with 15–16px text on phones and tablets (820px and narrower): filled buttons, text buttons (Remove, Full form, Previous/Next, Refresh…), tabs and filter chips, row actions, menus, icon buttons, folded-section headings and all fields (16px fields also stop iOS zooming in). The payment page's 9–11px buttons are now 14–15px, and long labels on the document page wrap on phones. An audit of 37 pages at 390px and 1280px found no small controls and no sideways scroll, and a browser test now checks ten key pages on a phone.
 
 - **Easier invoice lines.** Unit and GST are now dropdowns on every line (and in Products & services). Units include the business's usual ones first, then Litre, Box, Pack, Pair, Dozen, Bag, Roll, Ton, Quintal, Sq yd, Cubic m, Km, Trip, Job and Lump sum (new units map to their GST UQC codes in GSTR-1). GST lists every rate with a hint: 0, 0.1, 0.25, 1.5, 3, 5, 12 (older), 18 (standard), 28 (older) and 40%. Debit notes and expenses accept the same rates.
