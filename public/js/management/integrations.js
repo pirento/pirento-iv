@@ -83,7 +83,7 @@ function render(settings) {
     email.configured
       ? email.automationEnabled
         ? 'Automatic emails cover issued invoices and recorded payment outcomes. Check document email history to see whether the provider accepted each message.'
-        : 'Manual document emails are available. Enable automation in the server settings to send invoice and payment updates automatically.'
+        : 'Manual document emails are available. Turn on automatic emails in the settings below to send invoice and payment updates automatically.'
       : email.reason || 'Add a verified sender address and an email provider API key to begin sending.',
   );
   envList('[data-email-env]', [

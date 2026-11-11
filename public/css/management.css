@@ -1832,3 +1832,22 @@
   padding: 0;
   margin: 0;
 }
+
+/* Grouped settings (Payments & email): each group in its own soft box. */
+.mg-card fieldset {
+  margin: 0 0 16px;
+  padding: 16px;
+  border: 1px solid var(--line, #efdfd2);
+  border-radius: 12px;
+  min-width: 0;
+}
+.mg-card fieldset > legend {
+  padding: 0 8px;
+  font-size: 14px;
+}
+
+/* Payments & email: the cards under the status row keep the page's spacing. */
+#integrations-page [data-status-loaded]:not([hidden]) {
+  display: grid;
+  gap: 22px;
+}

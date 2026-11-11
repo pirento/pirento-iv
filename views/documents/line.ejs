@@ -33,7 +33,7 @@
           value="<%= line.quantity %>"
           required /></label
       ><label class="doc-field"
-        >Unit<select data-line="unit"><% for (const unit of [...new Set([line.unit, ...helpers.CATALOG_UNITS].filter(Boolean))]) { %><option value="<%= unit %>" <%= unit === line.unit ? 'selected' : '' %>><%= unit %></option><% } %></select></label
+        >Unit<select data-line="unit"><% for (const unit of [...new Set([line.unit || '', ...helpers.CATALOG_UNITS])]) { %><option value="<%= unit %>" <%= unit === (line.unit || '') ? 'selected' : '' %>><%= unit || '—' %></option><% } %></select></label
       ><% if(!isDelivery){ %><label class="doc-field"
         >Rate (₹)<input
           data-line="rate"

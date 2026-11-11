@@ -129,7 +129,7 @@ const support = helpers.organizationSupportEmail(organization);
             <dd>Resend</dd>
           </div>
         </dl>
-        <p class="mg-note" data-email-guidance><%= email.configured ? email.automationEnabled ? 'Automatic emails cover issued invoices and recorded payment outcomes. Check document email history to see whether the provider accepted each message.' : 'Manual document emails are available. Enable automation in the server settings to send invoice and payment updates automatically.' : email.reason || 'Add a verified sender address and an email provider API key to begin sending.' %></p>
+        <p class="mg-note" data-email-guidance><%= email.configured ? email.automationEnabled ? 'Automatic emails cover issued invoices and recorded payment outcomes. Check document email history to see whether the provider accepted each message.' : 'Manual document emails are available. Turn on automatic emails in the settings below to send invoice and payment updates automatically.' : email.reason || 'Add a sender address and an SMTP server or Resend key in the settings below to begin sending.' %></p>
         <details>
           <summary>Connection instructions</summary>
           <p>
@@ -229,7 +229,7 @@ const support = helpers.organizationSupportEmail(organization);
       <h3>Every business</h3>
       <div tabindex="0" role="region" aria-label="Payment gateway and email of every business" class="table-wrap">
         <table class="finance-table">
-          <thead><tr><th>Business</th><th>Payment gateway</th><th>Email sending</th><th></th></tr></thead>
+          <thead><tr><th>Business</th><th>Payment gateway</th><th>Email sending</th><th>Action</th></tr></thead>
           <tbody>
             <% for (const row of settings.businesses) { %>
               <tr>
@@ -272,7 +272,8 @@ const support = helpers.organizationSupportEmail(organization);
           </label>
         </fieldset>
         <fieldset class="mg-form-grid">
-          <legend><strong>Sending email</strong> — an SMTP server (Hostinger, Gmail, Zoho, Outlook…) or a Resend API key</legend>
+          <legend><strong>Sending email</strong></legend>
+          <p class="mg-hint mg-wide">Use an SMTP server (Hostinger, Gmail, Zoho, Outlook…) or a Resend API key.</p>
           <label class="field">Send from address<input name="EMAIL_FROM" type="email" maxlength="254" value="<%= saved.EMAIL_FROM %>" placeholder="billing@yourdomain.com" /></label>
           <label class="field">Automatic emails
             <select name="EMAIL_AUTOMATION">
@@ -295,12 +296,13 @@ const support = helpers.organizationSupportEmail(organization);
           <label class="field">Resend API key (if no SMTP)<input name="RESEND_API_KEY" type="password" autocomplete="off" maxlength="500" placeholder="<%= secret('RESEND_API_KEY') %>" /></label>
         </fieldset>
         <fieldset class="mg-form-grid">
-          <legend><strong>Receiving email</strong> — customers' replies go to these inboxes</legend>
+          <legend><strong>Receiving email</strong></legend>
+          <p class="mg-hint mg-wide">Customers' replies go to these inboxes.</p>
           <label class="field">Support email (quotations, help)<input name="supportEmail" type="email" maxlength="254" value="<%= organization.supportEmail || helpers.organizationSupportEmail(organization) %>" /></label>
           <label class="field">Finance email (invoices, receipts, reminders)<input name="financeEmail" type="email" maxlength="254" value="<%= organization.financeEmail || '' %>" placeholder="finance@pirento.com" /></label>
         </fieldset>
         <div class="mg-actions">
-          <button class="button" type="submit">Save settings</button>
+          <button class="button button-primary" type="submit">Save settings</button>
           <% for (const [name, label] of [['RAZORPAY_KEY_SECRET', 'Razorpay secret'], ['CASHFREE_CLIENT_SECRET', 'Cashfree secret'], ['SMTP_PASSWORD', 'SMTP password'], ['RESEND_API_KEY', 'Resend key']]) { if (saved[name].set) { %>
             <button class="button secondary" type="button" data-clear="<%= name %>">Remove <%= label %></button>
           <% } } %>

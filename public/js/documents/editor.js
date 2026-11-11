@@ -417,14 +417,17 @@ function renderCatalog() {
 // A saved value that is not in the list stays selectable so old documents keep their unit and rate.
 const unitChoices = [...new Set([...(BILLING_PROFILES[profile]?.units ?? []), ...CATALOG_UNITS])];
 function selectOptions(values, current, label = (value) => value) {
+  // An empty saved value (an old line without a unit) keeps an empty choice, so the list never
+  // shows a value that is not in the document.
+  const blank = current === '' || current == null;
   const all =
-    values.some((value) => String(value) === String(current)) || current === '' || current == null
-      ? values
-      : [current, ...values];
+    blank || !values.some((value) => String(value) === String(current))
+      ? [blank ? '' : current, ...values]
+      : values;
   return all
     .map(
       (value) =>
-        `<option value="${escape(value)}" ${String(value) === String(current) ? 'selected' : ''}>${escape(label(value))}</option>`,
+        `<option value="${escape(value)}" ${String(value) === String(current ?? '') ? 'selected' : ''}>${value === '' ? '—' : escape(label(value))}</option>`,
     )
     .join('');
 }

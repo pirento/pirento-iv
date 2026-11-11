@@ -80,7 +80,7 @@ function render() {
   if (!loading && !configured)
     notes.push(
       integration?.email.reason ||
-        'Connect an email provider and verified sender in server settings. Saved held messages require explicit release.',
+        'Add this business’s sender address and SMTP server (or Resend key) on the Payments & email page. Saved held messages require explicit release.',
     );
   if (!validRecipient)
     notes.push(
@@ -109,7 +109,7 @@ function render() {
       : includePaymentLink && paymentConfigured
         ? 'The payment link uses the current outstanding invoice balance.'
         : !paymentConfigured
-          ? `Connect this business’s ${provider} payment account in server settings to enable links.`
+          ? `Connect this business’s ${provider} payment account on the Payments & email page to enable links.`
           : 'This email will not contain an online payment link.';
   const send = document.querySelector('#messaging-send');
   send.disabled = loading || Boolean(busy) || !canSend();

@@ -14,10 +14,13 @@ import express from 'express';
 import { securityHeaders, validateResourceQueries } from '../middleware/http-security.js';
 import { createAccessGuard } from '../middleware/access.js';
 import { HttpError } from '../middleware/errors.js';
+import { createUsageLimit } from '../middleware/usage-limit.js';
 
 /** Registers all /api middleware and routes on the Express app, in the order shown above. */
 export function registerApiRoutes(app, context) {
   const { controllers, auth, online, db, environment, errorHandler } = context;
+  // Window of the per-login limits on endpoints that call OpenAI or send email.
+  const tenMinutes = 10 * 60_000;
   app.use(securityHeaders(environment.NODE_ENV === 'production'));
   app.post(
     '/api/webhooks/razorpay',
@@ -61,7 +64,11 @@ export function registerApiRoutes(app, context) {
   app.get('/api/integrations/status', controllers.integrations.status);
   app.get('/api/integrations/:organizationId/settings', controllers.integrationSettings.show);
   app.put('/api/integrations/:organizationId/settings', controllers.integrationSettings.save);
-  app.post('/api/integrations/:organizationId/test-email', controllers.integrationSettings.testEmail);
+  app.post(
+    '/api/integrations/:organizationId/test-email',
+    createUsageLimit({ maximum: 20, windowMs: tenMinutes }),
+    controllers.integrationSettings.testEmail,
+  );
   app.get('/api/ledger', controllers.ledger.list);
   app.get('/api/ledger/export', controllers.ledger.exportBalances);
   app.get('/api/ledger/:customerId/export', controllers.ledger.exportStatement);
@@ -105,6 +112,9 @@ export function registerApiRoutes(app, context) {
   app.post('/api/credit-notes/:id/cancel', controllers.creditNotes.cancel);
   app.post('/api/credit-notes/:id/refund', controllers.creditNotes.refund);
   app.post('/api/stock-adjustments', controllers.stockAdjustments.create);
+  // Limits per login for the endpoints that call OpenAI.
+  app.use('/api/finance/ai', createUsageLimit({ maximum: 30, windowMs: tenMinutes }));
+  app.use('/api/hsn-gst', createUsageLimit({ maximum: 200, windowMs: tenMinutes }));
   app.get('/api/hsn-gst', controllers.hsn.lookup);
   app.get('/api/ai-settings', controllers.ai.status);
   app.put('/api/ai-settings', controllers.ai.save);

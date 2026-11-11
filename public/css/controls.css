@@ -63,8 +63,7 @@
 .tabs a,
 .tabs button,
 .mg-tabs button,
-.doc-contact-role-filters button,
-.password-field button {
+.doc-contact-role-filters button {
   min-height: 36px;
   font-size: 14px;
 }
@@ -82,6 +81,27 @@
 }
 .mg-tabs button span {
   font-size: 12px;
+}
+
+/* "Show" inside the password field: as tall as the field, at its right edge */
+.password-field input {
+  padding-right: 76px !important;
+}
+.password-field button {
+  top: 0;
+  bottom: 0;
+  right: 4px;
+  min-height: 0;
+  padding: 0 12px;
+  font-size: 13.5px;
+}
+
+/* Links inside sentences and table cells are underlined, so they do not rely on colour alone */
+main p a:not(.button):not(.text-button):not(.doc-text-button),
+main td a:not(.button):not(.text-button):not(.doc-text-button),
+main small a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 /* Icon-only buttons (menu, sign out, close): at least 36px, 44px on phones */
@@ -188,7 +208,6 @@ summary {
   .tabs button,
   .mg-tabs button,
   .doc-contact-role-filters button,
-  .password-field button,
   .row-actions a,
   .row-actions button,
   .payment-text-button,
@@ -254,6 +273,10 @@ summary {
   .icon-button {
     width: 44px;
     height: 44px;
+  }
+  /* The GST choice carries a hint ("18% · Standard: most goods"), so it takes the full row. */
+  .doc-line-card .doc-field:has(> [data-line='gstRate']) {
+    grid-column: 1 / -1;
   }
   /* Two buttons a row on the document page: long labels wrap instead of touching the edges. */
   .doc-preview-actions .doc-button {
