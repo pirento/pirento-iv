@@ -120,7 +120,8 @@ const letterheadStyles = letterhead ? `;background-image:url("${letterhead.image
           </div>
         </div>
         <div class="doc-paper-document-label">
-          <h1><%= p.documentTitle(doc) %></h1>
+          <%# Level 2 in the page outline: the page's own h1 is the document number above the paper. %>
+          <h1 aria-level="2"><%= p.documentTitle(doc) %></h1>
           <strong><%= doc.number %></strong
           ><span class="doc-paper-status"><%= t.STATUS_LABELS[doc.status]||doc.status %><%= doc.finalizedAt?' · Final':'' %></span>
         </div>

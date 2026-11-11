@@ -8,10 +8,10 @@ const date = value => value ? new Intl.DateTimeFormat('en-IN', { year:'numeric',
     <div class="mg-user-identity">
       <span class="mg-avatar" data-user-initials><%= initials %></span>
       <div>
-        <h3>
+        <h2 class="mg-h3">
           <span data-user-name><%= member.name %></span>
           <small data-user-self <%= member.id === data.user.id ? '' : 'hidden' %>>You</small>
-        </h3>
+        </h2>
         <p data-user-email><%= member.email %></p>
       </div>
     </div>

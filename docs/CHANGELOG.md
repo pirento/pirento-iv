@@ -4,11 +4,13 @@ Release notes, API contract changes and upgrade instructions for each version, n
 
 ## Unreleased
 
+- **Accessibility: headings and contrast.** On the management pages (catalog, backups, business products, team, formats, Payments & email) section headings are now h2/h3 in order under the page h1 (classes keep their size), and the document title inside the invoice preview is level 2 in the page outline. Muted text in the invoice preview and the format samples was darkened to at least 4.5:1 contrast (28 colours, same hue). An axe-core scan of 30 pages at phone and desktop width reports no violations.
+
 - **Security review.**
   - A Business owner can no longer change a business between division and independent (that decides whether the company's shared gateway and email keys apply); only administrators can.
   - The OpenAI key's last characters and model are shown to administrators only, not to Finance logins or Business owners; OpenAI's own error text is no longer passed to users.
   - The SMTP server setting accepts only a public mail server name (no IP address, localhost or internal name).
-  - Per-login request limits on the endpoints that cost money or send email: AI statement reading and match suggestions (30 per 10 minutes), HSN GST lookup (200) and test email (20).
+  - Per-login request limits on the endpoints that cost money or send email: AI statement reading and match suggestions (30 per 10 minutes), HSN GST lookup (200) and test email (20). The counters are kept in MongoDB (`auth_rate_limits`), so the limits hold across restarts and several servers.
   - A new test checks 20 endpoints and pages as five kinds of login (signed out, staff, view-only, Finance, Business owner): another business's data and the administrator pages are refused every time.
 - **Fixes found in the review.** A line saved without a unit showed the first unit in the new list although none was saved; the list now keeps an empty choice. The password “Show” button fits its field again. On phones the GST choice takes the full row so its hint is readable.
 - **Accessibility and polish.** Links inside sentences and table cells are underlined (not colour alone). On Payments & email the settings are grouped in soft boxes with spacing between cards, Save is the primary button, and messages point to this page instead of “server settings”.

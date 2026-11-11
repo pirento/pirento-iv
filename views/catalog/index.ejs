@@ -248,7 +248,7 @@ const invalid = route.action && (route.action === 'delete' || (route.action === 
       </table>
     </div>
     <div class="mg-empty" data-empty <%= items.length ? 'hidden' : '' %>>
-      <h3>No matching items</h3>
+      <h2 class="mg-h3">No matching items</h2>
       <p>Try a different name, SKU, HSN code or filter, or add your first offering.</p>
     </div>
     <footer class="mg-directory-footer">
@@ -260,7 +260,7 @@ const invalid = route.action && (route.action === 'delete' || (route.action === 
     <%- include('../partials/finance-pagination', { pagination: directory, previousUrl: directory.previousUrl, nextUrl: directory.nextUrl, label: 'Catalog pages' }) %>
   </section>
   <section class="mg-suggestions">
-    <h3>A starting point for <%= organization.name %></h3>
+    <h2 class="mg-h3">A starting point for <%= organization.name %></h2>
     <p>Optional ideas—choose one, then set your own description, price and tax.</p>
     <div class="mg-grid">
       <% for (const suggestion of suggestions) { %><a

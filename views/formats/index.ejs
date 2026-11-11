@@ -135,7 +135,7 @@ const options = [['showLogo','Organization logo','Use this format’s logo or in
               <option value="compact" <%= form.density === 'compact' ? 'selected' : '' %>>Compact</option>
             </select></label
           >
-          <h3>Paper & typography</h3>
+          <h2 class="mg-h3">Paper & typography</h2>
           <p class="mg-hint">Set up the page for printing and PDF downloads.</p>
           <div class="mg-form-grid">
             <label class="mg-field"
@@ -178,7 +178,7 @@ const options = [['showLogo','Organization logo','Use this format’s logo or in
               <% } %>
             </select></label
           >
-          <h3>Logo for this format</h3>
+          <h2 class="mg-h3">Logo for this format</h2>
           <p class="mg-hint">Inherit your organization’s logo or upload a different one.</p>
           <label class="mg-field"
             >Upload a format logo<input
@@ -280,7 +280,7 @@ const options = [['showLogo','Organization logo','Use this format’s logo or in
   </section>
   <header class="mg-card-heading">
     <div>
-      <h3>Your format library</h3>
+      <h2 class="mg-h3">Your format library</h2>
       <p><%= defaultFormat ? `${defaultFormat.name} is your default for new documents.` : 'Create your first format to get started.' %></p>
     </div>
   </header>
@@ -301,7 +301,7 @@ const options = [['showLogo','Organization logo','Use this format’s logo or in
   </div>
   <p data-results aria-live="polite"><%= formats.length %> formats</p>
   <div class="mg-empty" data-empty <%= formats.length ? 'hidden' : '' %>>
-    <h3>No formats found</h3>
+    <h2 class="mg-h3">No formats found</h2>
     <p>Try another name or category, or create a format for this organization.</p>
     <button type="button" class="button secondary" data-show-all>Show all formats</button>
   </div>
@@ -313,7 +313,7 @@ const options = [['showLogo','Organization logo','Use this format’s logo or in
         ><span class="mg-badge" data-default-badge <%= format.isDefault ? '' : 'hidden' %>>Default</span
         ><%- include('sample', { organization, format, small: true }) %>
       </div>
-      <h3><%= format.name %></h3>
+      <h2 class="mg-h3"><%= format.name %></h2>
       <small
         ><%= categoryFor(format) %> · <%= format.layout %> · <%= format.pageSize || 'A4' %>
         <%= format.orientation || 'portrait' %></small

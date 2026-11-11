@@ -109,7 +109,7 @@ test('a debit note gets its own number, takes payments and is reported as type D
   );
   assert.equal(paid.document.status, 'paid');
   const preview = await fetch(`${base}/workspace/${organizationId}/invoices/preview/${note.id}`);
-  assert.match(await preview.text(), /<h1>DEBIT NOTE<\/h1>/);
+  assert.match(await preview.text(), /<h1 aria-level="2">DEBIT NOTE<\/h1>/);
 
   const csv = async (section) =>
     (

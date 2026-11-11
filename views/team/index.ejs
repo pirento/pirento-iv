@@ -91,7 +91,7 @@ const placeholder = {id:'',name:'',email:'',company:'',status:'pending',role:'st
   </div>
   <template id="team-user-template"><%- include('card', { member: placeholder }) %></template>
   <div class="mg-empty" data-empty <%= users.length ? 'hidden' : '' %>>
-    <h3 data-empty-title>No account requests yet</h3>
+    <h2 class="mg-h3" data-empty-title>No account requests yet</h2>
     <p data-empty-copy>People can request access using Sign up on your Venturecore INV home page.</p>
   </div>
   <%- include('../security/session-confirmation') %>
