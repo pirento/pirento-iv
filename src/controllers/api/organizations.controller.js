@@ -53,6 +53,9 @@ export function createController(context) {
           ...input,
           id: current.id,
         };
+        // Division or independent decides whether the company's shared gateway and email keys apply,
+        // so only an administrator may change it (a Business owner edits everything else).
+        if (auth && res.locals.user?.role !== 'admin') result.businessType = current.businessType;
         if (
           organizationGateway(result) !== organizationGateway(current) ||
           isIndependentBusiness(result) !== isIndependentBusiness(current)

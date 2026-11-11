@@ -71,6 +71,11 @@ export function createWorkspacePageData({
     };
   }
 
+  // Whether the AI assistant is set up; the model and the key's last characters are for administrators.
+  const aiStatus = async (user) => {
+    const status = ai ? await ai.status() : { configured: false };
+    return !auth || user.role === 'admin' ? status : { configured: status.configured };
+  };
   // Group finance is for administrators and Accounts logins, across the businesses they can open.
   const financeAllowed = (user) => !auth || user.role === 'admin' || user.permission === 'accounts';
   async function financeData(organizations, query, businessDate) {
@@ -281,7 +286,7 @@ export function createWorkspacePageData({
           totals: groupTotals(rows),
           bank,
           registers,
-          ai: ai ? await ai.status() : { configured: false },
+          ai: await aiStatus(user),
         };
       });
     }
@@ -322,7 +327,7 @@ export function createWorkspacePageData({
           payment,
           razorpay: payment,
           gst: gstStatus(),
-          ai: ai ? await ai.status() : { configured: false },
+          ai: await aiStatus(user),
           ...(!auth || user.role === 'admin' || user.permission === 'owner'
             ? { settings: await integrationSettings.view(organizationId) }
             : {}),

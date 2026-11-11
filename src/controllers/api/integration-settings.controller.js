@@ -32,8 +32,13 @@ const settingsSchema = z.object({
   CASHFREE_ENVIRONMENT: z.enum(['', 'sandbox', 'production']).optional(),
   EMAIL_FROM: emailOrBlank,
   RESEND_API_KEY: secret,
+  // A public mail server name only: no IP address, localhost or single-label (internal) name,
+  // so this setting cannot be pointed at machines inside the server's own network.
   SMTP_HOST: plain(253).refine(
-    (value) => !value || /^[A-Za-z0-9.-]+$/.test(value),
+    (value) =>
+      !value ||
+      (/^([A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?\.)+[A-Za-z]{2,}$/.test(value) &&
+        !/(^|\.)(localhost|local|internal|lan|home|corp)$/i.test(value)),
     'Enter the SMTP server name, e.g. smtp.hostinger.com.',
   ),
   // Mail ports only, so the setting cannot point the server at other services.

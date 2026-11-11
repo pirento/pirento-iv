@@ -123,7 +123,15 @@ export function createAiAssistant({ db, environment, production, fetcher = fetch
     }
     const body = await readProviderJson(response, 4 * 1024 * 1024).catch(() => null);
     if (!response.ok)
-      throw new HttpError(502, `OpenAI refused the request: ${body?.error?.message ?? response.status}`);
+      // The provider's own message can quote part of the key, so it is not passed on.
+      throw new HttpError(
+        502,
+        response.status === 401 || response.status === 403
+          ? 'OpenAI rejected the saved API key. Ask an administrator to check it in Payments & email.'
+          : response.status === 429
+            ? 'OpenAI is busy or the account has reached its limit. Try again in a minute.'
+            : `OpenAI could not answer (error ${response.status}). Try again in a minute.`,
+      );
     const text = body?.output
       ?.flatMap((item) => item.content ?? [])
       .find((part) => part.type === 'output_text')?.text;
@@ -187,6 +195,8 @@ export function createAiAssistant({ db, environment, production, fetcher = fetch
     if (!(await settings()).apiKey) return null;
     const key = `${hsn}|${description.trim().toLowerCase()}`;
     if (!gstCache.has(key)) {
+      // Keeps memory bounded when many different descriptions are typed.
+      if (gstCache.size >= 2000) gstCache.clear();
       const answer = await ask(
         'gst_rate',
         GST_SCHEMA,
